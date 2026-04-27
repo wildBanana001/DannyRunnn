@@ -1,0 +1,156 @@
+@use '@/styles/variables.scss' as *;
+
+.sheetPanel {
+  overflow: hidden;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.bodyInner {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 32rpx 24rpx;
+}
+
+.date,
+.author,
+.commentTime,
+.metaText {
+  display: block;
+  font-size: $font-size-xs;
+  color: rgba(17, 17, 17, 0.58);
+}
+
+.title {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 34rpx;
+  line-height: 1.35;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.content {
+  display: block;
+  margin-top: 18rpx;
+  font-size: $font-size-md;
+  line-height: 1.82;
+  color: $color-text-primary;
+}
+
+.images {
+  margin-top: 20rpx;
+}
+
+.image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 14rpx;
+  border-radius: 20rpx;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 20rpx;
+}
+
+.tagChip {
+  padding: 8rpx 18rpx;
+  border-radius: $radius-circle;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.tagText {
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+}
+
+.author {
+  margin-top: 20rpx;
+}
+
+.metaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #F0F0F0;
+}
+
+.metaButton {
+  display: flex;
+  align-items: center;
+}
+
+.commentSection {
+  margin-top: 24rpx;
+}
+
+.commentItem {
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.commentAuthor {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.commentContent {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: 1.72;
+  color: $color-text-primary;
+}
+
+.commentTime {
+  margin-top: 10rpx;
+}
+
+.commentEmpty {
+  padding: 24rpx 0;
+  border-top: 1rpx solid #F0F0F0;
+}
+
+.commentEmptyText {
+  font-size: $font-size-sm;
+  color: #999999;
+}
+
+.inputBar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  width: 100%;
+  padding: 20rpx 32rpx calc(24rpx + constant(safe-area-inset-bottom));
+  padding: 20rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.94);
+  border-top: 1rpx solid #F0F0F0;
+}
+
+.input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 20rpx;
+  border-radius: $radius-circle;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.yellow { background: $color-note-yellow; }
+.pink { background: $color-note-pink; }
+.blue { background: $color-note-blue; }
+.green { background: $color-note-green; }
+.orange { background: $color-note-orange; }
+.purple { background: $color-note-purple; }

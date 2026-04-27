@@ -1,0 +1,96 @@
+@use '@/styles/variables.scss' as *;
+
+.card {
+  position: relative;
+  padding: 30rpx 22rpx 22rpx;
+  margin-bottom: 20rpx;
+  border-radius: $radius-card-lg;
+  box-shadow: $shadow-card;
+}
+
+.tape {
+  position: absolute;
+  top: -10rpx;
+  left: 50%;
+  width: 92rpx;
+  transform: translateX(-50%);
+}
+
+.time {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-xs;
+  color: rgba(62, 44, 28, 0.72);
+}
+
+.title {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 30rpx;
+  line-height: 1.4;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.content {
+  display: -webkit-box;
+  margin-top: 12rpx;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: $color-text-primary;
+}
+
+.previewImage {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  margin-top: 16rpx;
+  border-radius: 16rpx;
+}
+
+.tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 16rpx;
+}
+
+.tagChip {
+  padding: 8rpx 18rpx;
+  border-radius: $radius-circle;
+  background: rgba(62, 44, 28, 0.08);
+}
+
+.tagText,
+.moreTag {
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18rpx;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+}
+
+.actionText {
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.yellow { background: $color-note-yellow; }
+.pink { background: $color-note-pink; }
+.blue { background: $color-note-blue; }
+.green { background: $color-note-green; }
+.orange { background: $color-note-orange; }
+.purple { background: $color-note-purple; }

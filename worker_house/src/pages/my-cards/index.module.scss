@@ -1,0 +1,133 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.banner,
+.sectionCard,
+.emptyCardWrap {
+  @include paper-card($color-white);
+  margin: 24rpx;
+}
+
+.banner {
+  background: linear-gradient(135deg, #E60000 0%, #F28482 100%);
+  color: #fff;
+  padding: 28rpx;
+}
+
+.bannerKicker,
+.bannerDesc,
+.statLabel {
+  display: block;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.bannerKicker {
+  font-size: $font-size-xs;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.bannerTitle {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 40rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.bannerDesc {
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+}
+
+.bannerStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.statItem {
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.statValue {
+  display: block;
+  font-size: 34rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.statLabel {
+  margin-top: 8rpx;
+  font-size: $font-size-xs;
+}
+
+.sectionCard,
+.emptyCardWrap {
+  padding: 24rpx;
+}
+
+.sectionTitle {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.sectionDesc,
+.noteText,
+.purchaseDesc,
+.logMeta {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+  color: $color-text-secondary;
+}
+
+.purchaseCard,
+.logItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin: 20rpx 0;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #fff7f5;
+}
+
+.purchaseTitle,
+.logTitle {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.purchasePrice,
+.logPrice {
+  font-size: 34rpx;
+  color: #E60000;
+  font-weight: $font-weight-heavy;
+}
+
+.logList {
+  margin-top: 12rpx;
+}
+
+.logItem {
+  margin: 0 0 16rpx;
+  background: #fff;
+  border: 1rpx solid $color-divider;
+}
+
+.bottomSpacing {
+  height: 24rpx;
+}

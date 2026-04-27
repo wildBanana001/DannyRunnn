@@ -1,0 +1,109 @@
+@use '@/styles/variables.scss' as *;
+
+.container,
+.emptyWrap {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.heroCard,
+.sectionCard {
+  @include paper-card($color-white);
+  margin: 24rpx;
+}
+
+.heroCard {
+  overflow: hidden;
+}
+
+.cover {
+  width: 100%;
+  height: 420rpx;
+}
+
+.heroBody {
+  padding: 24rpx;
+}
+
+.statusBadge {
+  display: inline-flex;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+}
+
+.title {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 34rpx;
+  line-height: 1.5;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.meta,
+.label,
+.value,
+.snapshotLine {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+  color: $color-text-secondary;
+}
+
+.sectionCard {
+  padding: 24rpx;
+}
+
+.sectionTitle {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.label {
+  margin-top: 0;
+}
+
+.value,
+.discountValue,
+.strongValue {
+  margin-top: 0;
+  text-align: right;
+}
+
+.discountValue {
+  font-size: $font-size-sm;
+  color: #E60000;
+  font-weight: $font-weight-bold;
+}
+
+.strongValue {
+  font-size: 32rpx;
+  color: #E60000;
+  font-weight: $font-weight-heavy;
+}
+
+.actionWrap {
+  padding: 0 24rpx;
+}
+
+.bottomSpacing {
+  height: 32rpx;
+}

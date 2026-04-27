@@ -1,0 +1,13 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  @include flex-center;
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.title {
+  font-size: 30rpx;
+  color: $color-text-secondary;
+}

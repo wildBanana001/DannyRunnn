@@ -1,0 +1,38 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.list {
+  padding: 24rpx;
+}
+
+.item {
+  @include paper-card($color-white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 24rpx;
+  margin-bottom: 18rpx;
+}
+
+.title,
+.logoutTitle {
+  font-size: 32rpx;
+  font-weight: $font-weight-bold;
+}
+
+.title {
+  color: $color-text-primary;
+}
+
+.logoutTitle {
+  color: $color-accent;
+}
+
+.arrow {
+  font-size: 40rpx;
+  color: $color-text-secondary;
+}

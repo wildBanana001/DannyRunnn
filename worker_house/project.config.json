@@ -1,0 +1,27 @@
+{
+  "miniprogramRoot": "dist/",
+  "cloud": true,
+  "cloudbaseRoot": "cloudfunctions/",
+  "projectname": "taro_template",
+  "description": "taro_template",
+  "appid": "wx06f0bff0bed0dc80",
+  "setting": {
+    "urlCheck": true,
+    "es6": false,
+    "enhance": false,
+    "compileHotReLoad": false,
+    "postcss": false,
+    "preloadBackgroundData": false,
+    "minified": false,
+    "newFeature": true,
+    "autoAudits": false,
+    "coverView": true,
+    "showShadowRootInWxmlPanel": false,
+    "scopeDataCheck": false,
+    "useCompilerModule": false
+  },
+  "compileType": "miniprogram",
+  "simulatorType": "wechat",
+  "simulatorPluginLibVersion": {},
+  "condition": {}
+}

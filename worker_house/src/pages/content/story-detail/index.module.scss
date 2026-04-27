@@ -1,0 +1,77 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: $spacing-page-top 24rpx 24rpx;
+  background: $color-oat;
+}
+
+.cover {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: $radius-card-lg;
+}
+
+.contentCard {
+  @include paper-card($color-white);
+  padding: 28rpx;
+  margin-top: 20rpx;
+}
+
+.title {
+  display: block;
+  font-size: $font-size-section-title;
+  line-height: $line-height-section-title;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+}
+
+.metaText,
+.metaDot,
+.emptyText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.metaDot {
+  margin: 0 10rpx;
+}
+
+.excerpt {
+  display: block;
+  margin-top: 20rpx;
+  padding: 20rpx;
+  border-radius: $radius-card-md;
+  background: rgba(230, 57, 70, 0.06);
+  font-size: $font-size-sm;
+  line-height: 1.9;
+  color: $color-text-primary;
+}
+
+.body {
+  margin-top: 24rpx;
+}
+
+.paragraph {
+  display: block;
+  margin-bottom: 24rpx;
+  font-size: $font-size-sm;
+  line-height: 1.95;
+  color: $color-text-primary;
+}
+
+.footerAction {
+  margin-top: 12rpx;
+}
+
+.emptyWrap {
+  @include flex-center;
+  min-height: 100vh;
+  background: $color-oat;
+}

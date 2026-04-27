@@ -1,0 +1,379 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $color-oat;
+}
+
+.scrollView {
+  flex: 1;
+}
+
+.progressWrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  padding: 24rpx 24rpx 12rpx;
+}
+
+.progressItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.progressDot,
+.progressDotActive {
+  @include flex-center;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  font-size: 24rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.progressDot {
+  background: rgba(139, 115, 85, 0.14);
+  color: $color-text-secondary;
+}
+
+.progressDotActive {
+  background: #E60000;
+  color: #fff;
+}
+
+.progressText,
+.progressTextActive {
+  font-size: $font-size-xs;
+}
+
+.progressText {
+  color: $color-text-secondary;
+}
+
+.progressTextActive {
+  color: #E60000;
+  font-weight: $font-weight-bold;
+}
+
+.activityCard,
+.sectionCard {
+  @include paper-card($color-white);
+  margin: 0 24rpx 20rpx;
+}
+
+.activityCard {
+  display: flex;
+  overflow: hidden;
+}
+
+.activityCover {
+  width: 208rpx;
+  height: 208rpx;
+  flex-shrink: 0;
+}
+
+.activityInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24rpx;
+}
+
+.activityTitle {
+  display: block;
+  font-size: 32rpx;
+  line-height: 1.5;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.activityMeta,
+.activityPrice,
+.sectionDesc,
+.profileMeta,
+.profileExcerpt,
+.snapshotLine,
+.toggleDesc,
+.warningText,
+.priceLabel,
+.priceValue,
+.editLink {
+  display: block;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+  color: $color-text-secondary;
+}
+
+.activityMeta,
+.activityPrice {
+  margin-top: 8rpx;
+}
+
+.activityPrice,
+.editLink,
+.warningText,
+.discountValue,
+.priceStrongValue {
+  color: #E60000;
+}
+
+.stepSection {
+  padding-bottom: 20rpx;
+}
+
+.sectionHeader {
+  padding: 0 24rpx 20rpx;
+}
+
+.sectionTitle {
+  display: block;
+  font-size: 34rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.sectionDesc {
+  margin-top: 8rpx;
+}
+
+.profileList {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding: 0 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.profileCard,
+.profileCardActive {
+  @include paper-card($color-white);
+  padding: 24rpx;
+  border: 2rpx solid transparent;
+}
+
+.profileCardActive {
+  border-color: rgba(230, 57, 70, 0.35);
+  background: #fff7f5;
+}
+
+.profileRow,
+.cardToggleRow,
+.priceRow,
+.priceRowStrong,
+.footerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profileName {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.profileMeta {
+  margin-top: 6rpx;
+}
+
+.profileExcerpt {
+  margin-top: 14rpx;
+}
+
+.defaultBadge {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(230, 57, 70, 0.12);
+  font-size: $font-size-xs;
+  color: #E60000;
+  font-weight: $font-weight-bold;
+}
+
+.profileActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16rpx;
+}
+
+.inlineAction {
+  font-size: $font-size-sm;
+  color: #E60000;
+  font-weight: $font-weight-bold;
+}
+
+.sectionCard {
+  padding: 24rpx;
+}
+
+.snapshotLine,
+.toggleDesc,
+.warningText {
+  margin-top: 12rpx;
+}
+
+.editLink {
+  margin-top: 18rpx;
+  font-weight: $font-weight-bold;
+}
+
+.toggleTitle {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.toggle,
+.toggleActive,
+.toggleDisabled {
+  position: relative;
+  width: 96rpx;
+  height: 56rpx;
+  padding: 6rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+}
+
+.toggle {
+  background: rgba(139, 115, 85, 0.24);
+}
+
+.toggleActive {
+  background: #E60000;
+}
+
+.toggleDisabled {
+  background: rgba(139, 115, 85, 0.12);
+}
+
+.toggleThumb,
+.toggleThumbActive {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.toggleThumbActive {
+  transform: translateX(40rpx);
+}
+
+.pricePanel {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid $color-divider;
+}
+
+.priceRow,
+.priceRowStrong {
+  padding: 14rpx 0;
+}
+
+.discountValue,
+.priceStrongLabel,
+.priceStrongValue {
+  font-size: 30rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.priceStrongLabel {
+  color: $color-text-primary;
+}
+
+.footerBar {
+  gap: 16rpx;
+  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid $color-divider;
+}
+
+.footerGhost {
+  flex-shrink: 0;
+}
+
+.modalMask {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  background: rgba(31, 24, 19, 0.52);
+}
+
+.successModal {
+  width: 100%;
+  padding: 36rpx 28rpx 28rpx;
+  border-radius: 32rpx;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.modalTitle {
+  display: block;
+  font-size: 36rpx;
+  line-height: 1.4;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.modalText,
+.modalHint,
+.wechatValue {
+  display: block;
+  line-height: 1.7;
+}
+
+.modalText {
+  margin-top: 18rpx;
+  font-size: 30rpx;
+  color: $color-text-primary;
+}
+
+.highlight,
+.wechatValue {
+  color: #E60000;
+  font-weight: $font-weight-heavy;
+}
+
+.modalHint {
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.wechatCard {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: #fff7f5;
+  text-align: center;
+}
+
+.wechatValue {
+  font-size: 34rpx;
+}
+
+.modalActions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.modalAction {
+  flex: 1;
+}
+
+.bottomSpacing {
+  height: 32rpx;
+}

@@ -1,0 +1,155 @@
+// 社畜派对风格设计变量
+$party-red: #E60000;
+$party-yellow: #FFD60A;
+$party-orange: #FF6B35;
+$party-black: #1A1A1A;
+$party-white: #FFFFFF;
+$party-cream: #FFF8E7;
+$party-gray: #888888;
+$party-light-gray: #F5F5F5;
+$party-border: #EEEEEE;
+
+.card {
+  background: $party-white;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  margin-right: 20rpx;
+  object-fit: cover;
+  border: 3rpx solid $party-yellow;
+}
+
+.anonymousAvatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $party-red 0%, #FF4757 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+  box-shadow: 0 4rpx 12rpx rgba(230, 57, 70, 0.3);
+}
+
+.anonymousText {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: $party-white;
+}
+
+.authorInfo {
+  flex: 1;
+}
+
+.nickname {
+  font-size: 28rpx;
+  color: $party-black;
+  font-weight: 600;
+  margin-bottom: 4rpx;
+  display: block;
+}
+
+.time {
+  font-size: 22rpx;
+  color: $party-gray;
+}
+
+.content {
+  font-size: 28rpx;
+  color: $party-black;
+  line-height: 1.7;
+  margin-bottom: 20rpx;
+}
+
+.images {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.image {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 12rpx;
+  object-fit: cover;
+}
+
+.moreImages {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 12rpx;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moreText {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: $party-white;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.tag {
+  padding: 8rpx 16rpx;
+  background: $party-cream;
+  border-radius: 20rpx;
+}
+
+.tagText {
+  font-size: 22rpx;
+  color: $party-red;
+  font-weight: 500;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 40rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid $party-border;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.actionIcon {
+  font-size: 28rpx;
+}
+
+.actionText {
+  font-size: 24rpx;
+  color: $party-gray;
+}
+
+.liked {
+  color: $party-red;
+}
+
+.likedText {
+  color: $party-red;
+  font-weight: 500;
+}

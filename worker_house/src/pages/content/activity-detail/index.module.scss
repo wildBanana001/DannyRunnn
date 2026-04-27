@@ -1,0 +1,286 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $color-oat;
+}
+
+.scrollView {
+  flex: 1;
+}
+
+.heroSection {
+  background: $color-oat;
+}
+
+.heroSwiper,
+.heroImageWrap {
+  width: 100%;
+  height: 562rpx;
+}
+
+.heroImageWrap {
+  overflow: hidden;
+  background: #f7f6f2;
+}
+
+.heroImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sheet {
+  position: relative;
+  z-index: 1;
+  margin-top: -28rpx;
+  border-radius: 24rpx 24rpx 0 0;
+  background: $color-white;
+}
+
+.headerCard,
+.contentCard {
+  padding: 32rpx 24rpx;
+}
+
+.tagRow,
+.infoRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tagRow {
+  gap: 12rpx;
+}
+
+.tag,
+.cardTag,
+.priceTag {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+}
+
+.tag {
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.cardTag {
+  background: rgba(94, 139, 115, 0.12);
+}
+
+.priceTag {
+  background: rgba(230, 57, 70, 0.12);
+}
+
+.tagText,
+.cardTagText,
+.metaLabel,
+.infoText,
+.footerPriceLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.cardTagText {
+  color: #5e8b73;
+  font-weight: $font-weight-bold;
+}
+
+.priceTagText,
+.footerPriceValue {
+  color: $color-accent;
+  font-weight: $font-weight-heavy;
+}
+
+.title {
+  display: block;
+  margin-top: 20rpx;
+  font-size: 36rpx;
+  line-height: 1.4;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.summary,
+.paragraph,
+.tipText,
+.hostDescription,
+.metaValue {
+  display: block;
+  font-size: $font-size-sm;
+  line-height: 1.9;
+  color: $color-text-primary;
+}
+
+.summary {
+  margin-top: 16rpx;
+  color: $color-text-secondary;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.metaCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 20rpx;
+  border-radius: $radius-lg;
+  background: #fff8f6;
+}
+
+.metaIcon {
+  @include flex-center;
+  width: 56rpx;
+  height: 56rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(230, 57, 70, 0.14);
+}
+
+.metaIconText {
+  font-size: 24rpx;
+  color: $color-accent;
+  font-weight: $font-weight-heavy;
+}
+
+.metaContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.metaValue {
+  margin-top: 8rpx;
+  font-weight: $font-weight-bold;
+  word-break: break-word;
+}
+
+.infoRow {
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
+.infoText {
+  line-height: 1.6;
+}
+
+.contentCard {
+  padding-top: 0;
+  padding-bottom: 168rpx;
+}
+
+.sectionTitle {
+  display: block;
+  font-size: 30rpx;
+  line-height: 1.5;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.paragraph {
+  margin-top: 18rpx;
+}
+
+.gallerySection,
+.hostSection,
+.tipSection {
+  margin-top: 40rpx;
+}
+
+.galleryCard {
+  margin-top: 18rpx;
+  overflow: hidden;
+  border-radius: $radius-lg;
+  background: #f7f6f2;
+}
+
+.galleryImage {
+  display: block;
+  width: 100%;
+  height: 528rpx;
+}
+
+.hostCard {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 20rpx;
+  padding: 24rpx;
+  border-radius: $radius-lg;
+  background: #fff8f6;
+}
+
+.hostAvatar {
+  width: 104rpx;
+  height: 104rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.hostContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.hostName {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.hostDescription {
+  margin-top: 10rpx;
+  color: $color-text-secondary;
+}
+
+.tipText {
+  margin-top: 16rpx;
+  color: $color-text-secondary;
+}
+
+.bottomSpacing {
+  height: 24rpx;
+}
+
+.actionBar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-height: 120rpx;
+  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1rpx solid $color-divider;
+  box-sizing: border-box;
+}
+
+.priceBlock {
+  min-width: 0;
+}
+
+.footerPriceLabel {
+  display: block;
+}
+
+.footerPriceValue {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 38rpx;
+  line-height: 1.3;
+}
+
+.actionButtonWrap {
+  width: 48%;
+  margin-left: auto;
+}

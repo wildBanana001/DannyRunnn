@@ -1,0 +1,204 @@
+// 喜茶风格设计变量
+$heytea-black: #000000;
+$heytea-white: #FFFFFF;
+$heytea-gray: #999999;
+$heytea-light-gray: #F5F5F5;
+$heytea-border: #E5E5E5;
+
+@mixin title-font {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+}
+
+.container {
+  padding: 0;
+  background-color: $heytea-white;
+  min-height: 100vh;
+}
+
+// User Header - 极简白色风格
+.userHeader {
+  background: $heytea-white;
+  padding: 64rpx 48rpx;
+  border-bottom: 1rpx solid $heytea-border;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  margin-right: 32rpx;
+  object-fit: cover;
+}
+
+.userMeta {
+  flex: 1;
+}
+
+.nickname {
+  font-size: 40rpx;
+  font-weight: 400;
+  color: $heytea-black;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.userId {
+  font-size: 24rpx;
+  color: $heytea-gray;
+  display: block;
+}
+
+// Stats - 极简数字展示
+.statsCard {
+  background: $heytea-white;
+  padding: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border-bottom: 1rpx solid $heytea-border;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.statValue {
+  font-size: 40rpx;
+  font-weight: 300;
+  color: $heytea-black;
+}
+
+.statLabel {
+  font-size: 24rpx;
+  color: $heytea-gray;
+  letter-spacing: 0.1em;
+}
+
+.statDivider {
+  width: 1rpx;
+  height: 60rpx;
+  background: $heytea-border;
+}
+
+// Section
+.section {
+  margin-bottom: 48rpx;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 48rpx;
+}
+
+.sectionTitle {
+  @include title-font;
+  font-size: 32rpx;
+  color: $heytea-black;
+}
+
+.sectionMore {
+  font-size: 24rpx;
+  color: $heytea-gray;
+  letter-spacing: 0.05em;
+}
+
+// Registrations List
+.registrationsList {
+  background: $heytea-white;
+  padding: 0 48rpx;
+}
+
+.registrationItem {
+  display: flex;
+  align-items: center;
+  padding: 32rpx 0;
+  border-bottom: 1rpx solid $heytea-border;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.registrationImage {
+  width: 120rpx;
+  height: 120rpx;
+  margin-right: 24rpx;
+  object-fit: cover;
+}
+
+.registrationInfo {
+  flex: 1;
+}
+
+.registrationTitle {
+  font-size: 28rpx;
+  color: $heytea-black;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.registrationPrice {
+  font-size: 24rpx;
+  color: $heytea-gray;
+}
+
+.registrationStatus {
+  padding: 8rpx 16rpx;
+  border: 1rpx solid $heytea-border;
+}
+
+.registrationStatusText {
+  font-size: 22rpx;
+  color: $heytea-black;
+}
+
+// Menu Grid - 极简风格
+.menuGrid {
+  background: $heytea-white;
+  padding: 32rpx 48rpx;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32rpx;
+}
+
+.menuItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24rpx 0;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.menuIcon {
+  font-size: 40rpx;
+  margin-bottom: 16rpx;
+}
+
+.menuLabel {
+  font-size: 24rpx;
+  color: $heytea-black;
+  letter-spacing: 0.05em;
+}
+
+.bottomSpacing {
+  height: 120rpx;
+}

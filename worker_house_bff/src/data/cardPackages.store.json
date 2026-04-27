@@ -1,0 +1,14 @@
+[
+  {
+    "id": "card-package-3x",
+    "name": "社畜次卡 3 次装",
+    "totalCount": 3,
+    "price": 399,
+    "perUseMaxOffset": 148,
+    "validDays": 180,
+    "status": "active",
+    "sortOrder": 1,
+    "createdAt": "2026-04-26T15:00:00.000Z",
+    "updatedAt": "2026-04-26T15:00:00.000Z"
+  }
+]

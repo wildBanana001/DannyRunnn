@@ -1,0 +1,69 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.headerCard,
+.gridCard {
+  @include paper-card($color-white);
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-text-primary;
+}
+
+.description {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  line-height: $line-height-loose;
+  color: $color-text-secondary;
+}
+
+.headerActions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.statCard {
+  padding: 24rpx;
+  border-radius: $radius-card-md;
+  background: rgba(230, 57, 70, 0.08);
+}
+
+.statLabel,
+.statValue {
+  display: block;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  line-height: $line-height-loose;
+  color: $color-text-secondary;
+}
+
+.statValue {
+  margin-top: 10rpx;
+  font-size: 40rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-accent;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

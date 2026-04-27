@@ -1,0 +1,48 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.formCard,
+.switchRow {
+  @include paper-card($color-white);
+  padding: 24rpx;
+}
+
+.formItem {
+  margin-bottom: 24rpx;
+}
+
+.formItem:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.input {
+  height: 80rpx;
+  margin-top: 14rpx;
+  padding: 0 22rpx;
+  border-radius: 24rpx;
+  background: #efebe2;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24rpx;
+}
+
+.actionBar {
+  margin-top: 32rpx;
+}

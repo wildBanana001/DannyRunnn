@@ -1,0 +1,38 @@
+@use './styles/variables.scss' as *;
+@use './styles/global.scss';
+
+page {
+  background-color: $color-oat;
+  font-family: $font-family-base;
+  font-weight: 500;
+  color: $color-text-primary;
+  line-height: $line-height-normal;
+
+  --color-primary: #{$color-accent};
+  --color-accent: #{$color-accent};
+  --color-accent-secondary: #{$color-accent-secondary};
+}
+
+.font-display {
+  font-family: $font-family-display !important;
+  font-weight: $font-weight-normal !important;
+}
+
+view,
+text,
+button,
+input,
+textarea {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  color: transparent;
+}
+
+.safe-area-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}

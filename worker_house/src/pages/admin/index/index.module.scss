@@ -1,0 +1,51 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.heroCard,
+.statusCard,
+.menuCard,
+.emptyCard {
+  @include paper-card($color-white);
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+}
+
+.heroTitle,
+.emptyTitle,
+.statusValue {
+  display: block;
+  font-size: 34rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-text-primary;
+}
+
+.heroDescription,
+.openidLabel,
+.emptyDescription {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  line-height: $line-height-loose;
+  color: $color-text-secondary;
+}
+
+.statusLabel {
+  display: block;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.actionRow {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

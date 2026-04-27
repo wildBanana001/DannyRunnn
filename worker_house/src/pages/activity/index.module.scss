@@ -1,0 +1,182 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.segmentWrap {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 20rpx 24rpx;
+  background: rgba(247, 246, 242, 0.94);
+  backdrop-filter: blur(10rpx);
+}
+
+.segmentBar {
+  display: flex;
+  padding: 8rpx;
+  border-radius: $radius-circle;
+  background: $color-white;
+  box-shadow: $shadow-card;
+}
+
+.segmentItem {
+  flex: 1;
+  padding: 18rpx 0;
+  border-radius: $radius-circle;
+  text-align: center;
+}
+
+.segmentItemActive {
+  background: $color-text-primary;
+}
+
+.segmentText {
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+}
+
+.segmentTextActive {
+  color: $color-white;
+}
+
+.ongoingList,
+.endedList {
+  padding: 8rpx 24rpx 0;
+}
+
+.ongoingCard {
+  @include paper-card($color-white);
+  overflow: hidden;
+  margin-bottom: 28rpx;
+}
+
+.coverWrap {
+  position: relative;
+  width: 100%;
+  padding-top: 75%;
+}
+
+.ongoingCover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ongoingBody {
+  padding: 26rpx 24rpx 28rpx;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.metaText,
+.progressText,
+.endedDate,
+.endedLocation {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.metaDot {
+  margin: 0 10rpx;
+  color: $color-text-secondary;
+}
+
+.ongoingTitle,
+.endedTitle,
+.stickyTitle {
+  display: block;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.04em;
+}
+
+.ongoingTitle {
+  font-size: 34rpx;
+  margin-bottom: 20rpx;
+}
+
+.progressTrack {
+  height: 12rpx;
+  margin-top: 12rpx;
+  overflow: hidden;
+  border-radius: $radius-circle;
+  background: rgba(230, 57, 70, 0.12);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: $radius-circle;
+  background: linear-gradient(90deg, $color-accent 0%, $color-sunshine 100%);
+}
+
+.sectionBlock {
+  margin-bottom: 16rpx;
+}
+
+.stickyHeader {
+  position: sticky;
+  top: 108rpx;
+  z-index: 5;
+  padding: 18rpx 0 12rpx;
+  background: $color-oat;
+}
+
+.stickyTitle {
+  font-size: 36rpx;
+}
+
+.endedItem {
+  display: flex;
+  align-items: center;
+  padding: 18rpx;
+  margin-bottom: 20rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.9);
+  filter: saturate(0.88);
+  box-shadow: $shadow-card;
+}
+
+.endedThumbWrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 180rpx;
+  padding-top: 135rpx;
+  overflow: hidden;
+  border-radius: 24rpx;
+}
+
+.endedThumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.endedInfo {
+  flex: 1;
+  margin-left: 18rpx;
+}
+
+.endedLocation {
+  margin-top: 6rpx;
+  display: block;
+}
+
+.endedTitle {
+  margin-top: 10rpx;
+  font-size: 30rpx;
+  line-height: 1.4;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

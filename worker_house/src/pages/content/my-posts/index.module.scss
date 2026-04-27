@@ -1,0 +1,66 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.list {
+  padding: 24rpx;
+}
+
+.card {
+  @include paper-card($color-white);
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  line-height: 1.35;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.summary {
+  display: block;
+  margin-top: 14rpx;
+  font-size: $font-size-sm;
+  line-height: 1.8;
+  color: $color-text-secondary;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 16rpx;
+}
+
+.tagChip {
+  padding: 8rpx 18rpx;
+  border-radius: $radius-circle;
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.tagText {
+  font-size: $font-size-xs;
+  color: $color-accent;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18rpx;
+}
+
+.meta {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

@@ -1,0 +1,67 @@
+@use '@/styles/variables.scss' as *;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(0, 0, 0, 0);
+  transition: background 280ms ease-out;
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+.overlayVisible,
+.overlayClosing {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.overlayHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  transition: transform 280ms ease-out;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout paint style;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100%;
+  overflow: hidden;
+  background: $color-white;
+  border-radius: 32rpx 32rpx 0 0;
+}
+
+.dragArea {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 16rpx 0 24rpx;
+  box-sizing: border-box;
+}
+
+.dragBar {
+  width: 80rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: #D0D0D0;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  transform: translateZ(0);
+}

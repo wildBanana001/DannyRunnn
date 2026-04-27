@@ -1,0 +1,51 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: $spacing-page-top 24rpx 24rpx;
+  background: $color-oat;
+  box-sizing: border-box;
+}
+
+.cover {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: $radius-card-lg;
+}
+
+.content {
+  padding: 24rpx 0 0;
+}
+
+.title {
+  display: block;
+  font-size: $font-size-section-title;
+  line-height: $line-height-section-title;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.detailImage {
+  width: 100%;
+  margin-top: 20rpx;
+  border-radius: $radius-card-lg;
+  box-shadow: $shadow-card;
+}
+
+.emptyWrap {
+  @include flex-center;
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.emptyText {
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+}

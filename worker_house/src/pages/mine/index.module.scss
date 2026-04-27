@@ -1,0 +1,168 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.header {
+  position: relative;
+  padding: 28rpx 24rpx 12rpx;
+}
+
+.cloudLeft,
+.cloudRight {
+  position: absolute;
+  width: 120rpx;
+  opacity: 0.65;
+}
+
+.cloudLeft {
+  top: 10rpx;
+  left: 16rpx;
+}
+
+.cloudRight {
+  top: 48rpx;
+  right: 24rpx;
+}
+
+.userCard {
+  @include paper-card($color-white);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding: 28rpx;
+  margin-top: 52rpx;
+}
+
+.avatarWrap {
+  position: relative;
+  width: 140rpx;
+  height: 140rpx;
+}
+
+.avatarFrame,
+.avatar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.avatar {
+  inset: 18rpx;
+  width: calc(100% - 36rpx);
+  height: calc(100% - 36rpx);
+  border-radius: 50%;
+}
+
+.userMeta {
+  flex: 1;
+  margin-left: 20rpx;
+}
+
+.nickname {
+  display: block;
+  font-size: 36rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.tip {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: 1.8;
+  color: $color-text-secondary;
+}
+
+.statsCard {
+  @include paper-card($color-white);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  padding: 24rpx;
+  margin: 12rpx 24rpx 0;
+}
+
+.statItem {
+  text-align: center;
+}
+
+.statValue {
+  display: block;
+  font-size: 34rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.statLabel {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.menuList {
+  padding: 12rpx 24rpx 0;
+}
+
+.menuItem {
+  @include paper-card($color-white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  margin-bottom: 18rpx;
+}
+
+.menuMeta {
+  display: flex;
+  align-items: center;
+}
+
+.menuIcon {
+  width: 56rpx;
+  margin-right: 18rpx;
+  font-size: 34rpx;
+  text-align: center;
+}
+
+.menuTitle {
+  display: block;
+  font-size: $font-size-lg;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.menuDescription {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.menuArrow {
+  font-size: 44rpx;
+  color: $color-text-secondary;
+}
+
+.loginWrap {
+  padding: 12rpx 24rpx 0;
+}
+
+.adminEntryWrap {
+  padding: 8rpx 24rpx 0;
+  text-align: center;
+}
+
+.adminEntry {
+  font-size: $font-size-xs;
+  color: rgba(139, 115, 85, 0.72);
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

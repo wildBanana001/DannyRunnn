@@ -1,0 +1,86 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: $spacing-page-top 24rpx 48rpx;
+  background: $color-oat;
+  overflow-x: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.title {
+  display: block;
+  font-size: $font-size-section-title;
+  line-height: $line-height-section-title;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.05em;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.publishButton {
+  padding: 18rpx 28rpx;
+  border-radius: $radius-circle;
+  background: $color-accent;
+  box-shadow: $shadow-card;
+}
+
+.publishText {
+  font-size: $font-size-md;
+  color: $color-white;
+  font-weight: $font-weight-semibold;
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 24rpx;
+  height: 84rpx;
+  margin-bottom: 18rpx;
+  border-radius: $radius-circle;
+  background: #efebe2;
+}
+
+.searchIcon {
+  color: rgba(62, 44, 28, 0.5);
+  font-size: 30rpx;
+}
+
+.searchInput {
+  flex: 1;
+  height: 100%;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.searchResult {
+  display: block;
+  margin-bottom: 18rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.columns {
+  display: flex;
+  gap: 20rpx;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}

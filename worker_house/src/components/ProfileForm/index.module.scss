@@ -1,0 +1,142 @@
+@use '@/styles/variables.scss' as *;
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.header {
+  @include paper-card($color-white);
+  padding: 24rpx;
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.description {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+  color: $color-text-secondary;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.fieldCard {
+  @include paper-card($color-white);
+  padding: 24rpx;
+}
+
+.label {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.tip {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $font-size-xs;
+  line-height: 1.7;
+  color: $color-text-secondary;
+}
+
+.input,
+.textarea,
+.selector,
+.staticValueWrap {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 18rpx;
+  padding: 24rpx;
+  border: 2rpx solid rgba(230, 57, 70, 0.12);
+  border-radius: 20rpx;
+  background: #fffaf8;
+}
+
+.input,
+.selectorText,
+.staticValue {
+  font-size: 28rpx;
+  color: $color-text-primary;
+}
+
+.input {
+  height: 96rpx;
+}
+
+.textarea {
+  min-height: 240rpx;
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: $color-text-primary;
+}
+
+.selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 96rpx;
+}
+
+.selectorPlaceholder {
+  color: $color-text-secondary;
+}
+
+.selectorArrow {
+  font-size: 40rpx;
+  color: $color-text-secondary;
+}
+
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.tag {
+  padding: 18rpx 24rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid rgba(230, 57, 70, 0.16);
+  background: #fff;
+}
+
+.tagActive {
+  border-color: #E60000;
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.tagText {
+  font-size: 26rpx;
+  color: $color-text-secondary;
+}
+
+.tagTextActive {
+  color: #E60000;
+  font-weight: $font-weight-bold;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+}
+
+.ghostButton,
+.secondaryButton {
+  width: 100%;
+}

@@ -1,0 +1,51 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.headerCard,
+.listCard {
+  @include paper-card($color-white);
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-text-primary;
+}
+
+.description,
+.itemExcerpt,
+.emptyText {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  line-height: $line-height-loose;
+  color: $color-text-secondary;
+}
+
+.headerActions,
+.itemActions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.itemBlock {
+  padding: 10rpx 0 20rpx;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.itemBlock:last-child {
+  border-bottom: 0;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

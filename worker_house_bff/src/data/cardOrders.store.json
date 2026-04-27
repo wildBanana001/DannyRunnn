@@ -1,0 +1,51 @@
+[
+  {
+    "id": "card-101",
+    "openid": "mock_openid_002",
+    "profileId": "profile-101",
+    "userNickname": "Mia",
+    "userWechatName": "mia.sh",
+    "cardType": "10 次标准卡",
+    "totalCount": 10,
+    "usedCount": 0,
+    "remainingCount": 10,
+    "amount": 999,
+    "purchasedAt": "2026-04-20T15:00:00Z",
+    "status": "active",
+    "expiresAt": "2027-04-20T15:00:00Z",
+    "usageLogs": [],
+    "perUseMaxOffset": 148,
+    "adjustLogs": []
+  },
+  {
+    "id": "card-001",
+    "openid": "mock_openid_001",
+    "profileId": "profile-001",
+    "userNickname": "林凯锋",
+    "userWechatName": "linkaifeng.kfc",
+    "cardType": "5 次体验卡",
+    "totalCount": 5,
+    "usedCount": 1,
+    "remainingCount": 4,
+    "amount": 599,
+    "purchasedAt": "2026-04-18T10:00:00Z",
+    "status": "active",
+    "expiresAt": "2027-04-18T10:00:00Z",
+    "usageLogs": [
+      {
+        "id": "usage-001",
+        "registrationId": "reg-001",
+        "activityId": "act-001",
+        "activityTitle": "山野疗愈瑜伽 retreat",
+        "usedAt": "2026-04-22T12:00:00Z",
+        "deductionCount": 1,
+        "deductionAmount": 148,
+        "operatorName": "系统",
+        "status": "used",
+        "note": "创建报名时自动抵扣"
+      }
+    ],
+    "perUseMaxOffset": 148,
+    "adjustLogs": []
+  }
+]

@@ -1,0 +1,86 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.actionHeader {
+  padding: 24rpx 24rpx 0;
+}
+
+.list {
+  padding: 20rpx 24rpx 0;
+}
+
+.card {
+  @include paper-card($color-white);
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.name {
+  font-size: 32rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.phone {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.defaultTag {
+  padding: 6rpx 16rpx;
+  border-radius: $radius-circle;
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.defaultTagText {
+  font-size: $font-size-xs;
+  color: $color-accent;
+}
+
+.addressText {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  line-height: 1.8;
+  color: $color-text-primary;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  margin-top: 20rpx;
+}
+
+.actionText,
+.deleteText,
+.divider {
+  font-size: $font-size-sm;
+}
+
+.actionText,
+.divider {
+  color: $color-text-secondary;
+}
+
+.deleteText {
+  color: $color-accent;
+}
+
+.divider {
+  margin: 0 12rpx;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

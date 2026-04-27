@@ -1,0 +1,102 @@
+@use '@/styles/variables.scss' as *;
+
+$color-text-placeholder: $color-text-secondary;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal {
+  @include paper-card($color-white);
+  width: 600rpx;
+  padding: 32rpx 32rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 24rpx;
+}
+
+.logoWrap {
+  width: 96rpx;
+  height: 96rpx;
+  margin-right: 24rpx;
+  border-radius: $radius-circle;
+  overflow: hidden;
+}
+
+.logo {
+  width: 100%;
+  height: 100%;
+}
+
+.headerText {
+  flex: 1;
+}
+
+.title {
+  display: block;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-heavy;
+  color: $color-text-primary;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $font-size-sm;
+  line-height: $line-height-normal;
+  color: $color-text-secondary;
+}
+
+.body {
+  margin-top: 12rpx;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.avatarButton {
+  width: 100%;
+}
+
+.nicknameInput {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  border-radius: $radius-card-md;
+  background: #f5f4f0;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.placeholder {
+  color: $color-text-placeholder;
+}
+
+.actions {
+  margin-top: 28rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.helperText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  text-align: center;
+}

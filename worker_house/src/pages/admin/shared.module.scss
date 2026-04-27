@@ -1,0 +1,154 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.headerCard,
+.filtersCard,
+.listCard,
+.sectionCard,
+.formCard,
+.detailCard,
+.actionCard {
+  @include paper-card($color-white);
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.title,
+.sectionTitle {
+  display: block;
+  font-size: 34rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-text-primary;
+}
+
+.description,
+.helperText,
+.metaText,
+.emptyText,
+.fieldText,
+.itemMeta,
+.itemSummary,
+.labelText,
+.noteText {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: $line-height-loose;
+  color: $color-text-secondary;
+}
+
+.filterRow,
+.actionRow,
+.itemActions,
+.formActions,
+.inlineRow,
+.statusRow {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.filterRow,
+.inlineRow,
+.statusRow {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.inputBlock,
+.pickerBlock,
+.textAreaBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.pickerValue {
+  padding: 18rpx 20rpx;
+  border-radius: 20rpx;
+  background: #f7f6f2;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.itemBlock,
+.logItem,
+.timelineItem {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid rgba(139, 115, 85, 0.12);
+}
+
+.itemBlock:last-child,
+.logItem:last-child,
+.timelineItem:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.itemTitle {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.statusPill {
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+}
+
+.statusPending,
+.statusExpired,
+.statusArchived {
+  background: rgba(139, 115, 85, 0.12);
+  color: $color-text-secondary;
+}
+
+.statusConfirmed,
+.statusActive,
+.statusCompleted {
+  background: rgba(230, 57, 70, 0.12);
+  color: #E60000;
+}
+
+.statusCancelled,
+.statusRefunded,
+.statusExhausted {
+  background: rgba(31, 24, 19, 0.1);
+  color: $color-text-primary;
+}
+
+.valueText,
+.valueStrong {
+  display: block;
+  margin-top: 8rpx;
+  color: $color-text-primary;
+}
+
+.valueStrong {
+  font-size: $font-size-md;
+  font-weight: $font-weight-heavy;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.codeBlock {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #fff7f5;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

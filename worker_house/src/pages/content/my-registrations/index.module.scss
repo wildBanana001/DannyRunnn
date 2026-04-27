@@ -1,0 +1,83 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.list {
+  padding: 24rpx;
+}
+
+.card,
+.cardHighlight {
+  @include paper-card($color-white);
+  display: flex;
+  overflow: hidden;
+  margin-bottom: 20rpx;
+  border: 2rpx solid transparent;
+}
+
+.cardHighlight {
+  border-color: rgba(230, 57, 70, 0.32);
+  background: #fff8f6;
+}
+
+.coverWrap {
+  width: 220rpx;
+  height: 220rpx;
+  flex-shrink: 0;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.body {
+  flex: 1;
+  padding: 24rpx;
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.statusBadge {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: $font-size-xs;
+  line-height: 1.5;
+  font-weight: $font-weight-bold;
+  word-break: break-word;
+}
+
+.title {
+  flex: 1;
+  font-size: 30rpx;
+  line-height: 1.5;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.meta,
+.tip {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+  color: $color-text-secondary;
+}
+
+.tip {
+  color: #E60000;
+}
+
+.bottomSpacing {
+  height: 24rpx;
+}

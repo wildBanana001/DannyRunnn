@@ -1,0 +1,56 @@
+export const wechatArticleImageUrls = {
+  img01:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-01.jpg',
+  img04:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-04.jpg',
+  img05:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-05.jpg',
+  img06:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-06.jpg',
+  img07:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-07.jpg',
+  img08:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-08.jpg',
+  img09:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-09.jpg',
+  img10:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-10.jpg',
+  img11:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-11.jpg',
+  img12:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-12.jpg',
+  img14:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-14.jpg',
+  img15:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-15.jpg',
+  img17:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-17.jpg',
+  img18:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-18.jpg',
+  img19:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-19.jpg',
+  img20:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-20.jpg',
+  img21:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-21.jpg',
+  img22:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-22.jpg',
+  img23:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-23.jpg',
+  img24:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-24.jpg',
+  img29:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-29.jpg',
+  img30:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-30.jpg',
+  img31:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-31.jpg',
+  img32:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-32.jpg',
+  img34:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-34.jpg',
+  img35:
+    'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-35.jpg',
+} as const;
+
+export type WechatArticleImageKey = keyof typeof wechatArticleImageUrls;

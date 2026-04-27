@@ -1,0 +1,93 @@
+@forward './theme.scss';
+@use './theme.scss' as *;
+
+$page-padding: 24rpx;
+$page-spacing: 24rpx;
+$max-content-width: 702rpx;
+
+$spacing-xs: 8rpx;
+$spacing-sm: 12rpx;
+$spacing-md: 20rpx;
+$spacing-lg: 24rpx;
+$spacing-xl: 32rpx;
+$spacing-2xl: 40rpx;
+
+$radius-xs: 12rpx;
+$radius-card-sm: 16rpx;
+$radius-card-md: 20rpx;
+$radius-card-lg: 24rpx;
+$radius-button: 48rpx;
+$radius-circle: 999rpx;
+
+$button-height-sm: 64rpx;
+$button-height-md: 80rpx;
+$button-height-lg: 92rpx;
+
+$font-size-xs: 22rpx;
+$font-size-sm: 24rpx;
+$font-size-md: 28rpx;
+$font-size-lg: 32rpx;
+$font-size-xl: 40rpx;
+$font-size-xxl: 48rpx;
+
+$line-height-tight: 1.3;
+$line-height-normal: 1.6;
+$line-height-loose: 1.8;
+
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+$font-weight-heavy: 800;
+
+$transition-fast: 0.18s ease;
+$transition-base: 0.28s ease;
+$transition-bounce: 0.32s cubic-bezier(0.2, 0.9, 0.2, 1);
+
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin text-ellipsis-multi($lines: 2) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $lines;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin paper-card($background: $color-white) {
+  background: $background;
+  border-radius: $radius-card-lg;
+  box-shadow: $shadow-card;
+}
+
+@mixin vintage-title {
+  font-family: $font-family-base;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.06em;
+  color: $color-text-primary;
+}
+
+@mixin button-reset {
+  padding: 0;
+  margin: 0;
+  line-height: normal;
+  text-align: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+
+  &::after {
+    border: none;
+  }
+}

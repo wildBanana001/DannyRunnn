@@ -1,0 +1,257 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $color-oat;
+}
+
+.loadingText {
+  font-size: 28rpx;
+  color: $color-text-secondary;
+  text-align: center;
+  padding: 96rpx;
+}
+
+.scrollView {
+  flex: 1;
+}
+
+.postCard,
+.commentsSection {
+  @include paper-card($color-white);
+  margin: 24rpx 24rpx 0;
+  padding: 28rpx 24rpx;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.avatar,
+.anonymousAvatar {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 50%;
+  margin-right: 20rpx;
+}
+
+.avatar {
+  object-fit: cover;
+}
+
+.anonymousAvatar {
+  @include flex-center;
+  background: $color-text-primary;
+}
+
+.anonymousText {
+  font-size: 32rpx;
+  color: $color-white;
+}
+
+.authorInfo {
+  flex: 1;
+}
+
+.nickname {
+  display: block;
+  font-size: 28rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.time {
+  display: block;
+  margin-top: 6rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.title {
+  display: block;
+  font-size: $font-size-section-title;
+  line-height: $line-height-section-title;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.content {
+  display: block;
+  margin-top: 18rpx;
+  font-size: $font-size-md;
+  line-height: 1.9;
+  color: $color-text-primary;
+}
+
+.images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.image {
+  width: calc(50% - 8rpx);
+  aspect-ratio: 4 / 3;
+  border-radius: 20rpx;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 24rpx;
+}
+
+.tag {
+  padding: 10rpx 20rpx;
+  border-radius: $radius-circle;
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.tagText {
+  font-size: $font-size-xs;
+  color: $color-accent;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 40rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid $color-divider;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.actionIcon {
+  font-size: 28rpx;
+}
+
+.actionText {
+  font-size: 24rpx;
+  color: $color-text-secondary;
+}
+
+.liked,
+.likedText {
+  color: $color-accent;
+}
+
+.commentsTitle {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.commentItem {
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.commentItem:last-child {
+  border-bottom: 0;
+}
+
+.commentHeader {
+  display: flex;
+  align-items: center;
+}
+
+.commentAvatar,
+.commentAnonymousAvatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+}
+
+.commentAvatar {
+  object-fit: cover;
+}
+
+.commentAnonymousAvatar {
+  @include flex-center;
+  background: $color-text-primary;
+}
+
+.commentAnonymousText {
+  font-size: 24rpx;
+  color: $color-white;
+}
+
+.commentAuthorInfo {
+  flex: 1;
+}
+
+.commentNickname {
+  display: block;
+  font-size: 26rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.commentTime {
+  display: block;
+  margin-top: 4rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.commentContent {
+  display: block;
+  margin-top: 14rpx;
+  padding-left: 80rpx;
+  font-size: $font-size-sm;
+  line-height: 1.8;
+  color: $color-text-primary;
+}
+
+.emptyComments {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64rpx 0;
+}
+
+.emptyText {
+  font-size: 26rpx;
+  color: $color-text-secondary;
+}
+
+.bottomSpacing {
+  height: 120rpx;
+}
+
+.commentBar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid $color-divider;
+}
+
+.commentInput {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 24rpx;
+  border-radius: $radius-circle;
+  background: #efebe2;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}

@@ -1,0 +1,40 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: center;
+  gap: 20rpx;
+  padding: 0 24rpx calc(32rpx + constant(safe-area-inset-bottom));
+  padding: 0 24rpx calc(32rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.containerHidden {
+  opacity: 0;
+  transform: translateY(36rpx);
+  pointer-events: none;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 45vw;
+  max-width: 336rpx;
+  height: 96rpx;
+  background: #fff;
+  border: 2rpx solid #000;
+}
+
+.buttonText {
+  font-size: 28rpx;
+  line-height: 1;
+  color: #000;
+  font-weight: $font-weight-medium;
+}

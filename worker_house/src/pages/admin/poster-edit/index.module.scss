@@ -1,0 +1,64 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.headerCard,
+.formCard {
+  @include paper-card($color-white);
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-text-primary;
+}
+
+.description {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  line-height: $line-height-loose;
+  color: $color-text-secondary;
+}
+
+.pickerValue {
+  padding: 16rpx 0;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.coverBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.coverPreview,
+.coverPlaceholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: $radius-card-md;
+  background: rgba(230, 57, 70, 0.08);
+}
+
+.coverPlaceholder {
+  @include flex-center;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.footerActions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.bottomSpacing {
+  height: 40rpx;
+}

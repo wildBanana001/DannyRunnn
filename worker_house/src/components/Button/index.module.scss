@@ -1,0 +1,67 @@
+@use '@/styles/variables.scss' as *;
+
+.button {
+  @include button-reset;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  border-radius: $radius-button;
+  transition: transform $transition-fast, opacity $transition-fast;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.primary {
+  background: $color-accent;
+  color: $color-white;
+}
+
+.secondary {
+  background: $color-earth-green;
+  color: $color-white;
+}
+
+.outline {
+  background: $color-white;
+  border: 2rpx solid $color-accent;
+  color: $color-accent;
+}
+
+.ghost {
+  background: transparent;
+  color: $color-text-primary;
+}
+
+.small {
+  height: $button-height-sm;
+  padding: 0 28rpx;
+  font-size: $font-size-sm;
+}
+
+.medium {
+  height: $button-height-md;
+  padding: 0 40rpx;
+}
+
+.large {
+  height: $button-height-lg;
+  padding: 0 52rpx;
+  font-size: $font-size-lg;
+}
+
+.block {
+  width: 100%;
+}
+
+.disabled {
+  opacity: 0.48;
+
+  &:active {
+    transform: none;
+  }
+}
+
+.loading {
+  font-size: inherit;
+}

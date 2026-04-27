@@ -1,0 +1,185 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx;
+  background: $color-oat;
+}
+
+.sectionCard,
+.sectionRow {
+  @include paper-card($color-white);
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  display: block;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.titleInput {
+  height: 80rpx;
+  margin-top: 16rpx;
+  padding: 0 22rpx;
+  border-radius: 24rpx;
+  background: #efebe2;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.previewNote {
+  position: relative;
+  min-height: 360rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  border-radius: $radius-card-lg;
+  box-shadow: $shadow-card;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 312rpx;
+  font-size: $font-size-md;
+  line-height: 1.8;
+  color: $color-text-primary;
+}
+
+.placeholder {
+  position: absolute;
+  top: 24rpx;
+  left: 24rpx;
+  font-size: $font-size-md;
+  color: rgba(62, 44, 28, 0.55);
+}
+
+.colorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.colorDot {
+  @include flex-center;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  border: 4rpx solid transparent;
+}
+
+.colorDotActive {
+  border-color: $color-text-primary;
+}
+
+.colorText {
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.tagChip {
+  padding: 12rpx 24rpx;
+  border-radius: $radius-circle;
+  background: #efebe2;
+}
+
+.tagChipActive {
+  background: $color-accent;
+}
+
+.tagText {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.tagTextActive {
+  color: $color-white;
+}
+
+.actionBar {
+  margin-top: 32rpx;
+}
+
+.yellow, .dot-yellow { background: $color-note-yellow; }
+.pink, .dot-pink { background: $color-note-pink; }
+.blue, .dot-blue { background: $color-note-blue; }
+.green, .dot-green { background: $color-note-green; }
+.orange, .dot-orange { background: $color-note-orange; }
+.purple, .dot-purple { background: $color-note-purple; }
+
+.customTagRow {
+  margin-top: 16rpx;
+}
+
+.imageGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.imageItem,
+.imageAdd {
+  width: 200rpx;
+}
+
+.imageItem {
+  position: relative;
+}
+
+.imageThumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: $radius-card-lg;
+}
+
+.imageRemove {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-circle;
+  background: rgba(0, 0, 0, 0.55);
+  color: $color-white;
+  font-size: $font-size-xs;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageAdd {
+  min-height: 150rpx;
+  border-radius: $radius-card-lg;
+  border: 2rpx dashed rgba(62, 44, 28, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.imageAddIcon {
+  font-size: 40rpx;
+  color: $color-accent;
+}
+
+.imageAddText {
+  margin-top: 8rpx;
+  font-size: $font-size-xs;
+  color: $color-text-primary;
+}

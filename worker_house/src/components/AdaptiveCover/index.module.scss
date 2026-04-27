@@ -1,0 +1,38 @@
+.wrapper {
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #F7F6F2;
+}
+
+.fixedFrame {
+  position: relative;
+  width: 100%;
+  padding-top: 75%;
+  overflow: hidden;
+  background: #F7F6F2;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  background: #F7F6F2;
+}
+
+.fixedImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.adaptive {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adaptiveImage {
+  width: 100%;
+  height: auto;
+}

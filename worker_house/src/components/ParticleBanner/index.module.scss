@@ -1,0 +1,34 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0B0E27 0%, #1A0B2E 100%);
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.content {
+  @include flex-center;
+  position: absolute;
+  inset: 0;
+  padding: calc(env(safe-area-inset-top) + 32rpx) 48rpx 48rpx;
+  box-sizing: border-box;
+  text-align: center;
+  pointer-events: none;
+}
+
+.slogan {
+  color: #F5E6A8;
+  font-size: 88rpx;
+  line-height: 1.2;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 18rpx rgba(245, 230, 168, 0.38), 0 0 48rpx rgba(255, 255, 255, 0.16);
+}

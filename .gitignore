@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.cache/
+.swc/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+preview-output.log
+ci-upload.log
+
+# Runtime
+*.pid
+*.seed
+
+# IDE & OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Environment & Secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.d/
+.keys/
+*.private.key
+*.pem
+
+# Local tooling caches
+.pai/
+.fonts/
+
+# WeChat miniprogram upload artifacts
+preview-qrcode.jpg
+artifacts/
+worker_house/artifacts/
+worker_house_bff/artifacts/
+
+# Scraped archives (migrated to CloudBase)
+scripts/wechat-article-archive/
+worker_house/scripts/wechat-article-archive/
+worker_house_bff/scripts/wechat-article-archive/

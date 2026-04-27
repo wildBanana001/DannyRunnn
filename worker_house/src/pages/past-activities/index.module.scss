@@ -1,0 +1,58 @@
+// 喜茶风格设计变量
+$heytea-black: #000000;
+$heytea-white: #FFFFFF;
+$heytea-gray: #999999;
+$heytea-light-gray: #F5F5F5;
+$heytea-border: #E5E5E5;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: $heytea-white;
+}
+
+// Filter Bar - 极简边框风格
+.filterBar {
+  background: $heytea-white;
+  padding: 24rpx 48rpx;
+  white-space: nowrap;
+  border-bottom: 1rpx solid $heytea-border;
+}
+
+.filter {
+  display: inline-block;
+  padding: 16rpx 32rpx;
+  margin-right: 16rpx;
+  border: 1rpx solid $heytea-border;
+  background: $heytea-white;
+}
+
+.activeFilter {
+  background: $heytea-black;
+  border-color: $heytea-black;
+}
+
+.filterText {
+  font-size: 24rpx;
+  color: $heytea-black;
+  letter-spacing: 0.05em;
+}
+
+.activeFilterText {
+  color: $heytea-white;
+}
+
+// Activity List
+.activityList {
+  flex: 1;
+  padding: 32rpx 48rpx;
+}
+
+.activityCard {
+  margin-bottom: 32rpx;
+}
+
+.bottomSpacing {
+  height: 48rpx;
+}

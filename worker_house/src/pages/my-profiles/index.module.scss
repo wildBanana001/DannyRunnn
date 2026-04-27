@@ -1,0 +1,97 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $color-oat;
+}
+
+.scrollView {
+  flex: 1;
+}
+
+.headerCard,
+.card {
+  @include paper-card($color-white);
+  margin: 24rpx 24rpx 0;
+  padding: 24rpx;
+}
+
+.title {
+  display: block;
+  font-size: 34rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+}
+
+.description,
+.meta,
+.activityLine,
+.excerpt {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+  color: $color-text-secondary;
+}
+
+.list {
+  padding-bottom: 8rpx;
+}
+
+.cardTop,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.name {
+  display: block;
+  font-size: 30rpx;
+  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+}
+
+.defaultBadge {
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(230, 57, 70, 0.12);
+  font-size: $font-size-xs;
+  color: #E60000;
+  font-weight: $font-weight-bold;
+}
+
+.actions {
+  justify-content: flex-end;
+  margin-top: 18rpx;
+}
+
+.action,
+.deleteAction {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+}
+
+.action {
+  color: #E60000;
+}
+
+.deleteAction {
+  color: #8B7355;
+}
+
+.createWrap {
+  padding: 24rpx;
+}
+
+.sheetBody {
+  padding: 0 24rpx 24rpx;
+}
+
+.bottomSpacing {
+  height: 24rpx;
+}

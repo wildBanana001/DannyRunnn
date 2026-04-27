@@ -1,0 +1,110 @@
+// 社畜派对风格设计变量
+$party-red: #E60000;
+$party-yellow: #FFD60A;
+$party-orange: #FF6B35;
+$party-black: #1A1A1A;
+$party-white: #FFFFFF;
+$party-cream: #FFF8E7;
+$party-gray: #888888;
+$party-light-gray: #F5F5F5;
+$party-border: #EEEEEE;
+
+@mixin bold-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: $party-white;
+}
+
+// Tab Switcher - 派对风格
+.tabBar {
+  display: flex;
+  background: $party-white;
+  padding: 0 32rpx;
+  border-bottom: 1rpx solid $party-border;
+}
+
+.tab {
+  flex: 1;
+  padding: 28rpx 0;
+  text-align: center;
+  position: relative;
+}
+
+.activeTab {
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 48rpx;
+    height: 4rpx;
+    background: $party-red;
+    border-radius: 2rpx;
+  }
+}
+
+.tabText {
+  font-size: 28rpx;
+  color: $party-gray;
+  letter-spacing: 0.05em;
+}
+
+.activeTabText {
+  font-weight: 600;
+  color: $party-red;
+}
+
+// Category Filter - 胶囊风格
+.categoryBar {
+  background: $party-white;
+  padding: 20rpx 24rpx;
+  white-space: nowrap;
+  border-bottom: 1rpx solid $party-border;
+}
+
+.category {
+  display: inline-block;
+  padding: 12rpx 28rpx;
+  margin-right: 16rpx;
+  border-radius: 32rpx;
+  background: $party-light-gray;
+  border: none;
+}
+
+.activeCategory {
+  background: $party-black;
+}
+
+.categoryText {
+  font-size: 24rpx;
+  color: $party-black;
+  letter-spacing: 0.02em;
+}
+
+.activeCategoryText {
+  color: $party-white;
+  font-weight: 500;
+}
+
+// Activity List
+.activityList {
+  flex: 1;
+  padding: 24rpx;
+  background: $party-light-gray;
+}
+
+.activityCard {
+  margin-bottom: 24rpx;
+}
+
+.bottomSpacing {
+  height: 32rpx;
+}
