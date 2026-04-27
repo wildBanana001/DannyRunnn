@@ -1,27 +1,24 @@
-# ------------------------------
-# Single-stage build (rebuild trigger 2026-04-27 19:10)
-# rebuild trigger 2026-04-27 19:30 dockerignore fix
-# dist/ 已本地编译好并提交 git，这里只装 production 依赖
-# 云托管 builder 外层强塞 NODE_ENV=production，无法跑 tsc，所以绕开
-# ------------------------------
+# Plan C-1: 本地预装 node_modules 和 dist，Docker 层只做 COPY
+# 彻底绕开云托管 builder 不稳定的 npm ci 行为。
 FROM node:20
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=80
 
-# 装 production 依赖
+# 本地已装好的 production 依赖（包含 cors/express/etc）
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+COPY node_modules ./node_modules
 
-# 拷编译产物（本地 tsc 输出）
+# 本地已编译的 TS 产物
 COPY dist ./dist
 
-# 拷静态资源（字体文件）
+# 静态资源（含字体）
 COPY public ./public
 
 EXPOSE 80
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:80/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD node -e "require('http').get('http://127.0.0.1:80/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" || exit 1
 
 CMD ["node", "dist/index.js"]
+# rebuild trigger 2026-04-27 plan-c1 full-node-modules
