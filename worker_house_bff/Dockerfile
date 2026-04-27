@@ -6,6 +6,10 @@
 FROM node:20 AS builder
 WORKDIR /build
 
+# 强制 development，压住云托管 builder 外层注入的 NODE_ENV=production
+# （否则 npm ci 即使加 --include=dev 也可能跳过 devDependencies，导致 tsc 不可用）
+ENV NODE_ENV=development
+
 # 先只拷 lockfile 和 package.json 以最大化缓存命中
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev --no-audit --no-fund
