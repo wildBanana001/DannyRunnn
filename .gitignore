@@ -51,3 +51,4 @@ worker_house_bff/artifacts/
 scripts/wechat-article-archive/
 worker_house/scripts/wechat-article-archive/
 worker_house_bff/scripts/wechat-article-archive/
+!worker_house_bff/dist/

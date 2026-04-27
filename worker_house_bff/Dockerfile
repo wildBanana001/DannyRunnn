@@ -1,30 +1,7 @@
 # ------------------------------
-# Stage 1: builder
-# 使用完整 node:20 镜像（非 alpine），避免 alpine 上 typescript/cors 等原生/ESM
-# resolve 问题。在构建阶段跑 npm ci + tsc 生成 dist/。
-# ------------------------------
-FROM node:20 AS builder
-WORKDIR /build
-
-# 强制 development，压住云托管 builder 外层注入的 NODE_ENV=production
-# （否则 npm ci 即使加 --include=dev 也可能跳过 devDependencies，导致 tsc 不可用）
-ENV NODE_ENV=development
-
-# 先只拷 lockfile 和 package.json 以最大化缓存命中
-COPY package.json package-lock.json ./
-RUN npm ci --include=dev --no-audit --no-fund
-
-# 再拷源码和配置
-COPY tsconfig.json ./
-COPY src ./src
-
-# 编译 TypeScript 到 dist/
-RUN npm run build
-
-# ------------------------------
-# Stage 2: runtime
-# 同样使用完整 node:20（用户明确选 B，放弃 alpine，换取稳定性）。
-# 只装 production 依赖，从 stage 1 拷 dist/，从仓库拷 public/。
+# Single-stage build
+# dist/ 已本地编译好并提交 git，这里只装 production 依赖
+# 云托管 builder 外层强塞 NODE_ENV=production，无法跑 tsc，所以绕开
 # ------------------------------
 FROM node:20
 WORKDIR /app
@@ -32,14 +9,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=80
 
-# 装 prod 依赖（同样用 lockfile 保证一致性）
+# 装 production 依赖
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# 从 builder 拷编译产物
-COPY --from=builder /build/dist ./dist
+# 拷编译产物（本地 tsc 输出）
+COPY dist ./dist
 
-# 拷静态资源（字体文件所在目录）
+# 拷静态资源（字体文件）
 COPY public ./public
 
 EXPOSE 80
