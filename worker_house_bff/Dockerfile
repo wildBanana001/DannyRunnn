@@ -8,7 +8,7 @@ WORKDIR /build
 
 # 先只拷 lockfile 和 package.json 以最大化缓存命中
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci --include=dev --no-audit --no-fund
 
 # 再拷源码和配置
 COPY tsconfig.json ./
