@@ -1,5 +1,6 @@
 # ------------------------------
 # Single-stage build (rebuild trigger 2026-04-27 19:10)
+# rebuild trigger 2026-04-27 19:30 dockerignore fix
 # dist/ 已本地编译好并提交 git，这里只装 production 依赖
 # 云托管 builder 外层强塞 NODE_ENV=production，无法跑 tsc，所以绕开
 # ------------------------------
