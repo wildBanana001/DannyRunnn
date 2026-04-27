@@ -1,16 +1,41 @@
-# 运行时镜像（node_modules 和 dist 均由本地预先构建好打入 zip）
-# 云托管 builder 环境的 npm install 行为不可靠（已观测：typescript 装不上、
-# cors 装上但 ESM resolve 报错），改为本地装好所有依赖后直接 COPY。
-FROM node:20-alpine
+# ------------------------------
+# Stage 1: builder
+# 使用完整 node:20 镜像（非 alpine），避免 alpine 上 typescript/cors 等原生/ESM
+# resolve 问题。在构建阶段跑 npm ci + tsc 生成 dist/。
+# ------------------------------
+FROM node:20 AS builder
+WORKDIR /build
+
+# 先只拷 lockfile 和 package.json 以最大化缓存命中
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+# 再拷源码和配置
+COPY tsconfig.json ./
+COPY src ./src
+
+# 编译 TypeScript 到 dist/
+RUN npm run build
+
+# ------------------------------
+# Stage 2: runtime
+# 同样使用完整 node:20（用户明确选 B，放弃 alpine，换取稳定性）。
+# 只装 production 依赖，从 stage 1 拷 dist/，从仓库拷 public/。
+# ------------------------------
+FROM node:20
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=80
 
-# 拷贝预装好的生产依赖和编译产物
-COPY package.json ./
-COPY node_modules ./node_modules
-COPY dist ./dist
+# 装 prod 依赖（同样用 lockfile 保证一致性）
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+# 从 builder 拷编译产物
+COPY --from=builder /build/dist ./dist
+
+# 拷静态资源（字体文件所在目录）
 COPY public ./public
 
 EXPOSE 80
