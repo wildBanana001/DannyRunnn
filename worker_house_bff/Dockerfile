@@ -11,6 +11,7 @@ ENV PORT=80
 COPY package.json ./
 COPY node_modules ./node_modules
 COPY dist ./dist
+COPY public ./public
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
