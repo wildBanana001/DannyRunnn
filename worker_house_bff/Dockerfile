@@ -7,10 +7,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=80
 
-# 拷贝预装好的生产依赖和编译产物
 COPY package.json ./
 COPY node_modules ./node_modules
 COPY dist ./dist
+COPY public ./public
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
