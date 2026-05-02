@@ -14,7 +14,8 @@ import { openOfficialAccountPage } from '@/utils/wechat';
 import styles from './index.module.scss';
 
 const COMMUNITY_SHEET_DURATION = 280;
-const HOME_COPY = 'Hiiii这里是社畜没有派对！一个通过客厅建立有趣新人类社交方式的城市共居空间，这里为社交、文化、艺术、共创、女性友好住宿等一切创意活动无限开放';
+const HOME_COPY_LEAD = 'Hiiii这里是社畜没有派对！';
+const HOME_COPY_BODY = '一个通过客厅建立有趣新人类社交方式的城市共居空间，这里为社交、文化、艺术、共创、女性友好住宿等一切创意活动无限开放';
 const HERO_DOTS = [0, 1, 2];
 const HOME_TEXT_IMAGE_PROPS: Record<string, any> = { mode: 'widthFix', lazyLoad: true, 'show-menu-by-longpress': false };
 
@@ -40,7 +41,6 @@ const HOME_ASSETS = {
   ],
   text: {
     heroTitle: getHomeTextAssetUrl('title-shechu-hero.png'),
-    mayActivities: getHomeTextAssetUrl('title-may-activities.png'),
     bookActivity: getHomeTextAssetUrl('btn-book-activity.png'),
     joinCommunity: getHomeTextAssetUrl('btn-join-community.png'),
     moreActivities: getHomeTextAssetUrl('title-more-activities.png'),
@@ -60,8 +60,18 @@ const HOME_ASSETS = {
 };
 
 const OWNER_CARDS = [
-  { id: 'owner-orange', emoji: '🍊', label: HOME_ASSETS.text.orangeLabel, description: '互联网大厂裸辞，正在探索新新人类生活方式，徒手爆改80m²社畜快乐屋，旅游狂热分子，enfp理想主义体验派！' },
-  { id: 'owner-cat', emoji: '🐈‍⬛', label: HOME_ASSETS.text.xiaoheiLabel, description: '一只3岁的粘人奶牛猫，社畜团宠，一脸正义又娇憨可爱的黑猫警长，yes sir~' },
+  {
+    id: 'owner-orange',
+    emoji: '🍊',
+    label: HOME_ASSETS.text.orangeLabel,
+    description: '互联网大厂裸辞，正在探索新新人类生活方式，徒手爆改80m²社畜快乐屋，旅游狂热分子，enfj理想主义体验派！',
+  },
+  {
+    id: 'owner-cat',
+    emoji: '🐈‍⬛',
+    label: HOME_ASSETS.text.xiaoheiLabel,
+    description: '一只3岁的粘人奶牛猫，社畜团宠，一脸正义又娇憨可爱的黑猫警长，yes sir~',
+  },
 ] as const;
 
 export const handleStoryTap = (story: { id: string; title?: string; sourceUrl?: string; cover?: string; author?: string; publishAt?: string; excerpt?: string }) => {
@@ -135,8 +145,10 @@ const HomePage: React.FC = () => {
       <ScrollView className={styles.scrollView} scrollY enableFlex showScrollbar={false}>
         <View className={styles.pageShell}>
           <View className={styles.heroSection}>
-            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.heroLabelImage} src={HOME_ASSETS.text.mayActivities} />
-            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.heroTitleImage} src={HOME_ASSETS.text.heroTitle} />
+            <View className={styles.heroTopRow}>
+              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.heroTitleImage} src={HOME_ASSETS.text.heroTitle} />
+              <View className={styles.heroSpark} />
+            </View>
             <View className={styles.heroCard}>
               <Image className={styles.heroImage} src={HOME_ASSETS.hero} mode="widthFix" lazyLoad />
             </View>
@@ -152,13 +164,15 @@ const HomePage: React.FC = () => {
           </View>
 
           <View className={`${styles.section} ${styles.moreSection}`}>
-            <View className={styles.moreTitleWrap}>
-              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.moreTitleImage} src={HOME_ASSETS.text.moreActivities} />
-            </View>
+            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.moreTitleImage} src={HOME_ASSETS.text.moreActivities} />
             {moreActivities.length > 0 ? (
               <View className={styles.activityList}>
                 {moreActivities.map((activity) => (
-                  <View key={activity.id} className={styles.activityCard} onClick={() => void Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${activity.id}` })}>
+                  <View
+                    key={activity.id}
+                    className={styles.activityCard}
+                    onClick={() => void Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${activity.id}` })}
+                  >
                     <Image className={styles.activityThumb} src={activity.cover || activity.coverImage} mode="aspectFill" lazyLoad />
                     <View className={styles.activityContent}>
                       <Text className={styles.activityStatus}>招募中</Text>
@@ -172,15 +186,16 @@ const HomePage: React.FC = () => {
           </View>
 
           <View className={`${styles.section} ${styles.aprilSection}`}>
-            <View className={styles.aprilHeader}>
+            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.newLifeStyleImage} src={HOME_ASSETS.text.newLifeStyle} />
+            <View className={styles.aprilCollageStage}>
+              <Image className={styles.aprilCollage} src={HOME_ASSETS.april} mode="widthFix" lazyLoad />
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.aprilStoriesImage} src={HOME_ASSETS.text.aprilStories} />
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.dreamEnglishImage} src={HOME_ASSETS.text.dreamEnglish} />
             </View>
-            <View className={styles.aprilIntroRow}>
-              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.newLifeStyleImage} src={HOME_ASSETS.text.newLifeStyle} />
-              <View className={styles.aprilCollageWrap}><Image className={styles.aprilCollage} src={HOME_ASSETS.april} mode="widthFix" lazyLoad /></View>
+            <View className={styles.copyBlock}>
+              <Text className={styles.copyLead}>{HOME_COPY_LEAD}</Text>
+              <Text className={styles.sectionCopy}>{HOME_COPY_BODY}</Text>
             </View>
-            <View className={styles.copyBlock}><Text className={styles.sectionCopy}>{HOME_COPY}</Text></View>
             <View className={styles.sectionFooter}>
               <View className={styles.sectionImageButton} onClick={() => Taro.switchTab({ url: '/pages/activity/index' })}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.sectionButtonImage} src={HOME_ASSETS.text.exploreMore} />
@@ -191,11 +206,16 @@ const HomePage: React.FC = () => {
           <View className={`${styles.section} ${styles.spaceSection}`}>
             <View className={styles.spaceVisual}>
               <Image className={styles.spaceImage} src={HOME_ASSETS.space} mode="widthFix" lazyLoad />
-              <View className={styles.fakeDots}>{HERO_DOTS.map((dot) => <View key={`space-${dot}`} className={styles.fakeDot} />)}</View>
+              <View className={`${styles.dotRow} ${styles.spaceDotRow}`}>{HERO_DOTS.map((dot) => <View key={`space-${dot}`} className={`${styles.dot} ${styles.spaceDot} ${dot === 0 ? styles.dotActive : ''}`} />)}</View>
             </View>
-            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.spaceTitleImage} src={HOME_ASSETS.text.happyHouse} />
-            <Text className={`${styles.sectionCopy} ${styles.rightAlignedCopy}`}>{HOME_COPY}</Text>
-            <View className={styles.sectionFooter}>
+            <View className={styles.spaceIntroRow}>
+              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.spaceTitleImage} src={HOME_ASSETS.text.happyHouse} />
+              <View className={styles.spaceCopyBlock}>
+                <Text className={`${styles.copyLead} ${styles.spaceCopyLead}`}>{HOME_COPY_LEAD}</Text>
+                <Text className={`${styles.sectionCopy} ${styles.rightAlignedCopy}`}>{HOME_COPY_BODY}</Text>
+              </View>
+            </View>
+            <View className={`${styles.sectionFooter} ${styles.spaceFooter}`}>
               <View className={styles.sectionImageButton} onClick={() => void openChannelsHome(DEFAULT_FINDER_USER_NAME)}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.sectionButtonImage} src={HOME_ASSETS.text.spaceStory} />
               </View>
@@ -212,7 +232,7 @@ const HomePage: React.FC = () => {
                 </View>
               ))}
             </View>
-            <View className={styles.sectionFooter}>
+            <View className={`${styles.sectionFooter} ${styles.storyFooter}`}>
               <View className={styles.sectionImageButton} onClick={() => void openOfficialAccountPage()}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.moreFunImage} src={HOME_ASSETS.text.moreFun} />
               </View>
@@ -224,9 +244,15 @@ const HomePage: React.FC = () => {
             <View className={styles.ownerList}>
               {OWNER_CARDS.map((owner, index) => (
                 <View key={owner.id} className={`${styles.ownerCard} ${index % 2 === 1 ? styles.ownerCardReverse : ''}`}>
-                  <View className={styles.ownerAvatar}><Text className={styles.ownerEmoji}>{owner.emoji}</Text></View>
+                  <View className={`${styles.ownerAvatar} ${owner.id === 'owner-orange' ? styles.ownerAvatarOrange : styles.ownerAvatarXiaohei}`}>
+                    <Text className={styles.ownerEmoji}>{owner.emoji}</Text>
+                  </View>
                   <View className={styles.ownerBody}>
-                    <Image {...HOME_TEXT_IMAGE_PROPS} className={`${styles.ownerLabel} ${owner.id === 'owner-orange' ? styles.ownerLabelOrange : styles.ownerLabelXiaohei}`} src={owner.label} />
+                    <Image
+                      {...HOME_TEXT_IMAGE_PROPS}
+                      className={`${styles.ownerLabel} ${owner.id === 'owner-orange' ? styles.ownerLabelOrange : styles.ownerLabelXiaohei}`}
+                      src={owner.label}
+                    />
                     <Text className={styles.ownerDescription}>{owner.description}</Text>
                   </View>
                 </View>
@@ -234,7 +260,9 @@ const HomePage: React.FC = () => {
             </View>
           </View>
 
-          <View className={styles.badgeSection}><Image {...HOME_TEXT_IMAGE_PROPS} className={styles.badgeImage} src={HOME_ASSETS.text.letsParty} /></View>
+          <View className={styles.badgeSection}>
+            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.badgeImage} src={HOME_ASSETS.text.letsParty} />
+          </View>
         </View>
       </ScrollView>
 
