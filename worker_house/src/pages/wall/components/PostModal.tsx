@@ -75,7 +75,7 @@ const PostModal: React.FC<PostModalProps> = ({
       <ScrollView key={`${currentPost.id}-${scrollKey}`} className={styles.body} scrollY enableFlex>
         <View className={styles.bodyInner}>
           <Text className={styles.date}>{formatDateTime(currentPost.createdAt)}</Text>
-          <Text className={`${styles.title} font-display`}>{currentPost.title}</Text>
+          <Text className={styles.title}>{currentPost.title}</Text>
           <Text className={styles.content}>{currentPost.content}</Text>
           {currentPost.images.length > 0 && (
             <View className={styles.images}>
@@ -104,7 +104,7 @@ const PostModal: React.FC<PostModalProps> = ({
               ))}
             </View>
           )}
-          <Text className={`${styles.author} font-display`}>{currentPost.isAnonymous ? '匿名留言' : `来自 ${currentPost.authorNickname}`}</Text>
+          <Text className={styles.author}>{currentPost.isAnonymous ? '匿名留言' : `来自 ${currentPost.authorNickname}`}</Text>
           <View className={styles.metaBar}>
             <View className={styles.metaButton} onClick={() => onLike(currentPost)}>
               <Text className={styles.metaText}>❤️ 收藏</Text>
@@ -115,7 +115,7 @@ const PostModal: React.FC<PostModalProps> = ({
             {cachedComments.length > 0 ? (
               cachedComments.map((comment) => (
                 <View key={comment.id} className={styles.commentItem}>
-                  <Text className={`${styles.commentAuthor} font-display`}>{comment.authorNickname}</Text>
+                  <Text className={styles.commentAuthor}>{comment.authorNickname}</Text>
                   <Text className={styles.commentContent}>{comment.content}</Text>
                   <Text className={styles.commentTime}>{formatDateTime(comment.createdAt)}</Text>
                 </View>

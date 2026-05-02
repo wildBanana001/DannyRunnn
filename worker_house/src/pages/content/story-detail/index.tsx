@@ -68,7 +68,7 @@ const StoryDetailPage: React.FC = () => {
     <ScrollView className={styles.container} scrollY enableFlex>
       <Image className={styles.cover} src={story.cover} mode="aspectFill" />
       <View className={styles.contentCard}>
-        <Text className={`${styles.title} font-display`}>{story.title}</Text>
+        <Text className={styles.title}>{story.title}</Text>
         <View className={styles.metaRow}>
           <Text className={styles.metaText}>{story.author || '社畜空间'}</Text>
           <Text className={styles.metaDot}>·</Text>

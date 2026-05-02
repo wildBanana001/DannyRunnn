@@ -34,7 +34,7 @@ const PosterDetailPage: React.FC = () => {
     <ScrollView className={styles.container} scrollY enableFlex>
       <Image className={styles.cover} src={poster.coverImage} mode="aspectFill" />
       <View className={styles.content}>
-        <Text className={`${styles.title} font-display`}>{poster.title}</Text>
+        <Text className={styles.title}>{poster.title}</Text>
         <Text className={styles.subtitle}>点击图片可长按保存或分享给朋友</Text>
         {poster.detailImages.map((image) => (
           <Image

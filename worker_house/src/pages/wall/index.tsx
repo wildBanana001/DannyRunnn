@@ -123,7 +123,7 @@ const WallPage: React.FC = () => {
     <View className={styles.container}>
       <View className={styles.header}>
         <View>
-          <Text className={`${styles.title} font-display`}>留言墙</Text>
+          <Text className={styles.title}>留言墙</Text>
           <Text className={styles.subtitle}>把今天想说的话贴在这里，慢慢被看见。</Text>
         </View>
         <View className={styles.publishButton} onClick={() => Taro.navigateTo({ url: '/pages/content/wall-publish/index' })}>

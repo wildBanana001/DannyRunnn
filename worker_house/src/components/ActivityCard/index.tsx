@@ -28,7 +28,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, className, onClic
     <View className={classnames(styles.card, className)} onClick={handleClick}>
       <AdaptiveCover className={styles.coverWrap} imageClassName={styles.coverImage} src={activity.coverImage} />
       <View className={styles.content}>
-        <Text className={classnames(styles.title, 'font-display')}>{activity.title}</Text>
+        <Text className={styles.title}>{activity.title}</Text>
         <Text className={styles.description}>{activity.description}</Text>
         <View className={styles.meta}>
           <Text className={styles.date}>{formatDate(activity.startDate)}</Text>

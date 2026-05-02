@@ -73,12 +73,12 @@ const PostDetailPage: React.FC = () => {
               <Image className={styles.avatar} src={post.authorAvatar || 'https://picsum.photos/id/64/200/200'} mode="aspectFill" />
             )}
             <View className={styles.authorInfo}>
-              <Text className={`${styles.nickname} font-display`}>{post.isAnonymous ? '匿名留言' : post.authorNickname}</Text>
+              <Text className={styles.nickname}>{post.isAnonymous ? '匿名留言' : post.authorNickname}</Text>
               <Text className={styles.time}>{getRelativeTime(post.createdAt)}</Text>
             </View>
           </View>
 
-          <Text className={`${styles.title} font-display`}>{post.title}</Text>
+          <Text className={styles.title}>{post.title}</Text>
           <Text className={styles.content}>{post.content}</Text>
 
         {post.images.length > 0 && (
@@ -136,7 +136,7 @@ const PostDetailPage: React.FC = () => {
                     <Image className={styles.commentAvatar} src={comment.authorAvatar || 'https://picsum.photos/id/64/200/200'} mode="aspectFill" />
                   )}
                   <View className={styles.commentAuthorInfo}>
-                    <Text className={`${styles.commentNickname} font-display`}>{comment.authorNickname}</Text>
+                    <Text className={styles.commentNickname}>{comment.authorNickname}</Text>
                     <Text className={styles.commentTime}>{formatDateTime(comment.createdAt)}</Text>
                   </View>
                 </View>

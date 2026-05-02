@@ -21,7 +21,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ post, tilt, onClick, onLike }) => {
     <View className={`${styles.card} ${styles[post.color]}`} style={{ transform: `rotate(${tilt}deg)` }} onClick={() => onClick(post)}>
       <Image className={styles.tape} src={tapeImage} mode="widthFix" />
       <Text className={styles.time}>{getRelativeTime(post.createdAt)}</Text>
-      <Text className={`${styles.title} font-display`}>{post.title}</Text>
+      <Text className={styles.title}>{post.title}</Text>
       <Text className={styles.content}>{getPostExcerpt(post.content, 62)}</Text>
       {post.images[0] ? (
         <Image
