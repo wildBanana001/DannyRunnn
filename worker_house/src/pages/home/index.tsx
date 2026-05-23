@@ -1,31 +1,29 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, ScrollView, Text, View } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import { Image, ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
+import Taro, { useDidShow } from '@tarojs/taro';
 import BottomSheet from '@/components/BottomSheet';
 import WxLoginModal from '@/components/WxLoginModal';
-import { fetchActivities } from '@/cloud/services';
+import { fetchActivities, fetchPosterList } from '@/cloud/services';
 import { ongoingActivities as activityFallback } from '@/data/activities';
-import { DEFAULT_FINDER_USER_NAME, getSiteAssetUrl, homeLandingConfig } from '@/data/site';
+import { homeLandingConfig } from '@/data/site';
 import { useSiteConfig } from '@/shared/siteConfig';
+import { fetchStories } from '@/services/stories';
 import { useUserStore } from '@/store/userStore';
-import type { Activity } from '@/types';
+import type { Activity, Story } from '@/types';
+import type { Poster } from '@/types/site';
 import { openChannelsHome } from '@/utils/video';
-import { openOfficialAccountPage } from '@/utils/wechat';
 import styles from './index.module.scss';
 
 const COMMUNITY_SHEET_DURATION = 280;
-const HOME_COPY_LEAD = 'Hiiii这里是社畜没有派对！';
-const HOME_COPY_BODY = '一个通过客厅建立有趣新人类社交方式的城市共居空间，这里为社交、文化、艺术、共创、女性友好住宿等一切创意活动无限开放';
-const HERO_DOTS = [0, 1, 2];
 const HOME_TEXT_IMAGE_PROPS: Record<string, any> = { mode: 'widthFix', lazyLoad: true, 'show-menu-by-longpress': false };
 
 const resolveAssetUrl = (path: string) => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  try {
-    return typeof getSiteAssetUrl === 'function' ? getSiteAssetUrl(normalizedPath) : normalizedPath;
-  } catch {
+  const baseUrl = process.env.TARO_APP_BFF_BASE_URL?.trim();
+  if (!baseUrl) {
     return normalizedPath;
   }
+  return `${baseUrl.replace(/\/$/, '')}${normalizedPath}`;
 };
 
 const getHomeTextAssetUrl = (name: string) => resolveAssetUrl(`/images/home/text/${name}`);
@@ -59,20 +57,27 @@ const HOME_ASSETS = {
   },
 };
 
-const OWNER_CARDS = [
+const FALLBACK_OWNER_CARDS = [
   {
     id: 'owner-orange',
-    emoji: '🍊',
-    label: HOME_ASSETS.text.orangeLabel,
+    avatar: '',
+    label: '橙子',
     description: '互联网大厂裸辞，正在探索新新人类生活方式，徒手爆改80m²社畜快乐屋，旅游狂热分子，enfj理想主义体验派！',
   },
   {
     id: 'owner-cat',
-    emoji: '🐈‍⬛',
-    label: HOME_ASSETS.text.xiaoheiLabel,
+    avatar: '',
+    label: '小黑',
     description: '一只3岁的粘人奶牛猫，社畜团宠，一脸正义又娇憨可爱的黑猫警长，yes sir~',
   },
-] as const;
+];
+
+interface StoryCardItem {
+  id: string;
+  title: string;
+  image: string;
+  story?: Story;
+}
 
 export const handleStoryTap = (story: { id: string; title?: string; sourceUrl?: string; cover?: string; author?: string; publishAt?: string; excerpt?: string }) => {
   if (story.sourceUrl) {
@@ -93,7 +98,9 @@ export const handleStoryTap = (story: { id: string; title?: string; sourceUrl?: 
 
 const HomePage: React.FC = () => {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [ongoingActivities, setOngoingActivities] = useState<Activity[]>(activityFallback);
+  const [ongoingActivitiesState, setOngoingActivitiesState] = useState<Activity[]>(activityFallback);
+  const [posters, setPosters] = useState<Poster[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
   const [communityVisible, setCommunityVisible] = useState(false);
   const [communityState, setCommunityState] = useState<'opening' | 'closing'>('opening');
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
@@ -101,13 +108,41 @@ const HomePage: React.FC = () => {
   const hasCheckedLoginRef = useRef(false);
   const sharedSiteConfig = useSiteConfig();
 
-  useEffect(() => {
+  const loadActivities = () => {
     fetchActivities('ongoing').then((activities) => {
-      setOngoingActivities(activities.length > 0 ? activities : activityFallback);
+      setOngoingActivitiesState(activities.length > 0 ? activities : activityFallback);
     }).catch(() => {
-      setOngoingActivities(activityFallback);
+      setOngoingActivitiesState(activityFallback);
     });
+  };
+
+  const loadPosters = () => {
+    fetchPosterList().then((list) => {
+      setPosters(Array.isArray(list) ? list.filter((item) => item && item.coverImage) : []);
+    }).catch(() => {
+      setPosters([]);
+    });
+  };
+
+  const loadStories = () => {
+    fetchStories(3).then((list) => {
+      setStories(Array.isArray(list) ? list : []);
+    }).catch(() => {
+      setStories([]);
+    });
+  };
+
+  useEffect(() => {
+    loadActivities();
+    loadPosters();
+    loadStories();
   }, []);
+
+  useDidShow(() => {
+    loadActivities();
+    loadPosters();
+    loadStories();
+  });
 
   useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
 
@@ -126,7 +161,49 @@ const HomePage: React.FC = () => {
   }, [isLoggedIn]);
 
   const communityQr = sharedSiteConfig?.communityQrcode || homeLandingConfig.communityQr || '';
-  const moreActivities = useMemo(() => ongoingActivities.slice(0, 2), [ongoingActivities]);
+  const homeCopyLead = sharedSiteConfig?.homeCopyLead || 'Hiiii这里是社畜没有派对！';
+  const homeCopyBody = sharedSiteConfig?.homeCopyBody || '一个通过客厅建立有趣新人类社交方式的城市共居空间，这里为社交、文化、艺术、共创、女性友好住宿等一切创意活动无限开放';
+  const finderUserName = sharedSiteConfig?.homeChannelsFinder || 'sph_worker_house_demo';
+  const moreActivities = useMemo(() => ongoingActivitiesState.slice(0, 2), [ongoingActivitiesState]);
+
+  const heroSlides = useMemo(() => {
+    if (posters.length > 0) {
+      return posters.map((poster) => ({
+        id: poster.id,
+        image: poster.coverImage,
+      }));
+    }
+    return [];
+  }, [posters]);
+
+  const spaceImages = useMemo(() => {
+    const list = (sharedSiteConfig?.homeSpaceImages ?? []).filter((item) => typeof item === 'string' && item.length > 0);
+    return list.length > 0 ? list : [HOME_ASSETS.space];
+  }, [sharedSiteConfig?.homeSpaceImages]);
+
+  const ownerCards = useMemo(() => {
+    const list = sharedSiteConfig?.homeOwners ?? [];
+    if (Array.isArray(list) && list.length > 0) {
+      return list;
+    }
+    return FALLBACK_OWNER_CARDS;
+  }, [sharedSiteConfig?.homeOwners]);
+
+  const storyCards: StoryCardItem[] = useMemo(() => {
+    if (stories.length > 0) {
+      return stories.slice(0, 3).map((story) => ({
+        id: story.id,
+        title: story.title,
+        image: story.cover,
+        story,
+      }));
+    }
+    return HOME_ASSETS.stories.map((item) => ({
+      id: item.id,
+      title: item.title,
+      image: item.image,
+    }));
+  }, [stories]);
 
   const handleJoinCommunity = () => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
@@ -140,6 +217,21 @@ const HomePage: React.FC = () => {
     closeTimerRef.current = setTimeout(() => setCommunityVisible(false), COMMUNITY_SHEET_DURATION);
   };
 
+  const handleHeroTap = (posterId: string) => {
+    if (!posterId) return;
+    void Taro.navigateTo({ url: `/pages/poster-detail/index?id=${encodeURIComponent(posterId)}` });
+  };
+
+  const handleStoryCardTap = (item: StoryCardItem) => {
+    if (item.story) {
+      handleStoryTap(item.story);
+    }
+  };
+
+  const handleMoreFun = () => {
+    void Taro.navigateTo({ url: '/pages/content/story-webview/index?mode=official-home' });
+  };
+
   return (
     <View className={styles.page}>
       <ScrollView className={styles.scrollView} scrollY enableFlex showScrollbar={false}>
@@ -150,9 +242,28 @@ const HomePage: React.FC = () => {
               <View className={styles.heroSpark} />
             </View>
             <View className={styles.heroCard}>
-              <Image className={styles.heroImage} src={HOME_ASSETS.hero} mode="widthFix" lazyLoad />
+              {heroSlides.length > 0 ? (
+                <Swiper
+                  className={styles.heroSwiper}
+                  autoplay
+                  circular
+                  indicatorDots
+                  indicatorActiveColor="#fff"
+                  indicatorColor="rgba(255,255,255,0.5)"
+                  interval={3500}
+                >
+                  {heroSlides.map((slide) => (
+                    <SwiperItem key={slide.id}>
+                      <View className={styles.heroSwiperItem} onClick={() => handleHeroTap(slide.id)}>
+                        <Image className={styles.heroImage} src={slide.image} mode="aspectFill" lazyLoad />
+                      </View>
+                    </SwiperItem>
+                  ))}
+                </Swiper>
+              ) : (
+                <Image className={styles.heroImage} src={HOME_ASSETS.hero} mode="widthFix" lazyLoad />
+              )}
             </View>
-            <View className={styles.dotRow}>{HERO_DOTS.map((dot) => <View key={dot} className={`${styles.dot} ${dot === 0 ? styles.dotActive : ''}`} />)}</View>
             <View className={styles.actionRow}>
               <View className={styles.actionImageButton} onClick={() => Taro.switchTab({ url: '/pages/activity/index' })}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.actionImage} src={HOME_ASSETS.text.bookActivity} />
@@ -193,8 +304,8 @@ const HomePage: React.FC = () => {
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.dreamEnglishImage} src={HOME_ASSETS.text.dreamEnglish} />
             </View>
             <View className={styles.copyBlock}>
-              <Text className={styles.copyLead}>{HOME_COPY_LEAD}</Text>
-              <Text className={styles.sectionCopy}>{HOME_COPY_BODY}</Text>
+              <Text className={styles.copyLead}>{homeCopyLead}</Text>
+              <Text className={styles.sectionCopy}>{homeCopyBody}</Text>
             </View>
             <View className={styles.sectionFooter}>
               <View className={styles.sectionImageButton} onClick={() => Taro.switchTab({ url: '/pages/activity/index' })}>
@@ -205,18 +316,35 @@ const HomePage: React.FC = () => {
 
           <View className={`${styles.section} ${styles.spaceSection}`}>
             <View className={styles.spaceVisual}>
-              <Image className={styles.spaceImage} src={HOME_ASSETS.space} mode="widthFix" lazyLoad />
-              <View className={`${styles.dotRow} ${styles.spaceDotRow}`}>{HERO_DOTS.map((dot) => <View key={`space-${dot}`} className={`${styles.dot} ${styles.spaceDot} ${dot === 0 ? styles.dotActive : ''}`} />)}</View>
+              {spaceImages.length > 1 ? (
+                <Swiper
+                  className={styles.spaceSwiper}
+                  autoplay
+                  circular
+                  indicatorDots
+                  indicatorActiveColor="#fff"
+                  indicatorColor="rgba(255,255,255,0.5)"
+                  interval={4000}
+                >
+                  {spaceImages.map((image) => (
+                    <SwiperItem key={image}>
+                      <Image className={styles.spaceImage} src={image} mode="aspectFill" lazyLoad />
+                    </SwiperItem>
+                  ))}
+                </Swiper>
+              ) : (
+                <Image className={styles.spaceImage} src={spaceImages[0]} mode="widthFix" lazyLoad />
+              )}
             </View>
             <View className={styles.spaceIntroRow}>
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.spaceTitleImage} src={HOME_ASSETS.text.happyHouse} />
               <View className={styles.spaceCopyBlock}>
-                <Text className={`${styles.copyLead} ${styles.spaceCopyLead}`}>{HOME_COPY_LEAD}</Text>
-                <Text className={`${styles.sectionCopy} ${styles.rightAlignedCopy}`}>{HOME_COPY_BODY}</Text>
+                <Text className={`${styles.copyLead} ${styles.spaceCopyLead}`}>{homeCopyLead}</Text>
+                <Text className={`${styles.sectionCopy} ${styles.rightAlignedCopy}`}>{homeCopyBody}</Text>
               </View>
             </View>
             <View className={`${styles.sectionFooter} ${styles.spaceFooter}`}>
-              <View className={styles.sectionImageButton} onClick={() => void openChannelsHome(DEFAULT_FINDER_USER_NAME)}>
+              <View className={styles.sectionImageButton} onClick={() => void openChannelsHome(finderUserName)}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.sectionButtonImage} src={HOME_ASSETS.text.spaceStory} />
               </View>
             </View>
@@ -225,15 +353,15 @@ const HomePage: React.FC = () => {
           <View className={`${styles.section} ${styles.storySection}`}>
             <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.sectionTitleImage} src={HOME_ASSETS.text.shechuStories} />
             <View className={styles.storyList}>
-              {HOME_ASSETS.stories.map((story) => (
-                <View key={story.id} className={styles.storyCard}>
-                  <Image className={styles.storyImage} src={story.image} mode="aspectFill" lazyLoad />
-                  <View className={styles.storyOverlay}><Text className={styles.storyOverlayText}>{story.title}</Text></View>
+              {storyCards.map((item) => (
+                <View key={item.id} className={styles.storyCard} onClick={() => handleStoryCardTap(item)}>
+                  <Image className={styles.storyImage} src={item.image} mode="aspectFill" lazyLoad />
+                  <View className={styles.storyOverlay}><Text className={styles.storyOverlayText}>{item.title}</Text></View>
                 </View>
               ))}
             </View>
             <View className={`${styles.sectionFooter} ${styles.storyFooter}`}>
-              <View className={styles.sectionImageButton} onClick={() => void openOfficialAccountPage()}>
+              <View className={styles.sectionImageButton} onClick={handleMoreFun}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.moreFunImage} src={HOME_ASSETS.text.moreFun} />
               </View>
             </View>
@@ -242,17 +370,19 @@ const HomePage: React.FC = () => {
           <View className={`${styles.section} ${styles.ownersSection}`}>
             <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.ownerTitleImage} src={HOME_ASSETS.text.owner} />
             <View className={styles.ownerList}>
-              {OWNER_CARDS.map((owner, index) => (
+              {ownerCards.map((owner, index) => (
                 <View key={owner.id} className={`${styles.ownerCard} ${index % 2 === 1 ? styles.ownerCardReverse : ''}`}>
-                  <View className={`${styles.ownerAvatar} ${owner.id === 'owner-orange' ? styles.ownerAvatarOrange : styles.ownerAvatarXiaohei}`}>
-                    <Text className={styles.ownerEmoji}>{owner.emoji}</Text>
+                  <View className={`${styles.ownerAvatar} ${index % 2 === 1 ? styles.ownerAvatarXiaohei : styles.ownerAvatarOrange}`}>
+                    {owner.avatar ? (
+                      <Image className={styles.ownerAvatarImage} src={owner.avatar} mode="aspectFill" lazyLoad />
+                    ) : (
+                      <Text className={styles.ownerEmoji}>{index % 2 === 1 ? '🐈‍⬛' : '🍊'}</Text>
+                    )}
                   </View>
                   <View className={styles.ownerBody}>
-                    <Image
-                      {...HOME_TEXT_IMAGE_PROPS}
-                      className={`${styles.ownerLabel} ${owner.id === 'owner-orange' ? styles.ownerLabelOrange : styles.ownerLabelXiaohei}`}
-                      src={owner.label}
-                    />
+                    {owner.label ? (
+                      <Text className={`${styles.ownerLabelText} ${index % 2 === 1 ? styles.ownerLabelXiaoheiText : styles.ownerLabelOrangeText}`}>{owner.label}</Text>
+                    ) : null}
                     <Text className={styles.ownerDescription}>{owner.description}</Text>
                   </View>
                 </View>

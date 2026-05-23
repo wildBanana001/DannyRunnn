@@ -246,6 +246,20 @@ adminMiniRouter.put('/site-config', (request, response) => {
         contactWechat: typeof body.contactWechat === 'string' ? body.contactWechat : undefined,
         heroSlogan: typeof body.heroSlogan === 'string' ? body.heroSlogan : undefined,
         heroTitle: typeof body.heroTitle === 'string' ? body.heroTitle : undefined,
+        homeCopyLead: typeof body.homeCopyLead === 'string' ? body.homeCopyLead : undefined,
+        homeCopyBody: typeof body.homeCopyBody === 'string' ? body.homeCopyBody : undefined,
+        homeChannelsFinder: typeof body.homeChannelsFinder === 'string' ? body.homeChannelsFinder : undefined,
+        homeOfficialAccountId: typeof body.homeOfficialAccountId === 'string' ? body.homeOfficialAccountId : undefined,
+        homeOfficialAccountName: typeof body.homeOfficialAccountName === 'string' ? body.homeOfficialAccountName : undefined,
+        homeSpaceImages: Array.isArray(body.homeSpaceImages) ? (body.homeSpaceImages as string[]) : undefined,
+        homeOwners: Array.isArray(body.homeOwners)
+          ? (body.homeOwners as Array<{ id?: string; avatar?: string; label?: string; description?: string }>).map((item, index) => ({
+            id: typeof item?.id === 'string' && item.id.trim() ? item.id.trim() : `owner-${Date.now()}-${index}`,
+            avatar: typeof item?.avatar === 'string' ? item.avatar : '',
+            label: typeof item?.label === 'string' ? item.label : '',
+            description: typeof item?.description === 'string' ? item.description : '',
+          }))
+          : undefined,
       },
       resolveAdminOpenid(request),
     );

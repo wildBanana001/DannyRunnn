@@ -76,3 +76,7 @@ export async function openVideoChannel({ finderUserName, feedId, videoLink }: Op
 
   return false;
 }
+
+export function openChannelsHome(finderUserName: string): Promise<boolean> {
+  return openVideoChannel({ finderUserName });
+}

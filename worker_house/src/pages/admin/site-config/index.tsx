@@ -9,16 +9,27 @@ import TextArea from '@nutui/nutui-react-taro/dist/es/packages/textarea/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
 import '@nutui/nutui-react-taro/dist/style.css';
 import { uploadAdminCoverImage } from '@/services/admin';
-import { defaultSiteConfigRecord, fetchCommunitySiteConfig, type SiteConfigRecord, updateCommunitySiteConfig } from '@/services/siteConfig';
+import {
+  defaultSiteConfigRecord,
+  fetchCommunitySiteConfig,
+  type HomeOwnerCard,
+  type SiteConfigRecord,
+  updateCommunitySiteConfig,
+} from '@/services/siteConfig';
 import styles from './index.module.scss';
 
 const toastId = 'admin-site-config-toast';
+
+type StringField = 'aboutUs' | 'communityQrcode' | 'contactWechat' | 'heroSlogan' | 'heroTitle'
+  | 'homeCopyLead' | 'homeCopyBody' | 'homeChannelsFinder' | 'homeOfficialAccountId' | 'homeOfficialAccountName';
 
 const AdminSiteConfigPage: React.FC = () => {
   const [config, setConfig] = useState<SiteConfigRecord>(defaultSiteConfigRecord);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [spaceImageUploading, setSpaceImageUploading] = useState(false);
+  const [ownerAvatarUploadingId, setOwnerAvatarUploadingId] = useState<string>('');
 
   const loadConfig = async () => {
     setLoading(true);
@@ -38,7 +49,7 @@ const AdminSiteConfigPage: React.FC = () => {
     void loadConfig();
   }, []);
 
-  const updateField = (key: keyof SiteConfigRecord, value: string) => {
+  const updateField = (key: StringField, value: string) => {
     setConfig((current) => ({ ...current, [key]: value }));
   };
 
@@ -66,6 +77,87 @@ const AdminSiteConfigPage: React.FC = () => {
     }
   };
 
+  const handleAddSpaceImage = async () => {
+    try {
+      const result = await Taro.chooseImage({
+        count: 1,
+        sizeType: ['compressed', 'original'],
+        sourceType: ['album', 'camera'],
+      });
+      const filePath = result.tempFilePaths?.[0];
+      if (!filePath) {
+        return;
+      }
+
+      setSpaceImageUploading(true);
+      const uploaded = await uploadAdminCoverImage(filePath);
+      setConfig((current) => ({
+        ...current,
+        homeSpaceImages: [...(current.homeSpaceImages || []), uploaded.url],
+      }));
+      Toast.show(toastId, { content: '已添加，记得保存', icon: 'success' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '图片上传失败';
+      Toast.show(toastId, { content: message, icon: 'fail' });
+    } finally {
+      setSpaceImageUploading(false);
+    }
+  };
+
+  const handleRemoveSpaceImage = (index: number) => {
+    setConfig((current) => {
+      const next = [...(current.homeSpaceImages || [])];
+      next.splice(index, 1);
+      return { ...current, homeSpaceImages: next };
+    });
+  };
+
+  const updateOwner = (id: string, key: keyof HomeOwnerCard, value: string) => {
+    setConfig((current) => ({
+      ...current,
+      homeOwners: (current.homeOwners || []).map((owner) => (owner.id === id ? { ...owner, [key]: value } : owner)),
+    }));
+  };
+
+  const handleAddOwner = () => {
+    const id = `owner-${Date.now()}`;
+    setConfig((current) => ({
+      ...current,
+      homeOwners: [...(current.homeOwners || []), { id, avatar: '', label: '', description: '' }],
+    }));
+  };
+
+  const handleRemoveOwner = (id: string) => {
+    setConfig((current) => ({
+      ...current,
+      homeOwners: (current.homeOwners || []).filter((owner) => owner.id !== id),
+    }));
+  };
+
+  const handleChooseOwnerAvatar = async (id: string) => {
+    try {
+      const result = await Taro.chooseImage({
+        count: 1,
+        sizeType: ['compressed', 'original'],
+        sourceType: ['album', 'camera'],
+      });
+      const filePath = result.tempFilePaths?.[0];
+      if (!filePath) {
+        return;
+      }
+
+      setOwnerAvatarUploadingId(id);
+      const uploaded = await uploadAdminCoverImage(filePath);
+      updateOwner(id, 'avatar', uploaded.url);
+      Toast.show(toastId, { content: '头像已上传，记得保存', icon: 'success' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '头像上传失败';
+      Toast.show(toastId, { content: message, icon: 'fail' });
+    } finally {
+      setOwnerAvatarUploadingId('');
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -75,6 +167,13 @@ const AdminSiteConfigPage: React.FC = () => {
         contactWechat: config.contactWechat,
         heroSlogan: config.heroSlogan,
         heroTitle: config.heroTitle,
+        homeCopyLead: config.homeCopyLead,
+        homeCopyBody: config.homeCopyBody,
+        homeChannelsFinder: config.homeChannelsFinder,
+        homeOfficialAccountId: config.homeOfficialAccountId,
+        homeOfficialAccountName: config.homeOfficialAccountName,
+        homeSpaceImages: config.homeSpaceImages,
+        homeOwners: config.homeOwners,
       });
       setConfig(nextConfig);
       Toast.show(toastId, { content: '站点配置已保存', icon: 'success' });
@@ -129,6 +228,86 @@ const AdminSiteConfigPage: React.FC = () => {
           <TextArea value={config.aboutUs} placeholder="请输入关于我们文案" onChange={(value) => updateField('aboutUs', value)} />
         </FormItem>
       </Form>
+
+      <Form className={styles.contentCard}>
+        <View className={styles.title}>首页快乐屋区文案</View>
+        <FormItem label="文案首句 lead">
+          <TextArea value={config.homeCopyLead} placeholder="例如：Hiiii这里是社畜没有派对！" onChange={(value) => updateField('homeCopyLead', value)} />
+        </FormItem>
+        <FormItem label="文案正文 body">
+          <TextArea value={config.homeCopyBody} placeholder="一段关于空间介绍的文案" onChange={(value) => updateField('homeCopyBody', value)} />
+        </FormItem>
+        <FormItem label="视频号 finderUserName">
+          <Input value={config.homeChannelsFinder} placeholder="例如：sph_worker_house_demo" onChange={(value) => updateField('homeChannelsFinder', value)} />
+        </FormItem>
+        <FormItem label="公众号 gh_id">
+          <Input value={config.homeOfficialAccountId} placeholder="例如：gh_xxxxx" onChange={(value) => updateField('homeOfficialAccountId', value)} />
+        </FormItem>
+        <FormItem label="公众号名">
+          <Input value={config.homeOfficialAccountName} placeholder="公众号名称" onChange={(value) => updateField('homeOfficialAccountName', value)} />
+        </FormItem>
+      </Form>
+
+      <View className={styles.contentCard}>
+        <View className={styles.title}>快乐屋轮播图</View>
+        <Text className={styles.description}>建议尺寸 1125 x 750 等比，按顺序作为首页快乐屋区轮播。</Text>
+        {(config.homeSpaceImages || []).length > 0 ? (
+          <View>
+            {(config.homeSpaceImages || []).map((image, index) => (
+              <View key={`${image}-${index}`} style={{ marginTop: '16rpx', display: 'flex', alignItems: 'center', gap: '16rpx' }}>
+                <Image src={image} mode="aspectFill" style={{ width: '160rpx', height: '160rpx', borderRadius: '12rpx', background: '#f3efe5' }} />
+                <Button size="small" onClick={() => handleRemoveSpaceImage(index)}>删除</Button>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text className={styles.description}>暂未上传图片</Text>
+        )}
+        <View style={{ marginTop: '24rpx' }}>
+          <Button type="primary" loading={spaceImageUploading} onClick={() => void handleAddSpaceImage()}>
+            {spaceImageUploading ? '上传中…' : '添加图片'}
+          </Button>
+        </View>
+      </View>
+
+      <View className={styles.contentCard}>
+        <View className={styles.title}>主理人卡片</View>
+        {(config.homeOwners || []).map((owner) => (
+          <View key={owner.id} style={{ marginTop: '24rpx', paddingTop: '24rpx', borderTop: '1rpx solid rgba(17,17,17,0.08)' }}>
+            <View style={{ display: 'flex', alignItems: 'center', gap: '24rpx' }}>
+              {owner.avatar ? (
+                <Image src={owner.avatar} mode="aspectFill" style={{ width: '160rpx', height: '160rpx', borderRadius: '50%', background: '#f3efe5' }} />
+              ) : (
+                <View style={{ width: '160rpx', height: '160rpx', borderRadius: '50%', background: '#f3efe5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: '24rpx', color: '#5a4635' }}>暂无头像</Text>
+                </View>
+              )}
+              <View style={{ display: 'flex', flexDirection: 'column', gap: '12rpx' }}>
+                <Button
+                  size="small"
+                  type="primary"
+                  loading={ownerAvatarUploadingId === owner.id}
+                  onClick={() => void handleChooseOwnerAvatar(owner.id)}
+                >
+                  {ownerAvatarUploadingId === owner.id ? '上传中…' : '更换头像'}
+                </Button>
+                <Button size="small" onClick={() => handleRemoveOwner(owner.id)}>删除该主理人</Button>
+              </View>
+            </View>
+            <Form>
+              <FormItem label="名字 / 标签">
+                <Input value={owner.label} placeholder="例如：橙子" onChange={(value) => updateOwner(owner.id, 'label', value)} />
+              </FormItem>
+              <FormItem label="自我介绍">
+                <TextArea value={owner.description} placeholder="一段简短介绍" onChange={(value) => updateOwner(owner.id, 'description', value)} />
+              </FormItem>
+            </Form>
+          </View>
+        ))}
+        <View style={{ marginTop: '24rpx' }}>
+          <Button type="primary" onClick={handleAddOwner}>添加主理人</Button>
+        </View>
+      </View>
 
       <View className={styles.contentCard}>
         <View className={styles.meta}>
