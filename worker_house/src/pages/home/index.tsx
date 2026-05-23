@@ -293,13 +293,11 @@ const HomePage: React.FC = () => {
           </View>
 
           <View className={`${styles.section} ${styles.aprilSection}`}>
-            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.newLifeStyleImage} src={HOME_ASSETS.text.newLifeStyle} />
             <View className={styles.aprilCollageStage}>
               <Image className={styles.aprilCollage} src={HOME_ASSETS.april} mode="widthFix" lazyLoad />
-              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.aprilStoriesImage} src={HOME_ASSETS.text.aprilStories} />
-              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.dreamEnglishImage} src={HOME_ASSETS.text.dreamEnglish} />
             </View>
             <View className={styles.copyBlock}>
+              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.newLifeStyleImage} src={HOME_ASSETS.text.newLifeStyle} />
               <Text className={styles.copyLead}>{homeCopyLead}</Text>
               <Text className={styles.sectionCopy}>{homeCopyBody}</Text>
             </View>
@@ -335,8 +333,8 @@ const HomePage: React.FC = () => {
             <View className={styles.spaceIntroRow}>
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.spaceTitleImage} src={HOME_ASSETS.text.happyHouse} />
               <View className={styles.spaceCopyBlock}>
-                <Text className={`${styles.copyLead} ${styles.spaceCopyLead}`}>{homeCopyLead}</Text>
-                <Text className={`${styles.sectionCopy} ${styles.rightAlignedCopy}`}>{homeCopyBody}</Text>
+                <Text className={styles.copyLead}>{homeCopyLead}</Text>
+                <Text className={styles.sectionCopy}>{homeCopyBody}</Text>
               </View>
             </View>
             <View className={`${styles.sectionFooter} ${styles.spaceFooter}`}>
