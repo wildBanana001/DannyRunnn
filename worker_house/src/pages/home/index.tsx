@@ -54,13 +54,13 @@ const HOME_ASSETS = {
 const FALLBACK_OWNER_CARDS = [
   {
     id: 'owner-orange',
-    avatar: '',
+    avatar: wechatArticleImageUrls.img12,
     label: '橙子',
     description: '互联网大厂裸辞，正在探索新新人类生活方式，徒手爆改80m²社畜快乐屋，旅游狂热分子，enfj理想主义体验派！',
   },
   {
     id: 'owner-cat',
-    avatar: '',
+    avatar: wechatArticleImageUrls.img15,
     label: '小黑',
     description: '一只3岁的粘人奶牛猫，社畜团宠，一脸正义又娇憨可爱的黑猫警长，yes sir~',
   },
@@ -233,7 +233,7 @@ const HomePage: React.FC = () => {
           <View className={styles.heroSection}>
             <View className={styles.heroTopRow}>
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.heroTitleImage} src={HOME_ASSETS.text.heroTitle} />
-              <View className={styles.heroSpark} />
+              <Text className={styles.heroSpark}>📷</Text>
             </View>
             <View className={styles.heroCard}>
               {heroSlides.length > 0 ? (
@@ -249,7 +249,7 @@ const HomePage: React.FC = () => {
                   {heroSlides.map((slide) => (
                     <SwiperItem key={slide.id}>
                       <View className={styles.heroSwiperItem} onClick={() => handleHeroTap(slide.id)}>
-                        <Image className={styles.heroImage} src={slide.image} mode="aspectFill" lazyLoad />
+                        <Image className={styles.heroImage} src={slide.image} mode="aspectFit" lazyLoad />
                       </View>
                     </SwiperItem>
                   ))}
@@ -270,24 +270,26 @@ const HomePage: React.FC = () => {
 
           <View className={`${styles.section} ${styles.moreSection}`}>
             <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.moreTitleImage} src={HOME_ASSETS.text.moreActivities} />
-            {moreActivities.length > 0 ? (
-              <View className={styles.activityList}>
-                {moreActivities.map((activity) => (
-                  <View
-                    key={activity.id}
-                    className={styles.activityCard}
-                    onClick={() => void Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${activity.id}` })}
-                  >
-                    <Image className={styles.activityThumb} src={activity.cover || activity.coverImage} mode="aspectFill" lazyLoad />
-                    <View className={styles.activityContent}>
-                      <Text className={styles.activityStatus}>招募中</Text>
-                      <Text className={styles.activityTitle}>{activity.title}</Text>
+            <View className={styles.moreInner}>
+              {moreActivities.length > 0 ? (
+                <View className={styles.activityList}>
+                  {moreActivities.map((activity) => (
+                    <View
+                      key={activity.id}
+                      className={styles.activityCard}
+                      onClick={() => void Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${activity.id}` })}
+                    >
+                      <Image className={styles.activityThumb} src={activity.cover || activity.coverImage} mode="aspectFill" lazyLoad />
+                      <View className={styles.activityContent}>
+                        <Text className={styles.activityStatus}>招募中</Text>
+                        <Text className={styles.activityTitle}>{activity.title}</Text>
+                      </View>
+                      <Text className={styles.activityArrow}>↗</Text>
                     </View>
-                    <Text className={styles.activityArrow}>↗</Text>
-                  </View>
-                ))}
-              </View>
-            ) : <View className={styles.emptyPanel}><Text className={styles.emptyText}>暂无招募中活动，先去活动页逛逛吧。</Text></View>}
+                  ))}
+                </View>
+              ) : <View className={styles.emptyPanel}><Text className={styles.emptyText}>暂无招募中活动，先去活动页逛逛吧。</Text></View>}
+            </View>
           </View>
 
           <View className={`${styles.section} ${styles.aprilSection}`}>
