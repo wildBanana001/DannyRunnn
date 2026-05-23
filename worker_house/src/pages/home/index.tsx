@@ -6,6 +6,7 @@ import WxLoginModal from '@/components/WxLoginModal';
 import { fetchActivities, fetchPosterList } from '@/cloud/services';
 import { ongoingActivities as activityFallback } from '@/data/activities';
 import { homeLandingConfig } from '@/data/site';
+import { wechatArticleImageUrls } from '@/data/wechat-images';
 import { useSiteConfig } from '@/shared/siteConfig';
 import { fetchStories } from '@/services/stories';
 import { useUserStore } from '@/store/userStore';
@@ -17,44 +18,37 @@ import styles from './index.module.scss';
 const COMMUNITY_SHEET_DURATION = 280;
 const HOME_TEXT_IMAGE_PROPS: Record<string, any> = { mode: 'widthFix', lazyLoad: true, 'show-menu-by-longpress': false };
 
-const resolveAssetUrl = (path: string) => {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const baseUrl = process.env.TARO_APP_BFF_BASE_URL?.trim();
-  if (!baseUrl) {
-    return normalizedPath;
-  }
-  return `${baseUrl.replace(/\/$/, '')}${normalizedPath}`;
+// 切图（艺术字 / 按钮 / 徽章）打包进小程序，杜绝远程依赖
+const TEXT_ASSETS = {
+  heroTitle: require('@/assets/home/text/title-shechu-hero.png'),
+  bookActivity: require('@/assets/home/text/btn-book-activity.png'),
+  joinCommunity: require('@/assets/home/text/btn-join-community.png'),
+  moreActivities: require('@/assets/home/text/title-more-activities.png'),
+  aprilStories: require('@/assets/home/text/title-april-stories.png'),
+  dreamEnglish: require('@/assets/home/text/title-dream-english.png'),
+  newLifeStyle: require('@/assets/home/text/title-new-life-style.png'),
+  exploreMore: require('@/assets/home/text/btn-explore-more.png'),
+  happyHouse: require('@/assets/home/text/title-happy-house.png'),
+  spaceStory: require('@/assets/home/text/btn-space-story.png'),
+  shechuStories: require('@/assets/home/text/title-shechu-stories.png'),
+  moreFun: require('@/assets/home/text/btn-more-fun.png'),
+  owner: require('@/assets/home/text/title-owner.png'),
+  orangeLabel: require('@/assets/home/text/label-orange.png'),
+  xiaoheiLabel: require('@/assets/home/text/label-xiaohei.png'),
+  letsParty: require('@/assets/home/text/badge-lets-party.png'),
 };
 
-const getHomeTextAssetUrl = (name: string) => resolveAssetUrl(`/images/home/text/${name}`);
-
+// 默认内容大图直接走 CDN（项目已有），避免相对路径回落造成空白
 const HOME_ASSETS = {
-  hero: resolveAssetUrl('/static/images/home/hero-may.jpg'),
-  april: resolveAssetUrl('/static/images/home/more-collage-april.png'),
-  space: resolveAssetUrl('/static/images/home/space-livingroom.jpg'),
+  hero: wechatArticleImageUrls.img05,
+  april: wechatArticleImageUrls.img04,
+  space: wechatArticleImageUrls.img29,
   stories: [
-    { id: 'story-sanjiaozhu', title: '社畜x三脚猪', image: resolveAssetUrl('/static/images/home/story-sanjiaozhu.jpg') },
-    { id: 'story-mcdonald', title: '社畜x麦当劳', image: resolveAssetUrl('/static/images/home/story-mcdonald.jpg') },
-    { id: 'story-need', title: '社畜xneed', image: resolveAssetUrl('/static/images/home/story-need.jpg') },
+    { id: 'story-sanjiaozhu', title: '社畜x三脚猪', image: wechatArticleImageUrls.img17 },
+    { id: 'story-mcdonald', title: '社畜x麦当劳', image: wechatArticleImageUrls.img18 },
+    { id: 'story-need', title: '社畜xneed', image: wechatArticleImageUrls.img07 },
   ],
-  text: {
-    heroTitle: getHomeTextAssetUrl('title-shechu-hero.png'),
-    bookActivity: getHomeTextAssetUrl('btn-book-activity.png'),
-    joinCommunity: getHomeTextAssetUrl('btn-join-community.png'),
-    moreActivities: getHomeTextAssetUrl('title-more-activities.png'),
-    aprilStories: getHomeTextAssetUrl('title-april-stories.png'),
-    dreamEnglish: getHomeTextAssetUrl('title-dream-english.png'),
-    newLifeStyle: getHomeTextAssetUrl('title-new-life-style.png'),
-    exploreMore: getHomeTextAssetUrl('btn-explore-more.png'),
-    happyHouse: getHomeTextAssetUrl('title-happy-house.png'),
-    spaceStory: getHomeTextAssetUrl('btn-space-story.png'),
-    shechuStories: getHomeTextAssetUrl('title-shechu-stories.png'),
-    moreFun: getHomeTextAssetUrl('btn-more-fun.png'),
-    owner: getHomeTextAssetUrl('title-owner.png'),
-    orangeLabel: getHomeTextAssetUrl('label-orange.png'),
-    xiaoheiLabel: getHomeTextAssetUrl('label-xiaohei.png'),
-    letsParty: getHomeTextAssetUrl('badge-lets-party.png'),
-  },
+  text: TEXT_ASSETS,
 };
 
 const FALLBACK_OWNER_CARDS = [
