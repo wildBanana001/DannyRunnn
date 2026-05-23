@@ -125,18 +125,17 @@
 
 .moreSection {
   margin-top: 64rpx;
-  /* 黑色横幅占满整行：抵消 .section 的左右 padding，并自带内层 padding 容纳活动列表 */
-  padding: 0;
 }
 
 .moreTitleImage {
   display: block;
-  width: 100%;
-  margin: 0;
+  width: 320rpx;
+  max-width: 56%;
+  margin-left: 0;
 }
 
 .moreInner {
-  padding: 0 32rpx;
+  margin-top: 24rpx;
 }
 
 .activityList {
