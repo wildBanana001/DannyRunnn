@@ -1,6 +1,8 @@
 # DannyRunnn · worker_house monorepo
 
-面向 worker_house 小程序 / BFF / Admin 的 monorepo 代码仓。
+面向 worker_house 小程序 / BFF 的 monorepo 代码仓。
+
+> 注：旧 Web 管理后台 `worker_house_admin/` 已于重构中移除，管理能力已收敛到小程序原生管理分包 `pages/admin/*`。如需查阅历史代码，可回溯到标签 `refactor/before-p0`。
 
 ## 子项目
 
@@ -8,7 +10,6 @@
 |---|---|---|
 | `worker_house/` | 微信小程序主端（C 端 + 原生管理分包 `pages/admin/*`） | Taro 4.1.9 + React 18 + TypeScript |
 | `worker_house_bff/` | 微信云托管后端（BFF） | Express + TypeScript，部署环境 `prod-d9g991lo4dba5a4da` |
-| `worker_house_admin/` | 旧 Web 管理后台（**已弃用，仅作备份参考，严禁修改**） | React 18 + Vite + TypeScript + Ant Design 5 |
 
 ## 快速开始
 
@@ -22,11 +23,6 @@ npm run build:weapp
 cd worker_house_bff
 npm install
 npm run build && npm start
-
-# Admin（已弃用）
-cd worker_house_admin
-npm install
-npm run dev
 ```
 
 ## ⚠️ 重要说明
@@ -37,7 +33,6 @@ npm run dev
 
 ### 默认凭据（请务必在生产环境修改！）
 - `worker_house/cloudfunctions/admin_auth/index.js` 默认 `admin / worker_house_2026`
-- `worker_house_admin` Mock 默认 `admin / admin123`
 - `worker_house_bff/src/mock/seed.ts` 种子数据默认密码为 `admin123`
 
 ### 主题 & 规范
