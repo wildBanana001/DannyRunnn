@@ -1,0 +1,94 @@
+@use '@/styles/variables.scss' as *;
+
+$shop-accent: #E63946;
+
+.container {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 160rpx;
+  box-sizing: border-box;
+  background: $color-oat;
+}
+
+.section {
+  @include paper-card($color-white);
+  margin-bottom: 24rpx;
+  padding: 32rpx;
+}
+
+.sectionTitle {
+  display: block;
+  margin-bottom: 20rpx;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.placeholder {
+  display: block;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24rpx;
+}
+
+.rowLabel {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.rowValue {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: $color-white;
+  box-shadow: 0 -2rpx 12rpx rgba(62, 44, 28, 0.08);
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+}
+
+.totalLabel {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+}
+
+.totalValue {
+  margin-left: 8rpx;
+  font-size: 40rpx;
+  font-weight: $font-weight-heavy;
+  color: $shop-accent;
+}
+
+.payBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 280rpx;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  background: $shop-accent;
+}
+
+.payBtnText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-white;
+}

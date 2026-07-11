@@ -1,0 +1,77 @@
+@use '@/styles/variables.scss' as *;
+
+$shop-accent: #E63946;
+
+.container {
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+  background: $color-oat;
+}
+
+.cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 600rpx;
+  background: $color-white;
+}
+
+.coverPlaceholder {
+  font-size: $font-size-lg;
+  color: $color-text-secondary;
+}
+
+.info {
+  @include paper-card($color-white);
+  margin: 24rpx;
+  padding: 32rpx;
+}
+
+.title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.price {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 48rpx;
+  font-weight: $font-weight-heavy;
+  color: $shop-accent;
+}
+
+.desc {
+  display: block;
+  margin-top: 24rpx;
+  font-size: $font-size-md;
+  line-height: 1.6;
+  color: $color-text-secondary;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: $color-white;
+  box-shadow: 0 -2rpx 12rpx rgba(62, 44, 28, 0.08);
+}
+
+.buyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  background: $shop-accent;
+}
+
+.buyBtnText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-white;
+}

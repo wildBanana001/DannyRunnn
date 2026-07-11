@@ -5,7 +5,7 @@
   inset: 0;
   z-index: 120;
   background: rgba(0, 0, 0, 0);
-  transition: background 280ms ease-out;
+  transition: background var(--anim-duration-transition, 300ms) var(--anim-ease-smooth, ease-out);
   will-change: opacity;
   backface-visibility: hidden;
 }
@@ -26,7 +26,7 @@
   bottom: 0;
   left: 0;
   width: 100vw;
-  transition: transform 280ms ease-out;
+  transition: transform var(--anim-duration-transition, 300ms) var(--anim-ease-smooth, ease-out);
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;

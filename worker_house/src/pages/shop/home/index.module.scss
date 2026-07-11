@@ -1,0 +1,95 @@
+@use '@/styles/variables.scss' as *;
+
+$shop-accent: #E63946;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.header {
+  position: relative;
+  padding: 48rpx 32rpx 32rpx;
+  background: $color-white;
+}
+
+.title {
+  display: block;
+  font-size: 56rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-text-primary;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 12rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.ordersEntry {
+  position: absolute;
+  top: 52rpx;
+  right: 32rpx;
+  padding: 12rpx 24rpx;
+  border-radius: $radius-circle;
+  background: rgba(230, 57, 70, 0.1);
+}
+
+.ordersEntryText {
+  font-size: $font-size-xs;
+  color: $shop-accent;
+}
+
+.scroll {
+  flex: 1;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.card {
+  @include paper-card($color-white);
+  width: 336rpx;
+  margin-bottom: 24rpx;
+  padding: 16rpx;
+  box-sizing: border-box;
+}
+
+.cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 300rpx;
+  border-radius: $radius-card-sm;
+  background: $color-oat;
+}
+
+.coverPlaceholder {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.cardTitle {
+  display: block;
+  margin-top: 16rpx;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.cardPrice {
+  display: block;
+  margin-top: 8rpx;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $shop-accent;
+}

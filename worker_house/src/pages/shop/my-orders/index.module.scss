@@ -1,0 +1,76 @@
+@use '@/styles/variables.scss' as *;
+
+$shop-accent: #E63946;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: $color-oat;
+}
+
+.scroll {
+  flex: 1;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  @include paper-card($color-white);
+  margin-bottom: 24rpx;
+  padding: 24rpx;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20rpx;
+  border-bottom: 2rpx solid $color-divider;
+}
+
+.orderNo {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.status {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $shop-accent;
+}
+
+.cardBody {
+  display: flex;
+  align-items: center;
+  margin-top: 20rpx;
+}
+
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: $radius-card-sm;
+  background: $color-oat;
+}
+
+.thumbPlaceholder {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.cardTitle {
+  flex: 1;
+  margin-left: 24rpx;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.amount {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $shop-accent;
+}

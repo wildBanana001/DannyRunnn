@@ -50,6 +50,16 @@ export default defineAppConfig({
         'registration-detail/index'
       ],
     },
+    {
+      root: 'pages/shop',
+      pages: [
+        'home/index',
+        'product-detail/index',
+        'order-confirm/index',
+        'my-orders/index',
+        'payment-result/index'
+      ],
+    },
   ],
   tabBar: {
     color: '#8B7355',
@@ -68,6 +78,12 @@ export default defineAppConfig({
         text: '活动',
         iconPath: 'assets/tabbar/tab-activity-normal.png',
         selectedIconPath: 'assets/tabbar/tab-activity-active.png'
+      },
+      {
+        pagePath: 'pages/shop/home/index',
+        text: '商城',
+        iconPath: 'assets/tabbar/tab-shop-normal.png',
+        selectedIconPath: 'assets/tabbar/tab-shop-active.png'
       },
       {
         pagePath: 'pages/wall/index',

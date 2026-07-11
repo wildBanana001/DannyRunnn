@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { commentWallPost, fetchPostDetail, fetchPostList } from '@/cloud/services';
+import Pressable from '@/components/Pressable';
+import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useUserStore } from '@/store/userStore';
 import type { Comment, Post } from '@/types/post';
 import { estimatePostHeight, getFixedTilt, matchPostKeyword } from '@/utils/helpers';
@@ -14,7 +16,7 @@ interface PostDetailState {
   comments: Comment[];
 }
 
-const MODAL_ANIMATION_DURATION = 280;
+const MODAL_ANIMATION_DURATION = 300;
 
 const WallPage: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -24,6 +26,7 @@ const WallPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const { style: enterStyle } = useEnterAnimation();
 
   const loadPosts = async () => {
     const list = await fetchPostList();
@@ -126,9 +129,9 @@ const WallPage: React.FC = () => {
           <Text className={styles.title}>留言墙</Text>
           <Text className={styles.subtitle}>把今天想说的话贴在这里，慢慢被看见。</Text>
         </View>
-        <View className={styles.publishButton} onClick={() => Taro.navigateTo({ url: '/pages/content/wall-publish/index' })}>
+        <Pressable className={styles.publishButton} onClick={() => Taro.navigateTo({ url: '/pages/content/wall-publish/index' })}>
           <Text className={styles.publishText}>发布</Text>
-        </View>
+        </Pressable>
       </View>
 
       <View className={styles.searchBar}>
@@ -145,7 +148,7 @@ const WallPage: React.FC = () => {
         <Text className={styles.searchResult}>共找到 {filteredPosts.length} 条和“{searchKeyword}”相关的留言</Text>
       )}
 
-      <View className={styles.columns}>
+      <View className={styles.columns} style={enterStyle}>
         {columns.map((column, columnIndex) => (
           <View key={columnIndex === 0 ? 'left-column' : 'right-column'} className={styles.column}>
             {column.map(({ post, index }) => (

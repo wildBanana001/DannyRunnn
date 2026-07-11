@@ -61,13 +61,14 @@
 .tagChip {
   padding: 8rpx 18rpx;
   border-radius: $radius-circle;
-  background: rgba(62, 44, 28, 0.08);
+  background: $color-brand-soft;
 }
 
 .tagText,
 .moreTag {
   font-size: $font-size-xs;
-  color: $color-text-primary;
+  color: $color-brand;
+  font-weight: $font-weight-semibold;
 }
 
 .footer {

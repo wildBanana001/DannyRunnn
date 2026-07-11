@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { fetchActivities } from '@/cloud/services';
+import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useUserStore } from '@/store/userStore';
 import type { Activity } from '@/types/activity';
 import { formatDate, formatMonthTitle, getProgressPercent, groupActivitiesByMonth } from '@/utils/helpers';
@@ -46,6 +47,7 @@ const ActivityPage: React.FC = () => {
   }, []);
 
   const endedSections = useMemo(() => groupActivitiesByMonth(endedList), [endedList]);
+  const { style: enterStyle } = useEnterAnimation();
 
   const handleOpenDetail = (activity: Activity) => {
     Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${activity.id}` });
@@ -55,6 +57,10 @@ const ActivityPage: React.FC = () => {
     <ScrollView className={styles.container} scrollY enableFlex>
       <View className={styles.segmentWrap}>
         <View className={styles.segmentBar}>
+          <View
+            className={styles.segmentIndicator}
+            style={{ transform: activeTab === 'ongoing' ? 'translateX(0)' : 'translateX(100%)' }}
+          />
           <View
             className={`${styles.segmentItem} ${activeTab === 'ongoing' ? styles.segmentItemActive : ''}`}
             onClick={() => setActiveTab('ongoing')}
@@ -87,7 +93,7 @@ const ActivityPage: React.FC = () => {
           <Text className={styles.loadingText}>活动加载中...</Text>
         </View>
       ) : activeTab === 'ongoing' ? (
-        <View className={styles.ongoingList}>
+        <View className={styles.ongoingList} style={enterStyle}>
           {ongoingList.map((activity) => {
             const progress = getProgressPercent(
               activity.currentParticipants,

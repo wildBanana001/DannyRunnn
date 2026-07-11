@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import BottomSheet from '@/components/BottomSheet';
+import Pressable from '@/components/Pressable';
 import WxLoginModal from '@/components/WxLoginModal';
 import { fetchActivities, fetchPosterList } from '@/cloud/services';
+import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { ongoingActivities as activityFallback } from '@/data/activities';
 import { homeLandingConfig } from '@/data/site';
 import { wechatArticleImageUrls } from '@/data/wechat-images';
@@ -15,7 +17,7 @@ import type { Poster } from '@/types/site';
 import { openChannelsHome } from '@/utils/video';
 import styles from './index.module.scss';
 
-const COMMUNITY_SHEET_DURATION = 280;
+const COMMUNITY_SHEET_DURATION = 300;
 const HOME_TEXT_IMAGE_PROPS: Record<string, any> = { mode: 'widthFix', lazyLoad: true, 'show-menu-by-longpress': false };
 
 // 切图（艺术字 / 按钮 / 徽章）打包进小程序，杜绝远程依赖
@@ -101,6 +103,7 @@ const HomePage: React.FC = () => {
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const hasCheckedLoginRef = useRef(false);
   const sharedSiteConfig = useSiteConfig();
+  const { style: enterStyle } = useEnterAnimation();
 
   const loadActivities = () => {
     fetchActivities('ongoing').then((activities) => {
@@ -229,7 +232,7 @@ const HomePage: React.FC = () => {
   return (
     <View className={styles.page}>
       <ScrollView className={styles.scrollView} scrollY enableFlex showScrollbar={false}>
-        <View className={styles.pageShell}>
+        <View className={styles.pageShell} style={enterStyle}>
           <View className={styles.heroSection}>
             <View className={styles.heroTopRow}>
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.heroTitleImage} src={HOME_ASSETS.text.heroTitle} />
@@ -259,12 +262,12 @@ const HomePage: React.FC = () => {
               )}
             </View>
             <View className={styles.actionRow}>
-              <View className={styles.actionImageButton} onClick={() => Taro.switchTab({ url: '/pages/activity/index' })}>
+              <Pressable className={styles.actionImageButton} onClick={() => Taro.switchTab({ url: '/pages/activity/index' })}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.actionImage} src={HOME_ASSETS.text.bookActivity} />
-              </View>
-              <View className={styles.actionImageButton} onClick={handleJoinCommunity}>
+              </Pressable>
+              <Pressable className={styles.actionImageButton} onClick={handleJoinCommunity}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.actionImage} src={HOME_ASSETS.text.joinCommunity} />
-              </View>
+              </Pressable>
             </View>
           </View>
 
@@ -302,9 +305,9 @@ const HomePage: React.FC = () => {
               <Text className={styles.sectionCopy}>{homeCopyBody}</Text>
             </View>
             <View className={styles.sectionFooter}>
-              <View className={styles.sectionImageButton} onClick={() => Taro.switchTab({ url: '/pages/activity/index' })}>
+              <Pressable className={styles.sectionImageButton} onClick={() => Taro.switchTab({ url: '/pages/activity/index' })}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.sectionButtonImage} src={HOME_ASSETS.text.exploreMore} />
-              </View>
+              </Pressable>
             </View>
           </View>
 
@@ -338,9 +341,9 @@ const HomePage: React.FC = () => {
               </View>
             </View>
             <View className={`${styles.sectionFooter} ${styles.spaceFooter}`}>
-              <View className={styles.sectionImageButton} onClick={() => void openChannelsHome(finderUserName)}>
+              <Pressable className={styles.sectionImageButton} onClick={() => void openChannelsHome(finderUserName)}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.sectionButtonImage} src={HOME_ASSETS.text.spaceStory} />
-              </View>
+              </Pressable>
             </View>
           </View>
 
@@ -355,9 +358,9 @@ const HomePage: React.FC = () => {
               ))}
             </View>
             <View className={`${styles.sectionFooter} ${styles.storyFooter}`}>
-              <View className={styles.sectionImageButton} onClick={handleMoreFun}>
+              <Pressable className={styles.sectionImageButton} onClick={handleMoreFun}>
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.moreFunImage} src={HOME_ASSETS.text.moreFun} />
-              </View>
+              </Pressable>
             </View>
           </View>
 

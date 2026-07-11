@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button as TaroButton, Text } from '@tarojs/components';
 import classnames from 'classnames';
+import { usePressFeedback } from '@/hooks/usePressFeedback';
 import styles from './index.module.scss';
 
 interface ButtonProps {
@@ -24,17 +25,21 @@ const Button: React.FC<ButtonProps> = ({
   className,
   onClick
 }) => {
+  const isInactive = disabled || loading;
+  const { bind } = usePressFeedback({ disabled: isInactive });
+
   return (
     <TaroButton
+      {...bind()}
       className={classnames(
         styles.button,
         styles[type],
         styles[size],
         block && styles.block,
-        (disabled || loading) && styles.disabled,
+        isInactive && styles.disabled,
         className
       )}
-      disabled={disabled || loading}
+      disabled={isInactive}
       onClick={onClick}
     >
       {loading ? <Text className={styles.loading}>加载中...</Text> : children}
