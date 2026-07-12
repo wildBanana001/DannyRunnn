@@ -92,7 +92,7 @@
   box-shadow: $shadow-doodle;
   // 依次从下往上飞入（stagger，delay 由内联 style 控制）
   opacity: 0;
-  animation: shop-card-in 360ms $anim-ease-spring both;
+  animation: shop-card-in 360ms var(--anim-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
   transition: transform $transition-fast;
   will-change: transform, opacity;
   backface-visibility: hidden;

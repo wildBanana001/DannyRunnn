@@ -21,7 +21,7 @@
   // 初始收缩，弹性弹出
   opacity: 0;
   transform: scale(0);
-  transition: transform 500ms $anim-ease-spring, opacity 300ms $anim-ease-smooth;
+  transition: transform 500ms var(--anim-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)), opacity 300ms var(--anim-ease-smooth, cubic-bezier(0.4, 0, 0.2, 1));
   will-change: transform, opacity;
   backface-visibility: hidden;
 }
@@ -108,7 +108,7 @@
   border: 2rpx solid $color-ink;
   border-radius: $radius-circle;
   box-shadow: $shadow-doodle;
-  transition: transform 150ms $anim-ease-spring;
+  transition: transform 150ms var(--anim-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
 
   &:active {
     transform: scale(0.94);
@@ -129,7 +129,7 @@
   background: $color-white;
   border: 2rpx solid $color-ink;
   border-radius: $radius-circle;
-  transition: transform 150ms $anim-ease-spring;
+  transition: transform 150ms var(--anim-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
 
   &:active {
     transform: scale(0.94);
