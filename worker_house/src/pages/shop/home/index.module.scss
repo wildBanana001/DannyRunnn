@@ -1,25 +1,29 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #E63946;
-
 .container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: $color-oat;
+  background: $color-bg-warm;
 }
 
 .header {
   position: relative;
-  padding: 48rpx 32rpx 32rpx;
-  background: $color-white;
+  padding: calc(env(safe-area-inset-top) + 24rpx) 32rpx 36rpx;
+  background: $color-bg-warm;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .title {
-  display: block;
-  font-size: 56rpx;
+  font-size: 64rpx;
   font-weight: $font-weight-heavy;
-  color: $color-text-primary;
+  letter-spacing: 0.06em;
+  color: $color-ink;
 }
 
 .subtitle {
@@ -30,22 +34,44 @@ $shop-accent: #E63946;
 }
 
 .ordersEntry {
-  position: absolute;
-  top: 52rpx;
-  right: 32rpx;
-  padding: 12rpx 24rpx;
+  padding: 12rpx 26rpx;
+  border: 2rpx solid $color-ink;
   border-radius: $radius-circle;
-  background: rgba(230, 57, 70, 0.1);
+  background: $color-white;
+  box-shadow: $shadow-doodle;
+  transition: transform $transition-fast;
+
+  &:active {
+    transform: translate3d(2rpx, 2rpx, 0);
+  }
 }
 
 .ordersEntryText {
   font-size: $font-size-xs;
-  color: $shop-accent;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+}
+
+.sticker {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 78rpx);
+  left: 210rpx;
+  padding: 6rpx 18rpx;
+  background: $color-shop-sticker;
+  border: 2rpx solid $color-ink;
+  border-radius: 8rpx;
+  transform: rotate(-8deg);
+}
+
+.stickerText {
+  font-size: 20rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-ink;
 }
 
 .scroll {
   flex: 1;
-  padding: 24rpx;
+  padding: 8rpx 24rpx 40rpx;
   box-sizing: border-box;
 }
 
@@ -56,40 +82,113 @@ $shop-accent: #E63946;
 }
 
 .card {
-  @include paper-card($color-white);
   width: 336rpx;
-  margin-bottom: 24rpx;
-  padding: 16rpx;
+  margin-bottom: 28rpx;
+  padding: 16rpx 16rpx 24rpx;
   box-sizing: border-box;
+  background: $color-white;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-card-md;
+  box-shadow: $shadow-doodle;
+  // 依次从下往上飞入（stagger，delay 由内联 style 控制）
+  opacity: 0;
+  animation: shop-card-in 360ms $anim-ease-spring both;
+  transition: transform $transition-fast;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
-.cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.coverWrap {
+  position: relative;
   width: 100%;
   height: 300rpx;
   border-radius: $radius-card-sm;
-  background: $color-oat;
+  overflow: hidden;
+  border: 2rpx solid $color-ink;
 }
 
-.coverPlaceholder {
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.badge {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  padding: 4rpx 16rpx;
+  background: $color-shop-sticker;
+  border: 2rpx solid $color-ink;
+  border-radius: 8rpx;
+  transform: rotate(6deg);
+}
+
+.badgeHot {
+  background: $color-shop-accent;
+}
+
+.badgeText {
+  font-size: 20rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-ink;
+  letter-spacing: 0.04em;
+}
+
+.badgeHot .badgeText {
+  color: $color-white;
 }
 
 .cardTitle {
   display: block;
-  margin-top: 16rpx;
+  margin-top: 18rpx;
   font-size: $font-size-md;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+  @include text-ellipsis;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  margin-top: 10rpx;
 }
 
 .cardPrice {
-  display: block;
-  margin-top: 8rpx;
-  font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
-  color: $shop-accent;
+  font-size: 40rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-shop-accent;
+}
+
+.cardOrigin {
+  margin-left: 12rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  text-decoration: line-through;
+}
+
+.footHint {
+  padding: 24rpx 0 8rpx;
+  text-align: center;
+}
+
+.footHintText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  letter-spacing: 0.1em;
+}
+
+@keyframes shop-card-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 40rpx, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }

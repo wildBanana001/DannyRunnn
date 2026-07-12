@@ -1,12 +1,10 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #E63946;
-
 .container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: $color-oat;
+  background: $color-bg-warm;
 }
 
 .scroll {
@@ -15,62 +13,211 @@ $shop-accent: #E63946;
   box-sizing: border-box;
 }
 
+.group {
+  margin-bottom: 12rpx;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  margin: 20rpx 8rpx 16rpx;
+}
+
+.groupTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-heavy;
+  color: $color-ink;
+}
+
+.groupCount {
+  @include flex-center;
+  min-width: 36rpx;
+  height: 36rpx;
+  margin-left: 14rpx;
+  padding: 0 10rpx;
+  font-size: 20rpx;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+  background: $color-shop-sticker;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+}
+
 .card {
-  @include paper-card($color-white);
   margin-bottom: 24rpx;
   padding: 24rpx;
+  background: $color-white;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-card-md;
+  box-shadow: $shadow-doodle;
 }
 
 .cardHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 20rpx;
-  border-bottom: 2rpx solid $color-divider;
+  padding-bottom: 18rpx;
+  border-bottom: 2rpx dashed $color-border;
 }
 
 .orderNo {
-  font-size: $font-size-sm;
+  font-size: $font-size-xs;
   color: $color-text-secondary;
 }
 
 .status {
-  font-size: $font-size-sm;
-  font-weight: $font-weight-semibold;
-  color: $shop-accent;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+}
+
+.status_pending {
+  color: $color-shop-accent;
+}
+
+.status_completed {
+  color: $color-earth-green;
+}
+
+.status_cancelled {
+  color: $color-text-secondary;
 }
 
 .cardBody {
   display: flex;
   align-items: center;
-  margin-top: 20rpx;
+  padding: 20rpx 0;
 }
 
 .thumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 120rpx;
   height: 120rpx;
   border-radius: $radius-card-sm;
-  background: $color-oat;
+  border: 2rpx solid $color-ink;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-.thumbPlaceholder {
-  font-size: $font-size-sm;
+.bodyInfo {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.goodsName {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+  @include text-ellipsis;
+}
+
+.goodsSpec {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-xs;
   color: $color-text-secondary;
 }
 
-.cardTitle {
-  flex: 1;
-  margin-left: 24rpx;
-  font-size: $font-size-md;
-  font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+.amount {
+  margin-left: 16rpx;
+  font-size: 36rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-shop-accent;
+  flex-shrink: 0;
 }
 
-.amount {
-  font-size: $font-size-lg;
+.cardFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 18rpx;
+  border-top: 2rpx dashed $color-border;
+}
+
+.actionBtn {
+  @include flex-center;
+  height: 60rpx;
+  margin-left: 20rpx;
+  padding: 0 28rpx;
+  background: $color-shop-accent;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+  transition: transform $transition-fast;
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.actionGhost {
+  background: $color-white;
+}
+
+.actionText {
+  font-size: $font-size-xs;
   font-weight: $font-weight-bold;
-  color: $shop-accent;
+  color: $color-white;
+}
+
+.actionGhostText {
+  color: $color-ink;
+}
+
+// -------- 空态 --------
+.empty {
+  @include flex-center;
+  flex-direction: column;
+  flex: 1;
+  min-height: 80vh;
+  padding: 0 64rpx;
+}
+
+.emptyArt {
+  @include flex-center;
+  width: 200rpx;
+  height: 200rpx;
+  background: $color-white;
+  border: 4rpx dashed $color-ink;
+  border-radius: $radius-circle;
+  transform: rotate(-6deg);
+}
+
+.emptyEmoji {
+  font-size: 96rpx;
+}
+
+.emptyTitle {
+  margin-top: 44rpx;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-heavy;
+  color: $color-ink;
+}
+
+.emptyDesc {
+  margin-top: 14rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  text-align: center;
+}
+
+.emptyBtn {
+  @include flex-center;
+  margin-top: 48rpx;
+  height: 84rpx;
+  padding: 0 72rpx;
+  background: $color-shop-accent;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+  box-shadow: $shadow-doodle;
+  transition: transform 150ms $anim-ease-spring;
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.emptyBtnText {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.1em;
+  color: $color-white;
 }

@@ -1,80 +1,143 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #E63946;
-
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
-  padding: 120rpx 48rpx 0;
+  padding: 0 48rpx;
   box-sizing: border-box;
-  background: $color-oat;
+  background: $color-bg-warm;
 }
 
 .icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 140rpx;
-  height: 140rpx;
+  @include flex-center;
+  width: 180rpx;
+  height: 180rpx;
+  margin-top: 140rpx;
   border-radius: $radius-circle;
-  background: $shop-accent;
+  border: 4rpx solid $color-ink;
+  box-shadow: $shadow-doodle;
+  // 初始收缩，弹性弹出
+  opacity: 0;
+  transform: scale(0);
+  transition: transform 500ms $anim-ease-spring, opacity 300ms $anim-ease-smooth;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.iconShown {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.iconSuccess {
+  background: $color-shop-accent;
+}
+
+.iconFail {
+  background: #7a7a7a;
 }
 
 .iconText {
-  font-size: 72rpx;
-  font-weight: $font-weight-bold;
+  font-size: 96rpx;
+  font-weight: $font-weight-heavy;
   color: $color-white;
+  line-height: 1;
 }
 
 .title {
-  margin-top: 40rpx;
-  font-size: 44rpx;
+  margin-top: 44rpx;
+  font-size: 48rpx;
   font-weight: $font-weight-heavy;
-  color: $color-text-primary;
+  color: $color-ink;
 }
 
 .subtitle {
   margin-top: 16rpx;
-  font-size: $font-size-md;
+  font-size: $font-size-sm;
   color: $color-text-secondary;
   text-align: center;
 }
 
+.orderCard {
+  width: 100%;
+  margin-top: 56rpx;
+  padding: 28rpx 32rpx;
+  background: $color-white;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-card-md;
+  box-shadow: $shadow-doodle;
+}
+
+.orderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  & + & {
+    margin-top: 18rpx;
+  }
+}
+
+.orderLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.orderValue {
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+}
+
+.orderAmount {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-heavy;
+  color: $color-shop-accent;
+}
+
 .actions {
   width: 100%;
-  margin-top: 80rpx;
+  margin-top: 72rpx;
 }
 
 .primaryBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: $button-height-md;
-  border-radius: $radius-button;
-  background: $shop-accent;
+  @include flex-center;
+  height: 88rpx;
+  background: $color-shop-accent;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+  box-shadow: $shadow-doodle;
+  transition: transform 150ms $anim-ease-spring;
+
+  &:active {
+    transform: scale(0.94);
+  }
 }
 
 .primaryBtnText {
   font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.1em;
   color: $color-white;
 }
 
 .ghostBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: $button-height-md;
+  @include flex-center;
+  height: 88rpx;
   margin-top: 24rpx;
-  border-radius: $radius-button;
-  border: 2rpx solid $shop-accent;
-  background: transparent;
+  background: $color-white;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+  transition: transform 150ms $anim-ease-spring;
+
+  &:active {
+    transform: scale(0.94);
+  }
 }
 
 .ghostBtnText {
-  font-size: $font-size-lg;
-  font-weight: $font-weight-semibold;
-  color: $shop-accent;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
 }

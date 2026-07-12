@@ -1,50 +1,190 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #E63946;
-
 .container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  padding: 24rpx 24rpx 160rpx;
+  background: $color-bg-warm;
+}
+
+.scroll {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 180rpx;
   box-sizing: border-box;
-  background: $color-oat;
+}
+
+.addressCard {
+  display: flex;
+  align-items: center;
+  padding: 28rpx;
+  background: $color-white;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-card-md;
+  box-shadow: $shadow-doodle;
+  transition: transform $transition-fast;
+
+  &:active {
+    transform: translate3d(2rpx, 2rpx, 0);
+  }
+}
+
+.addressInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.addressTop {
+  display: flex;
+  align-items: baseline;
+}
+
+.addressName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-heavy;
+  color: $color-ink;
+}
+
+.addressPhone {
+  margin-left: 20rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.addressDetail {
+  display: block;
+  margin-top: 10rpx;
+  font-size: $font-size-sm;
+  line-height: 1.6;
+  color: $color-text-primary;
+}
+
+.addressEmpty {
+  flex: 1;
+}
+
+.addressEmptyText {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-shop-accent;
+}
+
+.addressArrow {
+  margin-left: 16rpx;
+  font-size: 44rpx;
+  color: $color-text-secondary;
 }
 
 .section {
-  @include paper-card($color-white);
-  margin-bottom: 24rpx;
-  padding: 32rpx;
+  margin-top: 24rpx;
+  padding: 28rpx;
+  background: $color-white;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-card-md;
+  box-shadow: $shadow-doodle;
 }
 
 .sectionTitle {
   display: block;
   margin-bottom: 20rpx;
   font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
-  color: $color-text-primary;
+  font-weight: $font-weight-heavy;
+  color: $color-ink;
 }
 
 .placeholder {
-  display: block;
-  font-size: $font-size-md;
+  font-size: $font-size-sm;
   color: $color-text-secondary;
 }
 
-.row {
+.goodsRow {
+  display: flex;
+}
+
+.goodsThumb {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: $radius-card-sm;
+  border: 2rpx solid $color-ink;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.goodsBody {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.goodsName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+  @include text-ellipsis-multi(2);
+}
+
+.goodsSpec {
+  margin-top: 8rpx;
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.goodsPriceRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.goodsPrice {
+  font-size: 36rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-shop-accent;
+}
+
+.goodsQty {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.subRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx dashed $color-border;
 }
 
-.rowLabel {
-  font-size: $font-size-md;
+.subLabel {
+  font-size: $font-size-sm;
   color: $color-text-secondary;
 }
 
-.rowValue {
-  font-size: $font-size-lg;
-  font-weight: $font-weight-semibold;
+.subValue {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+}
+
+.remark {
+  width: 100%;
+  height: 140rpx;
+  padding: 20rpx;
+  box-sizing: border-box;
+  font-size: $font-size-md;
+  line-height: 1.6;
   color: $color-text-primary;
+  background: $color-bg-warm;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-card-sm;
+}
+
+.remarkPlaceholder {
+  color: $color-text-secondary;
 }
 
 .footer {
@@ -55,9 +195,10 @@ $shop-accent: #E63946;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16rpx);
   background: $color-white;
-  box-shadow: 0 -2rpx 12rpx rgba(62, 44, 28, 0.08);
+  border-top: 2rpx solid $color-ink;
 }
 
 .total {
@@ -66,29 +207,42 @@ $shop-accent: #E63946;
 }
 
 .totalLabel {
-  font-size: $font-size-md;
+  font-size: $font-size-sm;
   color: $color-text-secondary;
 }
 
 .totalValue {
-  margin-left: 8rpx;
-  font-size: 40rpx;
+  margin-left: 12rpx;
+  font-size: 48rpx;
   font-weight: $font-weight-heavy;
-  color: $shop-accent;
+  color: $color-shop-accent;
 }
 
 .payBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 280rpx;
-  height: $button-height-md;
-  border-radius: $radius-button;
-  background: $shop-accent;
+  @include flex-center;
+  min-width: 320rpx;
+  height: 88rpx;
+  padding: 0 48rpx;
+  background: $color-shop-accent;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+  box-shadow: $shadow-doodle;
+  transition: transform 150ms $anim-ease-spring;
+  will-change: transform;
+  backface-visibility: hidden;
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.payBtnLoading {
+  opacity: 0.7;
 }
 
 .payBtnText {
   font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.06em;
   color: $color-white;
 }

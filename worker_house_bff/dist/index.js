@@ -14,6 +14,7 @@ import { posterRouter } from './routes/poster.js';
 import { profileRouter } from './routes/profile.js';
 import { addressRouter } from './routes/addresses.js';
 import { registrationRouter } from './routes/registration.js';
+import { shopRouter } from './routes/shop.js';
 import { siteRouter } from './routes/site.js';
 import { storiesRouter, adminMiniStoriesRouter } from './routes/stories.js';
 import { adminUploadRouter, userUploadRouter } from './routes/upload.js';
@@ -55,6 +56,7 @@ app.use('/api/admin-mini', adminMiniRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/posts', postRouter);
 app.use('/api/site', siteRouter);
+app.use('/api/shop', shopRouter);
 app.use((error, _request, response, _next) => {
     const message = error instanceof Error ? error.message : '服务内部错误';
     response.status(500).json({ message });

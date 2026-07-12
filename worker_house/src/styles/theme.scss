@@ -27,3 +27,10 @@ $spacing-page-top: 64rpx;
 $font-family-base: 'PingFang SC', 'HarmonyOS Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 $font-size-section-title: 40rpx;
 $line-height-section-title: 1.3;
+
+// 商城（shop）分包专用配色：手账 / 涂鸦风
+$color-bg-warm: #f8f4ec; // 商城暖米背景
+$color-shop-accent: #E63946; // 商城主色（品牌红）
+$color-shop-sticker: #ffe600; // 黄色贴纸
+$color-ink: #1a1a1a; // 黑色描边
+$shadow-doodle: 4rpx 4rpx 0 rgba(26, 26, 26, 0.85); // 涂鸦风硬阴影

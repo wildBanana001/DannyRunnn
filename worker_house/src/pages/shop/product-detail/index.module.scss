@@ -1,54 +1,157 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #E63946;
-
 .container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  padding-bottom: 160rpx;
-  background: $color-oat;
+  background: $color-bg-warm;
+}
+
+.loading {
+  @include flex-center;
+  flex: 1;
+  min-height: 60vh;
+}
+
+.loadingText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.scroll {
+  flex: 1;
+  padding-bottom: 180rpx;
+  box-sizing: border-box;
 }
 
 .cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 100%;
-  height: 600rpx;
+  height: 560rpx;
+  overflow: hidden;
+  border-bottom-left-radius: 40rpx;
+  border-bottom-right-radius: 40rpx;
   background: $color-white;
 }
 
-.coverPlaceholder {
-  font-size: $font-size-lg;
-  color: $color-text-secondary;
+.coverImg {
+  width: 100%;
+  height: 100%;
 }
 
-.info {
-  @include paper-card($color-white);
-  margin: 24rpx;
+.body {
   padding: 32rpx;
 }
 
-.title {
+.name {
   display: block;
-  font-size: 40rpx;
-  font-weight: $font-weight-bold;
-  color: $color-text-primary;
+  font-size: 52rpx;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.04em;
+  color: $color-ink;
+  line-height: 1.3;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  margin-top: 20rpx;
 }
 
 .price {
-  display: block;
-  margin-top: 16rpx;
-  font-size: 48rpx;
+  font-size: 60rpx;
   font-weight: $font-weight-heavy;
-  color: $shop-accent;
+  color: $color-shop-accent;
 }
 
-.desc {
-  display: block;
-  margin-top: 24rpx;
-  font-size: $font-size-md;
-  line-height: 1.6;
+.origin {
+  margin-left: 16rpx;
+  font-size: $font-size-sm;
   color: $color-text-secondary;
+  text-decoration: line-through;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 20rpx;
+}
+
+.tag {
+  margin: 0 16rpx 12rpx 0;
+  padding: 6rpx 20rpx;
+  background: $color-shop-sticker;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+}
+
+.tagText {
+  font-size: 22rpx;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+}
+
+.stockRow {
+  display: flex;
+  align-items: center;
+  margin-top: 12rpx;
+}
+
+.stockTag {
+  padding: 8rpx 20rpx;
+  margin-right: 16rpx;
+  background: rgba(230, 57, 70, 0.1);
+  border-radius: $radius-sm;
+}
+
+.stockOut {
+  background: rgba(26, 26, 26, 0.1);
+}
+
+.stockText {
+  font-size: 22rpx;
+  font-weight: $font-weight-bold;
+  color: $color-shop-accent;
+}
+
+.stockOut .stockText {
+  color: $color-text-secondary;
+}
+
+.shipTag {
+  padding: 8rpx 20rpx;
+  background: rgba(26, 26, 26, 0.06);
+  border-radius: $radius-sm;
+}
+
+.shipText {
+  font-size: 22rpx;
+  color: $color-text-secondary;
+}
+
+.noteCard {
+  position: relative;
+  margin-top: 32rpx;
+  padding: 28rpx 28rpx 32rpx;
+  background: #fffdf3;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-card-md;
+  box-shadow: $shadow-doodle;
+}
+
+.noteTitle {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-heavy;
+  color: $color-ink;
+}
+
+.noteDesc {
+  display: block;
+  font-size: $font-size-md;
+  line-height: 1.8;
+  color: $color-text-primary;
 }
 
 .footer {
@@ -56,22 +159,67 @@ $shop-accent: #E63946;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16rpx);
   background: $color-white;
-  box-shadow: 0 -2rpx 12rpx rgba(62, 44, 28, 0.08);
+  border-top: 2rpx solid $color-ink;
+}
+
+.shareBtn {
+  @include flex-center;
+  flex-direction: column;
+  width: 120rpx;
+  transition: transform $transition-fast;
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+.shareIcon {
+  font-size: 40rpx;
+  font-weight: $font-weight-bold;
+  color: $color-ink;
+}
+
+.shareText {
+  margin-top: 2rpx;
+  font-size: 20rpx;
+  color: $color-text-secondary;
 }
 
 .buyBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: $button-height-md;
-  border-radius: $radius-button;
-  background: $shop-accent;
+  @include flex-center;
+  flex: 1;
+  height: 88rpx;
+  margin-left: 16rpx;
+  background: $color-shop-accent;
+  border: 2rpx solid $color-ink;
+  border-radius: $radius-circle;
+  box-shadow: $shadow-doodle;
+  transition: transform 150ms $anim-ease-spring;
+  will-change: transform;
+  backface-visibility: hidden;
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.buyDisabled {
+  background: #bdbdbd;
+  box-shadow: none;
+
+  &:active {
+    transform: none;
+  }
 }
 
 .buyBtnText {
   font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.1em;
   color: $color-white;
 }
