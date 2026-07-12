@@ -13,7 +13,8 @@ export default defineAppConfig({
     'pages/my-cards/index',
     'pages/my-addresses/index',
     'pages/address-edit/index',
-    'pages/settings/index'
+    'pages/settings/index',
+    'pages/shop-home/index'
   ],
   subPackages: [
     {
@@ -53,7 +54,6 @@ export default defineAppConfig({
     {
       root: 'pages/shop',
       pages: [
-        'home/index',
         'product-detail/index',
         'order-confirm/index',
         'my-orders/index',
@@ -80,7 +80,7 @@ export default defineAppConfig({
         selectedIconPath: 'assets/tabbar/tab-activity-active.png'
       },
       {
-        pagePath: 'pages/shop/home/index',
+        pagePath: 'pages/shop-home/index',
         text: '商城',
         iconPath: 'assets/tabbar/tab-shop-normal.png',
         selectedIconPath: 'assets/tabbar/tab-shop-active.png'
