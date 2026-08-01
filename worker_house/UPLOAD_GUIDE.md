@@ -25,6 +25,8 @@
 
 - `WECHAT_MINIPROGRAM_ROBOT`：`1` 到 `30`，默认 `1`。
 - `TARO_APP_API_MODE`：默认 `mock`；BFF 与持久化数据源就绪后改为 `cloudrun`。
+- `TARO_APP_PAYMENT_API_MODE`：商城与活动报名支付共用，默认 `mock`；支付配置与订单库就绪后可单独改为 `cloudrun`，不会影响其他模块。
+- `TARO_APP_SHOP_API_MODE`：旧版兼容变量；未设置 `TARO_APP_PAYMENT_API_MODE` 时仍会读取它。
 - `TARO_APP_CLOUDRUN_ENV`：默认 `prod-d9g991lo4dba5a4da`。
 - `TARO_APP_CLOUDRUN_SERVICE`：默认 `worker-house-bff`。
 

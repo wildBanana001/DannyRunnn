@@ -5,8 +5,17 @@ import Button from '@/components/Button';
 import { fetchActivityDetail } from '@/cloud/services';
 import { calculateCardDeduction } from '@/data/mock-member';
 import { featuredActivity } from '@/data/activities';
-import { fetchCurrentCardOrder, fetchProfiles, saveProfile, submitRegistrationOrder } from '@/services/member';
-import { useSiteConfig } from '@/shared/siteConfig';
+import {
+  confirmActivityPayment,
+  createActivityPaymentClientRequestId,
+  fetchCurrentCardOrder,
+  fetchProfiles,
+  isActivityPaymentCancelled,
+  isDirectActivityPaymentEnabled,
+  launchActivityPayment,
+  saveProfile,
+  submitRegistrationOrder,
+} from '@/services/member';
 import type { Activity, CardOrder, Profile, ProfileFormValue } from '@/types';
 import { formatDate, formatPrice } from '@/utils/helpers';
 import {
@@ -18,9 +27,6 @@ import ProfileForm from '@/components/ProfileForm';
 import styles from './index.module.scss';
 
 type RegisterStep = 1 | 2 | 3;
-
-const loadingWechatText = '加载中...';
-const fallbackWechatText = '请联系工作人员';
 
 const buildProfileFormValue = (profile?: Profile, nextIsDefault = false): ProfileFormValue => ({
   nickname: profile?.nickname || '',
@@ -51,8 +57,8 @@ const RegisterPage: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successRegistrationId, setSuccessRegistrationId] = useState('');
-  const sharedSiteConfig = useSiteConfig();
-  const contactWechat = sharedSiteConfig?.contactWechat || fallbackWechatText;
+  const [clientRequestId] = useState(createActivityPaymentClientRequestId);
+  const directPaymentEnabled = isDirectActivityPaymentEnabled();
 
   const refreshMemberData = useCallback(async () => {
     const [profileList, cardOrder] = await Promise.all([fetchProfiles(), fetchCurrentCardOrder()]);
@@ -88,9 +94,13 @@ const RegisterPage: React.FC = () => {
   });
 
   useEffect(() => {
+    if (directPaymentEnabled) {
+      setUseCard(false);
+      return;
+    }
     const remainingCount = currentCard?.remainingCount || 0;
     setUseCard(Boolean(activity.cardEligible && remainingCount > 0));
-  }, [activity.cardEligible, currentCard?.remainingCount]);
+  }, [activity.cardEligible, currentCard?.remainingCount, directPaymentEnabled]);
 
   const selectedProfile = useMemo(
     () => profiles.find((item) => item.id === selectedProfileId) || profiles[0],
@@ -99,12 +109,17 @@ const RegisterPage: React.FC = () => {
 
   const paymentSummary = useMemo(() => {
     const remainingCount = currentCard?.remainingCount || 0;
-    const deductionAmount = calculateCardDeduction(activity.price, useCard, Boolean(activity.cardEligible), remainingCount);
+    const deductionAmount = calculateCardDeduction(
+      activity.price,
+      directPaymentEnabled ? false : useCard,
+      Boolean(activity.cardEligible),
+      remainingCount
+    );
     return {
       deductionAmount,
       payableAmount: Math.max(0, activity.price - deductionAmount),
     };
-  }, [activity.cardEligible, activity.price, currentCard?.remainingCount, useCard]);
+  }, [activity.cardEligible, activity.price, currentCard?.remainingCount, directPaymentEnabled, useCard]);
 
   const handleCreateProfile = () => {
     setEditingProfileId(undefined);
@@ -142,21 +157,6 @@ const RegisterPage: React.FC = () => {
     }
   };
 
-  const handleCopyWechat = async () => {
-    if (!contactWechat || contactWechat === loadingWechatText || contactWechat === fallbackWechatText) {
-      Taro.showToast({ title: fallbackWechatText, icon: 'none' });
-      return;
-    }
-
-    try {
-      await Taro.setClipboardData({ data: contactWechat });
-      Taro.showToast({ title: '微信号已复制', icon: 'success' });
-    } catch (error) {
-      console.warn('[register] copy wechat failed', error);
-      Taro.showToast({ title: '复制失败，请稍后再试', icon: 'none' });
-    }
-  };
-
   const handleCloseSuccessModal = () => {
     const targetUrl = successRegistrationId
       ? `/pages/content/my-registrations/index?highlight=${successRegistrationId}`
@@ -174,15 +174,50 @@ const RegisterPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const registration = await submitRegistrationOrder({
+      const session = await submitRegistrationOrder({
         activityId: activity.id,
-        profileId: selectedProfile.id,
-        useCard,
+        profile: selectedProfile,
+        useCard: directPaymentEnabled ? false : useCard,
+        clientRequestId,
       });
-      setSuccessRegistrationId(registration.id);
+      const displayedAmount = Math.round(paymentSummary.payableAmount * 100);
+      if (session.status !== 'paid' && session.amount !== displayedAmount) {
+        throw new Error('活动价格已更新，请返回活动详情刷新后重试');
+      }
+      if (session.status === 'paid' || session.registration.status === 'confirmed') {
+        setSuccessRegistrationId(session.registration.id);
+        return;
+      }
+
+      try {
+        await launchActivityPayment(session);
+      } catch (paymentError) {
+        if (isActivityPaymentCancelled(paymentError)) {
+          Taro.showToast({ title: '已取消支付，可在报名记录中继续', icon: 'none' });
+          await Taro.redirectTo({
+            url: `/pages/content/registration-detail/index?id=${encodeURIComponent(session.registration.id)}`,
+          });
+          return;
+        }
+        throw paymentError;
+      }
+
+      Taro.showLoading({ title: '正在确认支付…', mask: true });
+      const confirmed = await confirmActivityPayment(session.registration.id);
+      Taro.hideLoading();
+      if (confirmed.status === 'confirmed' || confirmed.status === 'completed') {
+        setSuccessRegistrationId(confirmed.id);
+        return;
+      }
+      Taro.showToast({ title: '支付结果确认中，请稍后在报名记录查看', icon: 'none' });
+      await Taro.redirectTo({
+        url: `/pages/content/registration-detail/index?id=${encodeURIComponent(confirmed.id)}`,
+      });
     } catch (error) {
       console.warn('[register] submit order failed', error);
-      Taro.showToast({ title: '报名失败，请稍后再试', icon: 'none' });
+      Taro.hideLoading();
+      const message = error instanceof Error ? error.message : '报名失败，请稍后再试';
+      Taro.showToast({ title: message, icon: 'none' });
     } finally {
       setIsSubmitting(false);
     }
@@ -243,7 +278,10 @@ const RegisterPage: React.FC = () => {
             <ProfileSnapshotPanel profile={selectedProfile} onEdit={() => selectedProfile && handleEditProfile(selectedProfile)} />
 
             <View className={styles.sectionCard}>
-              <Text className={styles.sectionTitle}>次卡抵扣</Text>
+              <Text className={styles.sectionTitle}>{directPaymentEnabled ? '微信支付' : '次卡抵扣'}</Text>
+              {directPaymentEnabled ? (
+                <Text className={styles.paymentNotice}>报名金额由服务端核算。支付完成后，以微信支付服务端确认结果为准。</Text>
+              ) : (
               <View className={styles.cardToggleRow}>
                 <View>
                   <Text className={styles.toggleTitle}>使用社畜次卡</Text>
@@ -264,8 +302,9 @@ const RegisterPage: React.FC = () => {
                   <View className={useCard ? styles.toggleThumbActive : styles.toggleThumb} />
                 </View>
               </View>
-              {!activity.cardEligible ? <Text className={styles.warningText}>这场活动暂不支持次卡抵扣，仍可直接完成报名。</Text> : null}
-              {activity.cardEligible && (currentCard?.remainingCount || 0) <= 0 ? (
+              )}
+              {!directPaymentEnabled && !activity.cardEligible ? <Text className={styles.warningText}>这场活动暂不支持次卡抵扣，仍可直接完成报名。</Text> : null}
+              {!directPaymentEnabled && activity.cardEligible && (currentCard?.remainingCount || 0) <= 0 ? (
                 <Text className={styles.warningText} onClick={() => Taro.navigateTo({ url: '/pages/my-cards/index' })}>当前没有可用次卡，去「社畜次卡」页面买一张再回来也行。</Text>
               ) : null}
 
@@ -299,7 +338,7 @@ const RegisterPage: React.FC = () => {
           <>
             <Button type="outline" size="medium" className={styles.footerGhost} onClick={() => setStep(1)}>切换档案</Button>
             <Button type="primary" size="large" block loading={isSubmitting} disabled={isSubmitting} onClick={handleSubmitOrder}>
-              提交报名
+              {paymentSummary.payableAmount > 0 ? `微信支付 ${formatPrice(paymentSummary.payableAmount)}` : '确认免费报名'}
             </Button>
           </>
         ) : null}
@@ -308,8 +347,6 @@ const RegisterPage: React.FC = () => {
       <RegistrationSuccessModal
         visible={Boolean(successRegistrationId)}
         onClose={handleCloseSuccessModal}
-        onCopyWechat={() => void handleCopyWechat()}
-        wechatId={contactWechat}
       />
     </View>
   );

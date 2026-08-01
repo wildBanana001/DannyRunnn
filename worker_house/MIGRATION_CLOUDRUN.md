@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **当前状态：环境 ID 已配置**
 > - 环境 ID 已填：`prod-d9g991lo4dba5a4da`
-> - **下一步**：请在微信公众平台使用生成的 zip 包部署 BFF 服务。部署成功后请告知 Aime，我将把 `TARO_APP_API_MODE` 切换为 `cloudrun` 并重新上传体验版。
+> - **支付切换**：支付配置与 CloudBase 订单库就绪后，只需把 `TARO_APP_PAYMENT_API_MODE` 切换为 `cloudrun`；商城与活动报名会一起切换，其他模块可继续保持原模式。
 
 本轮目标是把 `worker_house` 小程序与 `worker_house_bff` 后端改造成“微信云托管就绪”状态，但**不执行部署**。后续待用户开通云托管并提供真实环境 ID 后，再执行部署任务。
 
@@ -57,7 +57,7 @@ flowchart LR
 - 新增 `src/services/request.ts`，支持 `mock / bff / cloudrun` 三档运行时切换。
 - 更新 `src/cloud/index.ts`，将云初始化改为读取 `TARO_APP_CLOUDRUN_ENV`，未配置时自动跳过。
 - 更新 `src/cloud/services.ts`，在不改页面业务调用方式的前提下，把请求层接入到新的 runtime 开关。
-- 新增 `.env.example`，列出 `TARO_APP_API_MODE / TARO_APP_BFF_BASE_URL / TARO_APP_CLOUDRUN_ENV / TARO_APP_CLOUDRUN_SERVICE` 示例。
+- 新增 `.env.example`，列出 `TARO_APP_API_MODE / TARO_APP_PAYMENT_API_MODE / TARO_APP_SHOP_API_MODE / TARO_APP_BFF_BASE_URL / TARO_APP_CLOUDRUN_ENV / TARO_APP_CLOUDRUN_SERVICE` 示例。
 
 ## 三、用户还需要做的步骤
 
@@ -72,7 +72,8 @@ flowchart LR
 在 `worker_house/.env` 中填写：
 
 ```bash
-TARO_APP_API_MODE=cloudrun
+TARO_APP_API_MODE=mock
+TARO_APP_PAYMENT_API_MODE=cloudrun
 TARO_APP_CLOUDRUN_ENV=prod-xxxx
 TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 ```
@@ -99,7 +100,6 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 ## 六、当前边界说明
 
 - 本轮没有登录微信公众平台，也没有调用云托管 API。
-- 本轮没有把 `cloudrun` 模式接到真实云开发数据库。
-- 在接入真实持久化前，`cloudrun` 的健康检查返回
-  `configuration_required`，业务接口返回 `503`；这是有意设置的上线保护。
+- 商城订单与活动报名支付单已接入同环境 CloudBase 文档数据库；其他文件型 BFF 写接口仍返回 `503`，这是有意设置的上线保护。
+- 支付密钥未配置或 `ENABLE_SHOP=false` 时不会发起真实支付。
 - 本轮没有改动小程序 UI，也没有删除 `PAYMENT_REMOVAL_NOTES.md`、`UPLOAD_GUIDE.md`、`REDESIGN_CHANGELOG.md`、`UI_TUNING_NOTES.md`。

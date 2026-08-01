@@ -8,6 +8,7 @@ if (existsSync('.env.local')) {
 dotenv.config();
 
 export type CloudMode = 'mock' | 'wechat' | 'cloudrun';
+export type ShopOrderStorage = 'cloudbase' | 'file';
 
 function readCloudMode(value?: string): CloudMode {
   if (value === 'wechat' || value === 'cloudrun') {
@@ -26,6 +27,17 @@ function readBoolean(value?: string) {
   return value?.trim().toLowerCase() === 'true';
 }
 
+function readShopOrderStorage(value: string | undefined, cloudMode: CloudMode): ShopOrderStorage {
+  if (value?.trim().toLowerCase() === 'cloudbase') return 'cloudbase';
+  if (value?.trim().toLowerCase() === 'file') return 'file';
+  return cloudMode === 'cloudrun' ? 'cloudbase' : 'file';
+}
+
+function readCollectionName(value?: string) {
+  const name = value?.trim() || 'shop_orders';
+  return /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name) ? name : 'shop_orders';
+}
+
 const cloudMode = readCloudMode(process.env.MODE?.trim() || process.env.CLOUD_MODE?.trim());
 const isProduction = process.env.NODE_ENV === 'production';
 const enableShopValue = process.env.ENABLE_SHOP?.trim();
@@ -39,6 +51,8 @@ export const config = {
   cloudMode,
   enableShop: enableShopValue ? readBoolean(enableShopValue) : cloudMode === 'mock',
   port: readPort(process.env.PORT),
+  shopOrderCollection: readCollectionName(process.env.SHOP_ORDER_COLLECTION),
+  shopOrderStorage: readShopOrderStorage(process.env.SHOP_ORDER_STORAGE, cloudMode),
   wechatPay: {
     appId: process.env.WECHAT_APP_ID?.trim() || process.env.CLOUD_APP_ID?.trim() || '',
     mchId: process.env.WECHAT_PAY_MCH_ID?.trim() || '',

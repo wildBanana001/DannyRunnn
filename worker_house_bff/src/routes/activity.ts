@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { callCloudFunction, normalizeActivity } from '../cloudClient.js';
+import { config } from '../config.js';
 import { authMiddleware, resolveRequestToken } from '../middleware/auth.js';
 import type { ActivityRecord } from '../mock/types.js';
 import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
@@ -160,6 +161,10 @@ activityRouter.delete('/:id', authMiddleware, async (request, response) => {
 });
 
 activityRouter.post('/:id/signup', wxCloudrunAuth, async (request, response) => {
+  if (config.cloudMode !== 'mock') {
+    response.status(410).json({ message: '活动报名已改为微信支付，请使用活动支付接口' });
+    return;
+  }
   const nickname = String(request.body?.nickname ?? '').trim();
   const phone = String(request.body?.phone ?? '').trim();
   const wechatId = String(request.body?.wechatId ?? '').trim();

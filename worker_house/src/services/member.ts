@@ -1,3 +1,4 @@
+import Taro from '@tarojs/taro';
 import { fetchActivity } from '@/cloud/services';
 import {
   buyMockCard,
@@ -12,7 +13,7 @@ import {
   upsertMockProfile,
 } from '@/data/mock-member';
 import type { Activity, CardOrder, CardPackage, CardUsageLog, Profile, ProfileFormValue, Registration } from '@/types';
-import { getApiMode, request } from './request';
+import { getApiMode, getPaymentApiMode, request, requestWithMode, type RequestOptions } from './request';
 
 interface ListResponse<T> {
   data?: T[];
@@ -24,10 +25,28 @@ interface SaveProfilePayload extends ProfileFormValue {
   id?: string;
 }
 
-interface SubmitRegistrationPayload {
+export interface SubmitRegistrationPayload {
   activityId: string;
-  profileId: string;
+  profile: Profile;
   useCard: boolean;
+  clientRequestId: string;
+}
+
+export type ActivityPaymentOrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
+
+export interface ActivityPaymentSession {
+  registration: Registration;
+  outTradeNo: string;
+  amount: number;
+  status: ActivityPaymentOrderStatus;
+  mock: boolean;
+  payment?: {
+    timeStamp: string;
+    nonceStr: string;
+    package: string;
+    signType: 'RSA';
+    paySign: string;
+  };
 }
 
 export interface MemberOverview {
@@ -39,6 +58,11 @@ export interface MemberOverview {
 }
 
 const isMockMode = () => getApiMode() === 'mock';
+const isRegistrationMockMode = () => getPaymentApiMode() === 'mock';
+
+const registrationRequest = <T>(options: RequestOptions) => (
+  requestWithMode<T>(getPaymentApiMode(), options)
+);
 
 const withMode = async <T>(fallback: () => T | Promise<T>, remote?: () => Promise<T>): Promise<T> => {
   if (isMockMode() || !remote) {
@@ -58,7 +82,9 @@ const resolveCurrentCardOrder = (orders: CardOrder[]): CardOrder | null => {
 
 const attachActivities = async (registrations: Registration[]): Promise<Registration[]> => {
   const activityMap = new Map<string, Activity>();
-  const activityIds = Array.from(new Set(registrations.filter((item) => !item.activity).map((item) => item.activityId)));
+  const activityIds = Array.from(new Set(
+    registrations.filter((item) => !item.activity && !item.activitySnapshot).map((item) => item.activityId)
+  ));
 
   await Promise.all(
     activityIds.map(async (activityId) => {
@@ -136,42 +162,127 @@ export async function setDefaultProfile(id: string): Promise<Profile[]> {
 }
 
 export async function fetchRegistrations(): Promise<Registration[]> {
-  return withMode(
-    () => getMockRegistrations(),
-    async () => {
-      const response = await request<ListResponse<Registration>>({ path: '/api/registrations' });
-      return attachActivities(response.list);
-    }
-  );
+  if (isRegistrationMockMode()) {
+    return getMockRegistrations();
+  }
+  const response = await registrationRequest<ListResponse<Registration>>({
+    path: '/api/shop/activity-registrations/mine',
+  });
+  return attachActivities(response.list);
 }
 
 export async function fetchRegistrationDetail(id: string): Promise<Registration | null> {
-  return withMode(
-    () => getMockRegistrationDetail(id),
-    async () => {
-      const registration = await request<Registration | null>({ path: `/api/registrations/${encodeURIComponent(id)}` });
-      if (!registration) {
-        return null;
-      }
-      const [detail] = await attachActivities([registration]);
-      return detail;
-    }
-  );
+  if (isRegistrationMockMode()) {
+    return getMockRegistrationDetail(id);
+  }
+  const registration = await registrationRequest<Registration | null>({
+    path: `/api/shop/activity-registrations/${encodeURIComponent(id)}`,
+  });
+  if (!registration) return null;
+  const [detail] = await attachActivities([registration]);
+  return detail;
 }
 
-export async function submitRegistrationOrder(payload: SubmitRegistrationPayload): Promise<Registration> {
-  return withMode(
-    () => createMockRegistration(payload),
-    async () => {
-      const registration = await request<Registration>({
-        data: payload,
-        method: 'POST',
-        path: '/api/registrations',
-      });
-      const [detail] = await attachActivities([registration]);
-      return detail;
+export async function submitRegistrationOrder(payload: SubmitRegistrationPayload): Promise<ActivityPaymentSession> {
+  if (isRegistrationMockMode()) {
+    const registration = createMockRegistration({
+      activityId: payload.activityId,
+      profileId: payload.profile.id,
+      useCard: payload.useCard,
+    });
+    return {
+      registration,
+      outTradeNo: registration.id,
+      amount: Math.round(registration.payable * 100),
+      status: 'paid',
+      mock: true,
+    };
+  }
+
+  return registrationRequest<ActivityPaymentSession>({
+    data: {
+      activityId: payload.activityId,
+      clientRequestId: payload.clientRequestId,
+      useCard: false,
+      profile: {
+        profileId: payload.profile.id,
+        participantNickname: payload.profile.nickname,
+        wechatName: payload.profile.wechatName,
+        phone: payload.profile.phone,
+        profileSnapshot: {
+          nickname: payload.profile.nickname,
+          gender: payload.profile.gender,
+          ageRange: payload.profile.ageRange,
+          industry: payload.profile.industry,
+          occupation: payload.profile.occupation,
+          city: payload.profile.city,
+          socialGoal: payload.profile.socialGoal,
+          introduction: payload.profile.introduction,
+        },
+      },
+    },
+    method: 'POST',
+    path: '/api/shop/activity-registrations/pay',
+  });
+}
+
+export function createActivityPaymentClientRequestId() {
+  return `activity-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function isDirectActivityPaymentEnabled() {
+  return !isRegistrationMockMode();
+}
+
+export function isActivityPaymentCancelled(error: unknown) {
+  const message = error instanceof Error
+    ? error.message
+    : String((error as { errMsg?: unknown })?.errMsg || error || '');
+  return message.toLowerCase().includes('cancel');
+}
+
+export async function launchActivityPayment(session: ActivityPaymentSession) {
+  if (session.mock || session.status === 'paid') return;
+  if (!session.payment) throw new Error('支付参数缺失，请重新报名');
+  await Taro.requestPayment(session.payment);
+}
+
+export async function retryActivityPayment(registrationId: string): Promise<ActivityPaymentSession> {
+  if (isRegistrationMockMode()) {
+    const registration = getMockRegistrationDetail(registrationId);
+    if (!registration) throw new Error('报名记录不存在');
+    return {
+      registration,
+      outTradeNo: registration.id,
+      amount: Math.round(registration.payable * 100),
+      status: registration.status === 'confirmed' ? 'paid' : 'pending',
+      mock: true,
+    };
+  }
+  return registrationRequest<ActivityPaymentSession>({
+    method: 'POST',
+    path: `/api/shop/activity-registrations/${encodeURIComponent(registrationId)}/retry`,
+  });
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+export async function confirmActivityPayment(registrationId: string): Promise<Registration> {
+  const retryDelays = [0, 800, 1600];
+  let registration: Registration | null = null;
+  for (const delay of retryDelays) {
+    if (delay > 0) await wait(delay);
+    registration = await fetchRegistrationDetail(registrationId);
+    if (registration && registration.status !== 'pending' && registration.status !== 'paid') {
+      return registration;
     }
-  );
+  }
+  if (!registration) throw new Error('支付结果查询失败');
+  return registration;
 }
 
 export async function fetchCurrentCardOrder(): Promise<CardOrder | null> {

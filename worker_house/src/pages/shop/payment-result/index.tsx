@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import {
+  confirmShopPayment,
   fetchShopOrder,
   isPaymentCancelled,
   launchShopPayment,
@@ -59,7 +60,8 @@ const PaymentResultPage: React.FC = () => {
       setRetrying(true);
       const session = await retryShopPayment(orderId);
       await launchShopPayment(session);
-      await refreshStatus();
+      const order = await confirmShopPayment(orderId);
+      setStatus(mapOrderStatus(order.status));
     } catch (error) {
       if (!isPaymentCancelled(error)) {
         const message = error instanceof Error ? error.message : '支付重试失败';

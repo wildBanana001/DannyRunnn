@@ -43,8 +43,8 @@ BFF 会先通过微信开放平台接口获取 `access_token`，再调用：
 
 - 通过 `X-WX-OPENID / X-WX-UNIONID / X-WX-APPID / X-WX-SOURCE / X-WX-FROM-OPENID` 读取微信自动注入身份
 - `GET /health` 是容器存活检查；`GET /api/health` 反映业务配置是否就绪
-- 当前数据文件仍位于容器临时文件系统，默认返回 `503 configuration_required`，避免误把临时数据当成生产数据
-- 只在链路联调时显式设置 `ALLOW_EPHEMERAL_CLOUDRUN_DATA=true`；正式上线前必须接入持久化数据源
+- 商城订单和活动报名支付单共用 CloudBase 文档数据库，并通过 `kind` 字段隔离；其余文件型业务接口仍由安全门禁保护
+- `ALLOW_EPHEMERAL_CLOUDRUN_DATA=true` 只用于临时联调，商城与活动支付均不依赖该开关
 
 ## 环境变量
 
@@ -59,6 +59,8 @@ ADMIN_TOKEN=mock-admin-token
 ADMIN_OPENID_WHITELIST=
 ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
 ENABLE_SHOP=true
+SHOP_ORDER_STORAGE=cloudbase
+SHOP_ORDER_COLLECTION=shop_orders
 PORT=4000
 ```
 
@@ -68,12 +70,14 @@ PORT=4000
 - `CLOUD_MODE`：兼容旧配置的别名，未设置 `MODE` 时仍可继续使用
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
-- `ENABLE_SHOP`：本地 `mock` 默认开启；生产环境需显式设置为 `true`
+- `ENABLE_SHOP`：支付路由总开关，覆盖商城和活动报名；本地 `mock` 默认开启，生产环境需显式设置为 `true`
+- `SHOP_ORDER_STORAGE`：云托管默认 `cloudbase`；`file` 只用于本地或临时联调
+- `SHOP_ORDER_COLLECTION`：支付订单集合，默认 `shop_orders`，同时保存商城订单和活动报名支付单，缺失时由服务创建
 - `PORT`：本地运行端口，默认 `4000`
 
 ### 微信支付 APIv3 配置
 
-商城采用“小程序 JSAPI 下单 → `Taro.requestPayment` → 服务端查单/支付通知确认”的流程。生产环境还需配置：
+商城和收费活动报名统一采用“小程序 JSAPI 下单 → `Taro.requestPayment` → 服务端查单/支付通知确认”的流程。生产环境还需配置：
 
 ```bash
 WECHAT_APP_ID=wx06f0bff0bed0dc80
@@ -91,14 +95,15 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 - `WECHAT_PAY_API_KEY_V3` 必须是 32 字节，只用于解密支付通知。
 - `WECHAT_PAY_PUBLIC_KEY / ID` 推荐使用商户平台下载的微信支付公钥及其 `PUB_KEY_ID_*`。
 - `WECHAT_PAY_NOTIFY_URL` 必须是微信支付可访问的 HTTPS 地址，并保留原始请求体和 `Wechatpay-*` 请求头。
+- BFF 会校验上述配置格式；使用微信支付公钥或平台证书时，请求会携带对应的 `Wechatpay-Serial`，应答和通知只接受同一公钥 ID / 证书序列号的签名。
 
 安全规则：
 
 - `MODE=mock` 始终模拟支付，不会因为本机误配证书而发起真实扣款。
-- 非 `mock` 模式缺少任一支付配置时，下单返回 `503`，不会生成免费订单。
+- 非 `mock` 模式缺少任一支付配置时，收费订单返回 `503`；价格为 0 的活动仍可直接完成报名。
 - 前端支付成功只代表收银台返回成功；订单必须以后端主动查单或验签后的支付通知为准。
 - 回调会校验签名时间、微信支付公钥 ID、AppID、商户号、订单号、金额和币种，并按通知 ID 幂等处理。
-- 生产开启商城前必须把订单与库存切换到持久化数据库，并按照交易类小程序规范接入发货管理。
+- 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=cloudbase`；商城还需按照交易类小程序规范接入发货管理。
 
 ## 本地启动
 
@@ -110,6 +115,7 @@ npm run dev
 生产构建：
 
 ```bash
+npm test
 npm run build
 npm run start
 ```
@@ -126,6 +132,16 @@ npm run migrate-images
 
 - `GET /health`：只检查 Node 进程是否存活，正常时返回 `200`
 - `GET /api/health`：检查业务运行配置；云托管未接入持久化数据源时返回 `503 configuration_required`
+- `GET /api/shop/readiness`：检查商城/活动支付配置与订单库；不会调用微信支付或产生扣款
+- `POST /api/shop/readiness/verify`：需管理端令牌，调用微信支付官方安全回显接口验证双向签名；不会创建交易
+
+活动报名支付接口：
+
+- `POST /api/shop/activity-registrations/pay`：按服务端活动价格创建报名支付单
+- `GET /api/shop/activity-registrations/mine`：读取当前用户的报名记录
+- `GET /api/shop/activity-registrations/:id`：查单并返回服务端确认后的报名状态
+- `POST /api/shop/activity-registrations/:id/retry`：继续支付未过期的报名单
+- 支付通知仍统一使用 `POST /api/shop/orders/notify`；旧的直接报名接口在非 `mock` 模式返回 `410`，不可绕过支付
 
 返回示例：
 
@@ -134,6 +150,12 @@ npm run migrate-images
   "status": "configuration_required",
   "mode": "cloudrun",
   "persistence": "ephemeral-filesystem",
+  "shop": {
+    "enabled": false,
+    "payment": "configuration_required",
+    "keyMode": "unknown",
+    "orderStorage": "cloudbase"
+  },
   "timestamp": 1760000000000
 }
 ```
@@ -224,7 +246,7 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 ### 开通与部署步骤
 
 1. 在微信公众平台中开通云托管，拿到环境 ID。
-2. 保持 `container.config.json` 中的 `MODE=cloudrun`；未接入持久化数据源前，不要把 `ALLOW_EPHEMERAL_CLOUDRUN_DATA` 改成 `true` 用于生产。
+2. 保持 `container.config.json` 中的 `MODE=cloudrun`、`SHOP_ORDER_STORAGE=cloudbase`；不要把 `ALLOW_EPHEMERAL_CLOUDRUN_DATA` 改成 `true` 用于生产。
 3. 推荐在服务更新页选择“Git 仓库部署”，绑定 GitHub 仓库 `wildBanana001/DannyRunnn`。
 4. 选择分支 `main`，目标目录填 `worker_house_bff`，Dockerfile 填 `Dockerfile`，端口填 `80`。
 5. 开启“自动部署”并选择 push / PR 合并到 `main` 后触发；GitHub Actions 会同时执行 TypeScript 编译、HTTP 冒烟测试和 Docker 构建校验。
@@ -239,8 +261,8 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 
 1. 在微信公众平台开通云托管并创建服务
 2. 获取环境 ID（例如 `prod-xxxx`）
-3. 将 `worker_house` 小程序环境变量切到 `TARO_APP_API_MODE=cloudrun`
-4. 接入持久化数据源，并确认 `/api/health` 不再报告临时文件存储风险
+3. 先只将 `worker_house` 的 `TARO_APP_PAYMENT_API_MODE` 切到 `cloudrun`；商城和活动报名支付会一起启用，其他模块可继续保持 `TARO_APP_API_MODE=mock`
+4. 确认 `/api/shop/readiness` 返回支付配置与 CloudBase 订单库均为 `ready=true`
 5. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
 6. 重启服务并验证 `/api/health` 与小程序写接口
 
@@ -264,6 +286,6 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 
 ## 已知限制
 
-- `cloudrun` 仍使用容器临时文件存储；默认安全门禁会阻止业务请求，只有显式开启联调开关才会放行
+- 商城订单已支持 CloudBase 持久化；其余仍使用文件存储的 BFF 写接口会继续被默认安全门禁阻止
 - `wechat` 模式下，BFF 仍依赖 `CLOUD_APP_ID / CLOUD_APP_SECRET / CLOUD_ENV_ID`
-- 云托管环境下的云开发数据库直连能力仍需在部署前完成
+- CloudBase 集合首次创建需要云托管服务具备同环境数据库访问权限

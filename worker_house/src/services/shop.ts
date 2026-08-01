@@ -1,6 +1,6 @@
 import Taro from '@tarojs/taro';
 import type { Address } from './address';
-import { getApiMode, request } from './request';
+import { getPaymentApiMode, requestWithMode, type RequestOptions } from './request';
 
 export type ShopOrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
 
@@ -79,6 +79,10 @@ const MOCK_PRODUCTS: ShopProduct[] = [
 
 const MOCK_ORDER_STORAGE_KEY = 'worker-house-mock-shop-orders-v2';
 
+function shopRequest<T>(options: RequestOptions) {
+  return requestWithMode<T>(getPaymentApiMode(), options);
+}
+
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
@@ -100,7 +104,7 @@ function resolveAssetUrl(imageUrl: string): string {
   }
 
   const explicitBase = process.env.TARO_APP_SHOP_ASSET_BASE_URL?.trim();
-  const bffBase = getApiMode() === 'bff' ? process.env.TARO_APP_BFF_BASE_URL?.trim() : '';
+  const bffBase = getPaymentApiMode() === 'bff' ? process.env.TARO_APP_BFF_BASE_URL?.trim() : '';
   const base = (explicitBase || bffBase || '').replace(/\/$/, '');
   const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
   return base ? `${base}${path}` : '';
@@ -193,16 +197,16 @@ export function isPaymentCancelled(error: unknown): boolean {
 }
 
 export async function fetchShopProducts(): Promise<ShopProduct[]> {
-  if (getApiMode() === 'mock') {
+  if (getPaymentApiMode() === 'mock') {
     return clone(MOCK_PRODUCTS);
   }
 
-  const result = await request<{ list: ShopProduct[] }>({ path: '/api/shop/products' });
+  const result = await shopRequest<{ list: ShopProduct[] }>({ path: '/api/shop/products' });
   return (result.list || []).map(normalizeProduct);
 }
 
 export async function fetchShopProduct(productId: string): Promise<ShopProduct> {
-  if (getApiMode() === 'mock') {
+  if (getPaymentApiMode() === 'mock') {
     const product = MOCK_PRODUCTS.find((item) => item.id === productId);
     if (!product) {
       throw new Error('商品不存在');
@@ -210,16 +214,16 @@ export async function fetchShopProduct(productId: string): Promise<ShopProduct> 
     return clone(product);
   }
 
-  const result = await request<ShopProduct>({ path: `/api/shop/products/${encodeURIComponent(productId)}` });
+  const result = await shopRequest<ShopProduct>({ path: `/api/shop/products/${encodeURIComponent(productId)}` });
   return normalizeProduct(result);
 }
 
 export async function startShopPayment(input: StartShopPaymentInput): Promise<ShopPaymentSession> {
-  if (getApiMode() === 'mock') {
+  if (getPaymentApiMode() === 'mock') {
     return createMockPayment(input);
   }
 
-  return request<ShopPaymentSession>({
+  return shopRequest<ShopPaymentSession>({
     data: {
       productId: input.productId,
       quantity: input.quantity,
@@ -233,7 +237,7 @@ export async function startShopPayment(input: StartShopPaymentInput): Promise<Sh
 }
 
 export async function retryShopPayment(orderId: string): Promise<ShopPaymentSession> {
-  if (getApiMode() === 'mock') {
+  if (getPaymentApiMode() === 'mock') {
     const order = getMockOrders().find((item) => item.id === orderId);
     if (!order) {
       throw new Error('订单不存在');
@@ -241,7 +245,7 @@ export async function retryShopPayment(orderId: string): Promise<ShopPaymentSess
     return { outTradeNo: order.id, amount: order.amount, status: order.status, mock: true };
   }
 
-  return request<ShopPaymentSession>({
+  return shopRequest<ShopPaymentSession>({
     method: 'POST',
     path: `/api/shop/orders/${encodeURIComponent(orderId)}/retry`,
   });
@@ -259,7 +263,7 @@ export async function launchShopPayment(session: ShopPaymentSession): Promise<vo
 }
 
 export async function fetchShopOrder(orderId: string): Promise<ShopOrder> {
-  if (getApiMode() === 'mock') {
+  if (getPaymentApiMode() === 'mock') {
     const order = getMockOrders().find((item) => item.id === orderId);
     if (!order) {
       throw new Error('订单不存在');
@@ -267,15 +271,35 @@ export async function fetchShopOrder(orderId: string): Promise<ShopOrder> {
     return clone(order);
   }
 
-  const result = await request<ShopOrder>({ path: `/api/shop/orders/${encodeURIComponent(orderId)}` });
+  const result = await shopRequest<ShopOrder>({ path: `/api/shop/orders/${encodeURIComponent(orderId)}` });
   return normalizeOrder(result);
 }
 
+function wait(milliseconds: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+export async function confirmShopPayment(orderId: string): Promise<ShopOrder> {
+  const retryDelays = [0, 800, 1600];
+  let order: ShopOrder | null = null;
+
+  for (const delay of retryDelays) {
+    if (delay > 0) await wait(delay);
+    order = await fetchShopOrder(orderId);
+    if (order.status !== 'pending') return order;
+  }
+
+  if (!order) throw new Error('支付结果查询失败');
+  return order;
+}
+
 export async function fetchMyShopOrders(): Promise<ShopOrder[]> {
-  if (getApiMode() === 'mock') {
+  if (getPaymentApiMode() === 'mock') {
     return clone(getMockOrders());
   }
 
-  const result = await request<{ list: ShopOrder[] }>({ path: '/api/shop/orders/mine' });
+  const result = await shopRequest<{ list: ShopOrder[] }>({ path: '/api/shop/orders/mine' });
   return (result.list || []).map(normalizeOrder);
 }

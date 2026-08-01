@@ -344,7 +344,7 @@ export const createMockRegistration = (payload: CreateRegistrationPayload): Regi
       payable,
       deductionAmount,
       amountPaid: payable,
-      status: payable > 0 ? 'pending' : 'confirmed',
+      status: 'confirmed',
       registeredAt: now,
       profileSnapshot: buildProfileSnapshot(profile),
       activity,

@@ -47,9 +47,19 @@ export function getApiMode(): ApiMode {
   return normalizeApiMode(process.env.TARO_APP_API_MODE?.trim());
 }
 
-export async function request<T>(options: RequestOptions): Promise<T> {
-  const apiMode = getApiMode();
+export function getPaymentApiMode(): ApiMode {
+  const paymentMode = process.env.TARO_APP_PAYMENT_API_MODE?.trim();
+  if (paymentMode === 'mock' || paymentMode === 'bff' || paymentMode === 'cloudrun') {
+    return paymentMode;
+  }
+  const legacyShopMode = process.env.TARO_APP_SHOP_API_MODE?.trim();
+  if (legacyShopMode === 'mock' || legacyShopMode === 'bff' || legacyShopMode === 'cloudrun') {
+    return legacyShopMode;
+  }
+  return getApiMode();
+}
 
+export async function requestWithMode<T>(apiMode: ApiMode, options: RequestOptions): Promise<T> {
   if (apiMode === 'cloudrun') {
     return cloudrunRequest<T>(options);
   }
@@ -59,4 +69,8 @@ export async function request<T>(options: RequestOptions): Promise<T> {
   }
 
   throw new Error('当前处于 mock 模式，请使用本地 fallback');
+}
+
+export async function request<T>(options: RequestOptions): Promise<T> {
+  return requestWithMode<T>(getApiMode(), options);
 }

@@ -135,6 +135,8 @@ export interface Registration {
     originalPrice: number;
     payable: number;
   };
+  paymentOrderStatus?: 'pending' | 'paid' | 'failed' | 'closed';
+  paymentExpiresAt?: string;
 }
 
 export interface CardUsageLog {

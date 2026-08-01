@@ -4,8 +4,8 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import EmptyState from '@/components/EmptyState';
 import {
+  confirmShopPayment,
   fetchMyShopOrders,
-  fetchShopOrder,
   isPaymentCancelled,
   launchShopPayment,
   retryShopPayment,
@@ -74,7 +74,7 @@ const MyOrdersPage: React.FC = () => {
       setPayingOrderId(orderId);
       const session = await retryShopPayment(orderId);
       await launchShopPayment(session);
-      const refreshed = await fetchShopOrder(orderId);
+      const refreshed = await confirmShopPayment(orderId);
       setOrders((current) => current.map((item) => item.id === orderId ? refreshed : item));
       if (refreshed.status === 'paid') {
         Taro.showToast({ title: '支付成功', icon: 'success' });

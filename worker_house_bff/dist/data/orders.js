@@ -1,14 +1,83 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import cloudbase from '@cloudbase/js-sdk';
+import { config } from '../config.js';
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const storageFilePath = path.join(currentDir, 'orders.store.json');
 const store = { orders: [] };
+let cloudDatabase = null;
+let cloudCollectionReady = null;
 function clone(value) {
     return structuredClone(value);
 }
 function now() {
     return new Date().toISOString();
+}
+function usesCloudbaseStorage() {
+    return config.shopOrderStorage === 'cloudbase';
+}
+function getCloudErrorText(error) {
+    if (!error || typeof error !== 'object')
+        return String(error || 'unknown');
+    const input = error;
+    return [input.code, input.errCode, input.message, input.errMsg].filter(Boolean).join(' ');
+}
+function getTransactionOrder(data) {
+    if (Array.isArray(data))
+        return data[0];
+    return data && typeof data === 'object' ? data : undefined;
+}
+function isCollectionMissingError(error) {
+    return /(COLLECTION|TABLE).*(NOT[_ ]?EXIST|NOT[_ ]?FOUND)|集合.*不存在|-502005/i.test(getCloudErrorText(error));
+}
+function isCollectionAlreadyExistsError(error) {
+    return /(COLLECTION|TABLE).*(ALREADY[_ ]?EXIST)|集合.*已存在|-502002/i.test(getCloudErrorText(error));
+}
+function getCloudDatabase() {
+    if (cloudDatabase)
+        return cloudDatabase;
+    const app = cloudbase.init(config.cloudEnvId ? { env: config.cloudEnvId } : {});
+    cloudDatabase = app.database();
+    return cloudDatabase;
+}
+async function ensureCloudCollection() {
+    if (!usesCloudbaseStorage())
+        return;
+    if (cloudCollectionReady)
+        return cloudCollectionReady;
+    cloudCollectionReady = (async () => {
+        const database = getCloudDatabase();
+        try {
+            await database.collection(config.shopOrderCollection).limit(1).get();
+            return;
+        }
+        catch (error) {
+            if (!isCollectionMissingError(error))
+                throw error;
+        }
+        try {
+            await database.createCollection(config.shopOrderCollection);
+        }
+        catch (error) {
+            if (!isCollectionAlreadyExistsError(error))
+                throw error;
+        }
+        await database.collection(config.shopOrderCollection).limit(1).get();
+    })().catch((error) => {
+        cloudCollectionReady = null;
+        throw error;
+    });
+    return cloudCollectionReady;
+}
+async function getCloudOrderById(orderId) {
+    await ensureCloudCollection();
+    const response = await getCloudDatabase()
+        .collection(config.shopOrderCollection)
+        .doc(sanitizeString(orderId))
+        .get();
+    const item = response.data?.[0];
+    return item ? normalizeOrder(item) : null;
 }
 function sanitizeString(value, fallback = '') {
     return typeof value === 'string' ? value.trim() : fallback;
@@ -22,6 +91,38 @@ function sanitizeStatus(value) {
         return value;
     }
     return 'pending';
+}
+function sanitizeOrderKind(value) {
+    return value === 'activity' ? 'activity' : 'shop';
+}
+function normalizeActivityRegistration(value) {
+    if (!value || typeof value !== 'object')
+        return undefined;
+    const profileSnapshot = value.profileSnapshot && typeof value.profileSnapshot === 'object'
+        ? value.profileSnapshot
+        : {};
+    const gender = profileSnapshot.gender === 'female' || profileSnapshot.gender === 'male'
+        ? profileSnapshot.gender
+        : 'other';
+    return {
+        activityId: sanitizeString(value.activityId),
+        activityTitle: sanitizeString(value.activityTitle),
+        activityCover: sanitizeString(value.activityCover),
+        profileId: sanitizeString(value.profileId),
+        participantNickname: sanitizeString(value.participantNickname),
+        wechatName: sanitizeString(value.wechatName),
+        phone: sanitizeString(value.phone),
+        profileSnapshot: {
+            nickname: sanitizeString(profileSnapshot.nickname),
+            gender,
+            ageRange: sanitizeString(profileSnapshot.ageRange),
+            industry: sanitizeString(profileSnapshot.industry),
+            occupation: sanitizeString(profileSnapshot.occupation),
+            city: sanitizeString(profileSnapshot.city),
+            socialGoal: sanitizeString(profileSnapshot.socialGoal),
+            introduction: sanitizeString(profileSnapshot.introduction),
+        },
+    };
 }
 function normalizeAddress(value) {
     return {
@@ -38,6 +139,7 @@ function normalizeOrder(item) {
     const unitPrice = sanitizeNumber(item.unitPrice, item.quantity ? sanitizeNumber(item.amount) / sanitizeNumber(item.quantity, 1) : 0);
     return {
         id: sanitizeString(item.id),
+        kind: sanitizeOrderKind(item.kind),
         clientRequestId: sanitizeString(item.clientRequestId) || sanitizeString(item.id),
         productId: sanitizeString(item.productId),
         productName: sanitizeString(item.productName),
@@ -48,9 +150,12 @@ function normalizeOrder(item) {
         address: normalizeAddress(item.address),
         openid: sanitizeString(item.openid),
         remark: sanitizeString(item.remark),
+        activityRegistration: normalizeActivityRegistration(item.activityRegistration),
         status: sanitizeStatus(item.status),
         mock: Boolean(item.mock),
         prepayId: sanitizeString(item.prepayId),
+        paymentPreparationToken: sanitizeString(item.paymentPreparationToken),
+        paymentPreparingUntil: sanitizeString(item.paymentPreparingUntil),
         transactionId: sanitizeString(item.transactionId),
         paidAt: sanitizeString(item.paidAt),
         expiresAt: sanitizeString(item.expiresAt),
@@ -80,7 +185,31 @@ function loadOrders() {
         store.orders = [];
     }
 }
-export function createOrder(input) {
+export async function createOrder(input) {
+    if (usesCloudbaseStorage()) {
+        const timestamp = now();
+        const record = normalizeOrder({
+            ...input,
+            remark: input.remark ?? '',
+            status: input.status ?? 'pending',
+            mock: input.mock ?? false,
+            prepayId: input.prepayId ?? '',
+            transactionId: input.transactionId ?? '',
+            paidAt: input.paidAt ?? '',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+        });
+        await ensureCloudCollection();
+        return getCloudDatabase().runTransaction(async (transaction) => {
+            const collection = transaction.collection(config.shopOrderCollection);
+            const response = await collection.doc(record.id).get();
+            const stored = getTransactionOrder(response.data);
+            if (stored)
+                return clone(normalizeOrder(stored));
+            await collection.add({ ...record, _id: record.id });
+            return clone(record);
+        });
+    }
     loadOrders();
     const duplicate = store.orders.find((item) => item.id === input.id);
     if (duplicate)
@@ -100,41 +229,215 @@ export function createOrder(input) {
     persistOrders();
     return clone(record);
 }
-export function getOrderById(orderId) {
+export async function getOrderById(orderId) {
+    if (usesCloudbaseStorage()) {
+        const record = await getCloudOrderById(orderId);
+        return record ? clone(record) : null;
+    }
     loadOrders();
     const record = store.orders.find((item) => item.id === sanitizeString(orderId)) ?? null;
     return record ? clone(record) : null;
 }
-export function getOrderByClientRequestId(openid, clientRequestId) {
-    loadOrders();
-    const normalizedOpenid = sanitizeString(openid);
-    const normalizedRequestId = sanitizeString(clientRequestId);
-    const record = store.orders.find((item) => (item.openid === normalizedOpenid && item.clientRequestId === normalizedRequestId)) ?? null;
-    return record ? clone(record) : null;
-}
-export function getOrdersByOpenid(openid) {
-    loadOrders();
+export async function getOrdersByOpenid(openid, kind) {
     const normalizedOpenid = sanitizeString(openid);
     if (!normalizedOpenid)
         return [];
+    if (usesCloudbaseStorage()) {
+        await ensureCloudCollection();
+        const response = await getCloudDatabase()
+            .collection(config.shopOrderCollection)
+            .where({ openid: normalizedOpenid })
+            .limit(100)
+            .get();
+        const orders = (response.data || [])
+            .map((item) => normalizeOrder(item))
+            .filter((item) => !kind || item.kind === kind);
+        return clone(orders.sort((first, second) => (new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime())));
+    }
+    loadOrders();
     return clone(store.orders
-        .filter((item) => item.openid === normalizedOpenid)
+        .filter((item) => item.openid === normalizedOpenid && (!kind || item.kind === kind))
         .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()));
 }
-export function updateOrderPayment(orderId, input) {
+export async function getOrdersByProductId(productId, kind) {
+    const normalizedProductId = sanitizeString(productId);
+    if (!normalizedProductId)
+        return [];
+    if (usesCloudbaseStorage()) {
+        await ensureCloudCollection();
+        const response = await getCloudDatabase()
+            .collection(config.shopOrderCollection)
+            .where({ productId: normalizedProductId })
+            .limit(100)
+            .get();
+        const orders = (response.data || [])
+            .map((item) => normalizeOrder(item))
+            .filter((item) => !kind || item.kind === kind);
+        return clone(orders);
+    }
     loadOrders();
-    const index = store.orders.findIndex((item) => item.id === orderId);
+    return clone(store.orders.filter((item) => (item.productId === normalizedProductId && (!kind || item.kind === kind))));
+}
+export async function getOrdersByKind(kind) {
+    if (usesCloudbaseStorage()) {
+        await ensureCloudCollection();
+        const response = await getCloudDatabase()
+            .collection(config.shopOrderCollection)
+            .where({ kind })
+            .limit(100)
+            .get();
+        return clone((response.data || [])
+            .map((item) => normalizeOrder(item))
+            .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()));
+    }
+    loadOrders();
+    return clone(store.orders
+        .filter((item) => item.kind === kind)
+        .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()));
+}
+function hasActivePaymentPreparation(order) {
+    const preparingUntil = Date.parse(order.paymentPreparingUntil);
+    return Boolean(order.paymentPreparationToken
+        && Number.isFinite(preparingUntil)
+        && preparingUntil > Date.now());
+}
+export async function claimOrderPaymentPreparation(orderId, token, leaseMilliseconds) {
+    const normalizedOrderId = sanitizeString(orderId);
+    const normalizedToken = sanitizeString(token);
+    const preparingUntil = new Date(Date.now() + Math.max(1_000, leaseMilliseconds)).toISOString();
+    if (usesCloudbaseStorage()) {
+        await ensureCloudCollection();
+        return getCloudDatabase().runTransaction(async (transaction) => {
+            const document = transaction.collection(config.shopOrderCollection).doc(normalizedOrderId);
+            const response = await document.get();
+            const stored = getTransactionOrder(response.data);
+            if (!stored)
+                return { claimed: false, order: null };
+            const current = normalizeOrder(stored);
+            if (current.status !== 'pending' || current.prepayId || hasActivePaymentPreparation(current)) {
+                return { claimed: false, order: clone(current) };
+            }
+            const updatedAt = now();
+            await document.update({
+                paymentPreparationToken: normalizedToken,
+                paymentPreparingUntil: preparingUntil,
+                updatedAt,
+            });
+            return {
+                claimed: true,
+                order: clone(normalizeOrder({
+                    ...current,
+                    paymentPreparationToken: normalizedToken,
+                    paymentPreparingUntil: preparingUntil,
+                    updatedAt,
+                })),
+            };
+        });
+    }
+    loadOrders();
+    const index = store.orders.findIndex((item) => item.id === normalizedOrderId);
+    if (index === -1)
+        return { claimed: false, order: null };
+    const current = store.orders[index];
+    if (current.status !== 'pending' || current.prepayId || hasActivePaymentPreparation(current)) {
+        return { claimed: false, order: clone(current) };
+    }
+    store.orders[index] = normalizeOrder({
+        ...current,
+        paymentPreparationToken: normalizedToken,
+        paymentPreparingUntil: preparingUntil,
+        updatedAt: now(),
+    });
+    persistOrders();
+    return { claimed: true, order: clone(store.orders[index]) };
+}
+export async function finishOrderPaymentPreparation(orderId, token, input) {
+    const normalizedOrderId = sanitizeString(orderId);
+    const normalizedToken = sanitizeString(token);
+    if (usesCloudbaseStorage()) {
+        await ensureCloudCollection();
+        return getCloudDatabase().runTransaction(async (transaction) => {
+            const document = transaction.collection(config.shopOrderCollection).doc(normalizedOrderId);
+            const response = await document.get();
+            const stored = getTransactionOrder(response.data);
+            if (!stored)
+                return null;
+            const current = normalizeOrder(stored);
+            if (current.prepayId || current.status !== 'pending')
+                return clone(current);
+            if (current.paymentPreparationToken !== normalizedToken)
+                return clone(current);
+            const updatedAt = now();
+            const update = {
+                prepayId: sanitizeString(input.prepayId),
+                failureReason: sanitizeString(input.failureReason),
+                paymentPreparationToken: '',
+                paymentPreparingUntil: '',
+                updatedAt,
+            };
+            await document.update(update);
+            return clone(normalizeOrder({ ...current, ...update }));
+        });
+    }
+    loadOrders();
+    const index = store.orders.findIndex((item) => item.id === normalizedOrderId);
     if (index === -1)
         return null;
+    const current = store.orders[index];
+    if (current.prepayId || current.status !== 'pending')
+        return clone(current);
+    if (current.paymentPreparationToken !== normalizedToken)
+        return clone(current);
     store.orders[index] = normalizeOrder({
-        ...store.orders[index],
-        ...input,
+        ...current,
+        prepayId: sanitizeString(input.prepayId),
+        failureReason: sanitizeString(input.failureReason),
+        paymentPreparationToken: '',
+        paymentPreparingUntil: '',
         updatedAt: now(),
     });
     persistOrders();
     return clone(store.orders[index]);
 }
-export function updateOrderStatus(orderId, status, options = {}) {
+export async function updateOrderStatus(orderId, status, options = {}) {
+    if (usesCloudbaseStorage()) {
+        const current = await getCloudOrderById(orderId);
+        if (!current)
+            return null;
+        if (current.status === 'paid' && status !== 'paid')
+            return clone(current);
+        const update = {
+            status,
+            transactionId: options.transactionId || current.transactionId,
+            paidAt: status === 'paid' ? (options.paidAt || current.paidAt || now()) : current.paidAt,
+            failureReason: options.failureReason ?? current.failureReason,
+            lastNotifyId: options.notifyId || current.lastNotifyId,
+            paymentPreparationToken: status === 'pending' ? current.paymentPreparationToken : '',
+            paymentPreparingUntil: status === 'pending' ? current.paymentPreparingUntil : '',
+            updatedAt: now(),
+        };
+        await ensureCloudCollection();
+        await getCloudDatabase().runTransaction(async (transaction) => {
+            const document = transaction.collection(config.shopOrderCollection).doc(orderId);
+            const response = await document.get();
+            const stored = getTransactionOrder(response.data);
+            if (!stored)
+                return;
+            const latest = normalizeOrder(stored);
+            if (latest.status === 'paid' && status !== 'paid')
+                return;
+            await document.update({
+                ...update,
+                transactionId: options.transactionId || latest.transactionId,
+                paidAt: status === 'paid' ? (options.paidAt || latest.paidAt || now()) : latest.paidAt,
+                failureReason: options.failureReason ?? latest.failureReason,
+                lastNotifyId: options.notifyId || latest.lastNotifyId,
+                paymentPreparationToken: status === 'pending' ? latest.paymentPreparationToken : '',
+                paymentPreparingUntil: status === 'pending' ? latest.paymentPreparingUntil : '',
+            });
+        });
+        return getCloudOrderById(orderId);
+    }
     loadOrders();
     const index = store.orders.findIndex((item) => item.id === orderId);
     if (index === -1)
@@ -150,9 +453,26 @@ export function updateOrderStatus(orderId, status, options = {}) {
         paidAt: status === 'paid' ? (options.paidAt || current.paidAt || now()) : current.paidAt,
         failureReason: options.failureReason ?? current.failureReason,
         lastNotifyId: options.notifyId || current.lastNotifyId,
+        paymentPreparationToken: status === 'pending' ? current.paymentPreparationToken : '',
+        paymentPreparingUntil: status === 'pending' ? current.paymentPreparingUntil : '',
         updatedAt: now(),
     });
     store.orders[index] = next;
     persistOrders();
     return clone(next);
+}
+export function getOrderStorageType() {
+    return config.shopOrderStorage;
+}
+export async function checkOrderStorageReady() {
+    if (!usesCloudbaseStorage())
+        return config.cloudMode !== 'cloudrun' || config.allowEphemeralCloudrunData;
+    try {
+        await ensureCloudCollection();
+        return true;
+    }
+    catch (error) {
+        console.error('[orders store] cloudbase readiness error', getCloudErrorText(error));
+        return false;
+    }
 }

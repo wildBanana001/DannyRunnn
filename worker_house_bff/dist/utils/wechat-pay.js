@@ -1,8 +1,9 @@
-import { createDecipheriv, createSign, createVerify, randomUUID } from 'node:crypto';
+import { createDecipheriv, createHash, createPrivateKey, createPublicKey, createSign, createVerify, randomUUID, X509Certificate, } from 'node:crypto';
 import axios from 'axios';
 import { config } from '../config.js';
 const WECHAT_PAY_BASE_URL = 'https://api.mch.weixin.qq.com';
 const JSAPI_ORDER_PATH = '/v3/pay/transactions/jsapi';
+const SECURITY_ECHO_PATH = '/v3/security/echo';
 export class WechatPayApiError extends Error {
     code;
     requestId;
@@ -14,17 +15,6 @@ export class WechatPayApiError extends Error {
         this.requestId = options.requestId || '';
         this.status = options.status || 502;
     }
-}
-export function isWechatPayConfigured() {
-    const { appId, mchId, serialNo, privateKeyBase64, apiV3Key, notifyUrl, payPublicKey, payPublicKeyId, } = config.wechatPay;
-    return Boolean(appId
-        && mchId
-        && serialNo
-        && privateKeyBase64
-        && apiV3Key
-        && notifyUrl
-        && payPublicKey
-        && payPublicKeyId);
 }
 function resolvePem(value, missingMessage) {
     if (!value)
@@ -38,11 +28,101 @@ function resolvePem(value, missingMessage) {
     }
     return decoded;
 }
+function getPayKeyMode(payPublicKeyId) {
+    if (/^PUB_KEY_ID_[A-Za-z0-9]{8,128}$/.test(payPublicKeyId))
+        return 'public-key';
+    if (/^[A-Fa-f0-9]{16,64}$/.test(payPublicKeyId))
+        return 'platform-certificate';
+    return 'unknown';
+}
+function isValidHttpsUrl(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password && !url.hash;
+    }
+    catch {
+        return false;
+    }
+}
+function parsePayPublicKey(value) {
+    const pem = resolvePem(value, '微信支付公钥无效');
+    return pem.includes('BEGIN CERTIFICATE')
+        ? new X509Certificate(pem).publicKey
+        : createPublicKey(pem);
+}
+export function inspectWechatPayConfiguration(input) {
+    const issues = [];
+    const required = [
+        ['WECHAT_APP_ID', input.appId],
+        ['WECHAT_PAY_MCH_ID', input.mchId],
+        ['WECHAT_PAY_SERIAL_NO', input.serialNo],
+        ['WECHAT_PAY_PRIVATE_KEY', input.privateKeyBase64],
+        ['WECHAT_PAY_API_KEY_V3', input.apiV3Key],
+        ['WECHAT_PAY_NOTIFY_URL', input.notifyUrl],
+        ['WECHAT_PAY_PUBLIC_KEY', input.payPublicKey],
+        ['WECHAT_PAY_PUBLIC_KEY_ID', input.payPublicKeyId],
+    ];
+    for (const [name, value] of required) {
+        if (!value)
+            issues.push(`${name}:missing`);
+    }
+    if (input.appId && !/^wx[0-9a-fA-F]{16}$/.test(input.appId)) {
+        issues.push('WECHAT_APP_ID:invalid');
+    }
+    if (input.mchId && !/^\d{8,32}$/.test(input.mchId)) {
+        issues.push('WECHAT_PAY_MCH_ID:invalid');
+    }
+    if (input.serialNo && !/^[A-Fa-f0-9]{16,64}$/.test(input.serialNo)) {
+        issues.push('WECHAT_PAY_SERIAL_NO:invalid');
+    }
+    if (input.apiV3Key && Buffer.byteLength(input.apiV3Key, 'utf-8') !== 32) {
+        issues.push('WECHAT_PAY_API_KEY_V3:invalid_length');
+    }
+    if (input.notifyUrl && !isValidHttpsUrl(input.notifyUrl)) {
+        issues.push('WECHAT_PAY_NOTIFY_URL:invalid');
+    }
+    const keyMode = getPayKeyMode(input.payPublicKeyId);
+    if (input.payPublicKeyId && keyMode === 'unknown') {
+        issues.push('WECHAT_PAY_PUBLIC_KEY_ID:invalid');
+    }
+    if (input.privateKeyBase64) {
+        try {
+            const key = createPrivateKey(resolvePem(input.privateKeyBase64, '商户私钥无效'));
+            if (key.asymmetricKeyType !== 'rsa' || (key.asymmetricKeyDetails?.modulusLength || 0) < 2048) {
+                issues.push('WECHAT_PAY_PRIVATE_KEY:not_rsa2048');
+            }
+        }
+        catch {
+            issues.push('WECHAT_PAY_PRIVATE_KEY:invalid');
+        }
+    }
+    if (input.payPublicKey) {
+        try {
+            const key = parsePayPublicKey(input.payPublicKey);
+            if (key.asymmetricKeyType !== 'rsa' || (key.asymmetricKeyDetails?.modulusLength || 0) < 2048) {
+                issues.push('WECHAT_PAY_PUBLIC_KEY:not_rsa2048');
+            }
+        }
+        catch {
+            issues.push('WECHAT_PAY_PUBLIC_KEY:invalid');
+        }
+    }
+    return { ready: issues.length === 0, keyMode, issues };
+}
+export function getWechatPayConfigurationStatus() {
+    return inspectWechatPayConfiguration(config.wechatPay);
+}
+export function isWechatPayConfigured() {
+    return getWechatPayConfigurationStatus().ready;
+}
 function resolvePrivateKeyPem() {
     return resolvePem(config.wechatPay.privateKeyBase64, '缺少商户私钥配置 WECHAT_PAY_PRIVATE_KEY');
 }
-function resolvePayPublicKeyPem() {
-    return resolvePem(config.wechatPay.payPublicKey, '缺少微信支付公钥 WECHAT_PAY_PUBLIC_KEY');
+function resolvePayPublicKey() {
+    if (!config.wechatPay.payPublicKey) {
+        throw new Error('缺少微信支付公钥 WECHAT_PAY_PUBLIC_KEY');
+    }
+    return parsePayPublicKey(config.wechatPay.payPublicKey);
 }
 function createNonceStr() {
     return randomUUID().replace(/-/g, '').toUpperCase();
@@ -51,13 +131,27 @@ function buildAuthorizationHeader(method, urlPath, body) {
     const { mchId, serialNo } = config.wechatPay;
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonceStr = createNonceStr();
-    const message = `${method}\n${urlPath}\n${timestamp}\n${nonceStr}\n${body}\n`;
+    const message = buildWechatPaySigningMessage(method, urlPath, timestamp, nonceStr, body);
     const signature = createSign('RSA-SHA256').update(message).sign(resolvePrivateKeyPem(), 'base64');
     return (`WECHATPAY2-SHA256-RSA2048 mchid="${mchId}",`
         + `nonce_str="${nonceStr}",`
         + `signature="${signature}",`
         + `timestamp="${timestamp}",`
         + `serial_no="${serialNo}"`);
+}
+export function buildWechatPaySigningMessage(method, urlPath, timestamp, nonceStr, body) {
+    return `${method}\n${urlPath}\n${timestamp}\n${nonceStr}\n${body}\n`;
+}
+export function buildWechatPayResponseSigningMessage(timestamp, nonce, rawBody) {
+    return `${timestamp}\n${nonce}\n${rawBody}\n`;
+}
+export function buildJsapiPaySigningMessage(appId, timeStamp, nonceStr, packageValue) {
+    return `${appId}\n${timeStamp}\n${nonceStr}\n${packageValue}\n`;
+}
+export function buildWechatPayPlatformHeaders(payPublicKeyId) {
+    return getPayKeyMode(payPublicKeyId) !== 'unknown'
+        ? { 'Wechatpay-Serial': payPublicKeyId }
+        : {};
 }
 function getHeader(response, name) {
     const value = response.headers[name.toLowerCase()];
@@ -78,6 +172,7 @@ async function requestWechatPay(method, urlPath, body) {
             Authorization: buildAuthorizationHeader(method, urlPath, bodyString),
             Accept: 'application/json',
             ...(body ? { 'Content-Type': 'application/json' } : {}),
+            ...buildWechatPayPlatformHeaders(config.wechatPay.payPublicKeyId),
             'User-Agent': 'worker_house_bff/1.0',
         },
         responseType: 'text',
@@ -130,6 +225,18 @@ export async function jsapiUnifiedOrder(input) {
     }
     return result.prepay_id;
 }
+export async function verifyWechatPayConnectivity() {
+    if (!isWechatPayConfigured()) {
+        throw new WechatPayApiError('微信支付配置尚未就绪', { status: 503 });
+    }
+    const echoMessage = `worker-house-${randomUUID()}`;
+    const result = await requestWechatPay('POST', SECURITY_ECHO_PATH, {
+        echo_message: echoMessage,
+    });
+    if (result.echo_message !== echoMessage) {
+        throw new WechatPayApiError('微信支付安全回显内容不一致');
+    }
+}
 export async function queryWechatPayOrder(outTradeNo) {
     const path = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}?mchid=${encodeURIComponent(config.wechatPay.mchId)}`;
     return requestWechatPay('GET', path);
@@ -143,7 +250,7 @@ export function buildJsapiPayParams(prepayId) {
     const timeStamp = Math.floor(Date.now() / 1000).toString();
     const nonceStr = createNonceStr();
     const packageValue = `prepay_id=${prepayId}`;
-    const message = `${appId}\n${timeStamp}\n${nonceStr}\n${packageValue}\n`;
+    const message = buildJsapiPaySigningMessage(appId, timeStamp, nonceStr, packageValue);
     const paySign = createSign('RSA-SHA256').update(message).sign(resolvePrivateKeyPem(), 'base64');
     return { timeStamp, nonceStr, package: packageValue, signType: 'RSA', paySign };
 }
@@ -156,11 +263,11 @@ export function verifyWechatPaySignature(input) {
     if (input.serialNo !== config.wechatPay.payPublicKeyId)
         return false;
     try {
-        const message = `${input.timestamp}\n${input.nonce}\n${input.rawBody}\n`;
+        const message = buildWechatPayResponseSigningMessage(input.timestamp, input.nonce, input.rawBody);
         const verifier = createVerify('RSA-SHA256');
         verifier.update(message);
         verifier.end();
-        return verifier.verify(resolvePayPublicKeyPem(), input.signature, 'base64');
+        return verifier.verify(resolvePayPublicKey(), input.signature, 'base64');
     }
     catch (error) {
         console.error('[wechat-pay] signature verification error', error instanceof Error ? error.message : error);
@@ -187,7 +294,16 @@ export function decryptNotifyResource(resource) {
     const decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
     return JSON.parse(decrypted.toString('utf-8'));
 }
-export function createOutTradeNo() {
+export function createOutTradeNo(openid, clientRequestId, prefix = 'WH') {
+    const normalizedPrefix = /^[A-Z0-9]{2}$/.test(prefix) ? prefix : 'WH';
+    if (openid && clientRequestId) {
+        const digest = createHash('sha256')
+            .update(`${openid}\u0000${clientRequestId}`, 'utf-8')
+            .digest('hex')
+            .slice(0, 30)
+            .toUpperCase();
+        return `${normalizedPrefix}${digest}`;
+    }
     const datePart = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
-    return `WH${datePart}${randomUUID().slice(0, 8).toUpperCase()}`;
+    return `${normalizedPrefix}${datePart}${randomUUID().slice(0, 8).toUpperCase()}`;
 }

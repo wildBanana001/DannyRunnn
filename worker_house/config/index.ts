@@ -21,6 +21,8 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
     plugins: ['@tarojs/plugin-html'],
     defineConstants: {
       'process.env.TARO_APP_API_MODE': defineEnv('TARO_APP_API_MODE', 'mock'),
+      'process.env.TARO_APP_PAYMENT_API_MODE': defineEnv('TARO_APP_PAYMENT_API_MODE'),
+      'process.env.TARO_APP_SHOP_API_MODE': defineEnv('TARO_APP_SHOP_API_MODE'),
       'process.env.TARO_APP_BFF_BASE_URL': defineEnv('TARO_APP_BFF_BASE_URL'),
       'process.env.TARO_APP_CLOUD_ENV': defineEnv('TARO_APP_CLOUD_ENV'),
       'process.env.TARO_APP_CLOUDRUN_ENV': defineEnv('TARO_APP_CLOUDRUN_ENV'),

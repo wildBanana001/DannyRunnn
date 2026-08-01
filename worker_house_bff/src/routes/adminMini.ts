@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { callCloudFunction } from '../cloudClient.js';
+import { config } from '../config.js';
 import { isOpenidAdmin } from '../config/adminWhitelist.js';
 import { listActivities, deleteActivity, getActivityById, upsertActivity } from '../data/activities.js';
 import { archiveCardPackage, createCardPackage, getCardPackageById, listCardPackages, updateCardPackage } from '../data/cardPackages.js';
 import { getCardOrderByIdUnsafe, listAllCardOrders, updateCardOrder } from '../data/cardOrders.js';
 import { getRegistrationByIdUnsafe, listAllRegistrations, updateRegistrationStatus } from '../data/registrations.js';
+import { getOrderById, getOrdersByKind, type OrderRecord } from '../data/orders.js';
 import { getSiteConfig, updateSiteConfig } from '../data/siteConfig.js';
 import { openidAdminAuth, resolveAdminOpenid } from '../middleware/openidAdminAuth.js';
 import type {
@@ -179,6 +181,36 @@ function buildRegistrationDetail(record: Registration) {
   };
 }
 
+function buildPaymentRegistration(order: OrderRecord | null): Registration | null {
+  if (!order) return null;
+  const snapshot = order.activityRegistration;
+  if (order.kind !== 'activity' || !snapshot) return null;
+  const originalPrice = order.unitPrice / 100;
+  const payable = order.amount / 100;
+  return {
+    id: order.id,
+    openid: order.openid,
+    activityId: snapshot.activityId,
+    activityTitle: snapshot.activityTitle,
+    activityCover: snapshot.activityCover,
+    profileId: snapshot.profileId,
+    participantNickname: snapshot.participantNickname,
+    wechatName: snapshot.wechatName,
+    phone: snapshot.phone || undefined,
+    useCard: false,
+    originalPrice,
+    cardOffset: 0,
+    payable,
+    deductionAmount: 0,
+    amountPaid: order.status === 'paid' ? payable : 0,
+    status: order.status === 'paid' ? 'confirmed' : order.status === 'pending' ? 'pending' : 'cancelled',
+    registeredAt: order.createdAt,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    profileSnapshot: snapshot.profileSnapshot,
+  };
+}
+
 async function fetchAdminMiniPosterList() {
   const result = await callCloudFunction<Record<string, unknown>[]>('poster', {
     action: 'list',
@@ -316,47 +348,72 @@ adminMiniRouter.delete('/activities/:id', (request, response) => {
   response.json({ success: true });
 });
 
-adminMiniRouter.get('/registrations', (request, response) => {
-  const page = parsePage(request.query.page, 1);
-  const pageSize = Math.min(parsePage(request.query.pageSize, 20), 100);
-  const activityId = sanitizeString(request.query.activityId);
-  const status = normalizeRegistrationStatus(request.query.status);
-  const keyword = sanitizeString(request.query.keyword).toLowerCase();
+adminMiniRouter.get('/registrations', async (request, response) => {
+  try {
+    const page = parsePage(request.query.page, 1);
+    const pageSize = Math.min(parsePage(request.query.pageSize, 20), 100);
+    const activityId = sanitizeString(request.query.activityId);
+    const status = normalizeRegistrationStatus(request.query.status);
+    const keyword = sanitizeString(request.query.keyword).toLowerCase();
 
-  let records = listAllRegistrations({
-    activityId: activityId || undefined,
-    status: status ?? undefined,
-  });
+    const paymentRecords = (await getOrdersByKind('activity'))
+      .map(buildPaymentRegistration)
+      .filter((item): item is Registration => Boolean(item));
+    const legacyRecords = config.cloudMode === 'cloudrun'
+      ? []
+      : listAllRegistrations();
+    const seenIds = new Set<string>();
+    let records = [...paymentRecords, ...legacyRecords]
+      .filter((item) => !seenIds.has(item.id) && Boolean(seenIds.add(item.id)))
+      .filter((item) => !activityId || item.activityId === activityId)
+      .filter((item) => !status || item.status === status)
+      .sort((first, second) => compareDateDesc(first.createdAt || first.registeredAt, second.createdAt || second.registeredAt));
 
-  if (keyword) {
-    records = records.filter((item) => matchKeyword([
-      item.participantNickname,
-      item.wechatName,
-      item.phone,
-    ], keyword));
+    if (keyword) {
+      records = records.filter((item) => matchKeyword([
+        item.participantNickname,
+        item.wechatName,
+        item.phone,
+      ], keyword));
+    }
+
+    const detailList = records.map((item) => ({
+      ...item,
+      activitySnapshot: getActivityById(item.activityId),
+    }));
+    response.json(buildPagedResult(detailList, page, pageSize));
+  } catch (error) {
+    response.status(500).json({ message: error instanceof Error ? error.message : '读取报名记录失败' });
   }
-
-  const detailList = records.map((item) => ({
-    ...item,
-    activitySnapshot: getActivityById(item.activityId),
-  }));
-  response.json(buildPagedResult(detailList, page, pageSize));
 });
 
-adminMiniRouter.get('/registrations/:id', (request, response) => {
-  const record = getRegistrationByIdUnsafe(String(request.params.id));
-  if (!record) {
-    response.status(404).json({ message: '报名记录不存在' });
-    return;
-  }
+adminMiniRouter.get('/registrations/:id', async (request, response) => {
+  try {
+    const paymentRecord = buildPaymentRegistration(await getOrderById(String(request.params.id)));
+    const record = paymentRecord ?? (config.cloudMode === 'cloudrun'
+      ? null
+      : getRegistrationByIdUnsafe(String(request.params.id)));
+    if (!record) {
+      response.status(404).json({ message: '报名记录不存在' });
+      return;
+    }
 
-  response.json({ data: buildRegistrationDetail(record) });
+    response.json({ data: buildRegistrationDetail(record) });
+  } catch (error) {
+    response.status(500).json({ message: error instanceof Error ? error.message : '读取报名详情失败' });
+  }
 });
 
-adminMiniRouter.patch('/registrations/:id/status', (request, response) => {
+adminMiniRouter.patch('/registrations/:id/status', async (request, response) => {
   const status = normalizeRegistrationStatus(request.body?.status);
   if (!status || !['confirmed', 'cancelled', 'refunded'].includes(status)) {
     response.status(400).json({ message: '状态不合法' });
+    return;
+  }
+
+  const paymentOrder = await getOrderById(String(request.params.id));
+  if (paymentOrder?.kind === 'activity') {
+    response.status(409).json({ message: '微信支付报名状态以支付结果为准；退款需接入微信支付退款接口' });
     return;
   }
 

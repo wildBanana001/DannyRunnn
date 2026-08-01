@@ -75,10 +75,12 @@ export const getActivityStatusText = (status: string): string => {
 
 export const getRegistrationStatusText = (status: string): string => {
   const statusMap: Record<string, string> = {
-    pending: '待添加主理人微信：DannyRunnn 缴费报名',
-    paid: '待线下确认',
-    confirmed: '已报名成功',
-    cancelled: '已取消'
+    pending: '待支付',
+    paid: '支付已确认',
+    confirmed: '支付成功 · 已报名',
+    cancelled: '已取消',
+    completed: '已完成',
+    refunded: '已退款'
   };
   return statusMap[status] || status;
 };
@@ -88,7 +90,9 @@ export const getRegistrationStatusColor = (status: string): string => {
     pending: '#F4C430',
     paid: '#5E8B73',
     confirmed: '#E60000',
-    cancelled: '#8B7355'
+    cancelled: '#8B7355',
+    completed: '#5E8B73',
+    refunded: '#8B7355'
   };
   return colorMap[status] || '#8B7355';
 };

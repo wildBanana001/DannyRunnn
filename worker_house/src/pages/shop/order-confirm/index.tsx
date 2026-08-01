@@ -5,7 +5,7 @@ import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import { fetchAddresses, type Address } from '@/services/address';
 import {
   createShopClientRequestId,
-  fetchShopOrder,
+  confirmShopPayment,
   fetchShopProduct,
   isPaymentCancelled,
   launchShopPayment,
@@ -125,7 +125,7 @@ const OrderConfirmPage: React.FC = () => {
       await launchShopPayment(session);
 
       Taro.showLoading({ title: '正在确认支付…', mask: true });
-      const order = await fetchShopOrder(session.outTradeNo);
+      const order = await confirmShopPayment(session.outTradeNo);
       const status = order.status === 'paid' ? 'success' : 'pending';
       Taro.hideLoading();
       Taro.redirectTo({

@@ -101,6 +101,9 @@
 }
 
 .actionWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
   padding: 0 24rpx;
 }
 

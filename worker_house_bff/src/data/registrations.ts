@@ -257,7 +257,7 @@ export function createRegistration(openid: string, input: CreateRegistrationInpu
     });
   }
 
-  const status: RegistrationStatus = payable > 0 ? 'pending' : 'confirmed';
+  const status: RegistrationStatus = 'confirmed';
   const timestamp = now();
   const record = normalizeRegistration({
     id: registrationId,

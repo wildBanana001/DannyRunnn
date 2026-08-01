@@ -18,14 +18,38 @@ import { shopRouter } from './routes/shop.js';
 import { siteRouter } from './routes/site.js';
 import { storiesRouter, adminMiniStoriesRouter } from './routes/stories.js';
 import { adminUploadRouter, userUploadRouter } from './routes/upload.js';
+import { getWechatPayConfigurationStatus } from './utils/wechat-pay.js';
 const app = express();
 function isRuntimeReady() {
     return config.cloudMode !== 'cloudrun' || config.allowEphemeralCloudrunData;
 }
+function isRequestRuntimeReady(path, method) {
+    if (isRuntimeReady())
+        return true;
+    const paymentStorageReady = config.enableShop
+        && config.shopOrderStorage === 'cloudbase'
+        && (path === '/shop' || path.startsWith('/shop/'));
+    const paymentRegistrationAdminRead = config.enableShop
+        && config.shopOrderStorage === 'cloudbase'
+        && method === 'GET'
+        && (path === '/admin-mini/registrations' || path.startsWith('/admin-mini/registrations/'));
+    return paymentStorageReady || paymentRegistrationAdminRead;
+}
 function buildHealthPayload() {
+    const paymentConfiguration = getWechatPayConfigurationStatus();
     return {
         mode: config.cloudMode,
         persistence: config.cloudMode === 'cloudrun' ? 'ephemeral-filesystem' : 'local-filesystem',
+        shop: {
+            enabled: config.enableShop,
+            payment: config.cloudMode === 'mock'
+                ? 'mock'
+                : paymentConfiguration.ready
+                    ? 'ready'
+                    : 'configuration_required',
+            keyMode: paymentConfiguration.keyMode,
+            orderStorage: config.shopOrderStorage,
+        },
         status: isRuntimeReady() ? 'ok' : 'configuration_required',
         timestamp: Date.now(),
     };
@@ -48,8 +72,8 @@ app.get('/health', (_request, response) => {
 app.get('/api/health', (_request, response) => {
     response.status(isRuntimeReady() ? 200 : 503).json(buildHealthPayload());
 });
-app.use('/api', (_request, response, next) => {
-    if (!isRuntimeReady()) {
+app.use('/api', (request, response, next) => {
+    if (!isRequestRuntimeReady(request.path, request.method)) {
         response.status(503).json({
             message: 'cloudrun 当前仅实现临时文件存储；接入持久化数据源前，请勿作为生产服务启用',
         });
@@ -81,9 +105,15 @@ if (config.enableShop) {
     app.use('/api/shop', shopRouter);
 }
 app.use((error, _request, response, _next) => {
-    const message = error instanceof Error ? error.message : '服务内部错误';
-    response.status(500).json({ message });
+    console.error('[http] unhandled error', error instanceof Error ? error.message : error);
+    response.status(500).json({ message: '服务内部错误' });
 });
 app.listen(config.port, () => {
     console.log(`worker_house_bff 已启动：http://localhost:${config.port} （mode=${config.cloudMode}）`);
+    if (config.enableShop && config.cloudMode !== 'mock') {
+        const paymentConfiguration = getWechatPayConfigurationStatus();
+        if (!paymentConfiguration.ready) {
+            console.warn(`[wechat-pay] configuration_required issues=${paymentConfiguration.issues.join(',')}`);
+        }
+    }
 });

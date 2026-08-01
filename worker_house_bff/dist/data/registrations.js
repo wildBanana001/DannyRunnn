@@ -204,7 +204,7 @@ export function createRegistration(openid, input) {
             note: '创建报名时自动抵扣',
         });
     }
-    const status = payable > 0 ? 'pending' : 'confirmed';
+    const status = 'confirmed';
     const timestamp = now();
     const record = normalizeRegistration({
         id: registrationId,

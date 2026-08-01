@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { config } from '../config.js';
 import { createRegistration, getRegistrationById, listRegistrationsByOpenid, } from '../data/registrations.js';
 import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
 import { parsePage, paginate, requireWxOpenid } from './utils.js';
@@ -31,6 +32,10 @@ registrationRouter.get('/:id', (request, response) => {
 registrationRouter.post('/', (request, response) => {
     const openid = requireWxOpenid(request, response);
     if (!openid) {
+        return;
+    }
+    if (config.cloudMode !== 'mock') {
+        response.status(410).json({ message: '活动报名已改为微信支付，请使用活动支付接口' });
         return;
     }
     try {

@@ -196,7 +196,7 @@ const AdminSiteConfigPage: React.FC = () => {
     <ScrollView className={styles.container} scrollY enableFlex>
       <View className={styles.heroCard}>
         <Text className={styles.title}>站点配置</Text>
-        <Text className={styles.description}>用于维护首页 Hero、报名支付微信号、关于我们与加入社群二维码。</Text>
+        <Text className={styles.description}>用于维护首页 Hero、活动咨询微信号、关于我们与加入社群二维码。</Text>
       </View>
 
       <View className={styles.contentCard}>

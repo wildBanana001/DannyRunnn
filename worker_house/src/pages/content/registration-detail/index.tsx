@@ -1,9 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
-import { fetchRegistrationDetail } from '@/services/member';
+import {
+  confirmActivityPayment,
+  fetchRegistrationDetail,
+  isActivityPaymentCancelled,
+  isDirectActivityPaymentEnabled,
+  launchActivityPayment,
+  retryActivityPayment,
+} from '@/services/member';
 import type { Registration } from '@/types';
 import { formatDate, formatDateTime, formatPrice, getRegistrationStatusColor, getRegistrationStatusText } from '@/utils/helpers';
 import { formatProfileGender } from '@/utils/profile';
@@ -13,24 +20,64 @@ const RegistrationDetailPage: React.FC = () => {
   const router = useRouter();
   const [detail, setDetail] = useState<Registration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPaying, setIsPaying] = useState(false);
+  const registrationId = router.params.id;
 
-  useEffect(() => {
-    const { id } = router.params;
-    if (!id) {
+  const loadDetail = useCallback(async () => {
+    if (!registrationId) {
       setDetail(null);
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
-    fetchRegistrationDetail(id)
-      .then((result) => setDetail(result))
-      .catch((error) => {
-        console.warn('[registration-detail] load failed', error);
-        setDetail(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [router.params]);
+    try {
+      setDetail(await fetchRegistrationDetail(registrationId));
+    } catch (error) {
+      console.warn('[registration-detail] load failed', error);
+      setDetail(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [registrationId]);
+
+  useEffect(() => {
+    void loadDetail();
+  }, [loadDetail]);
+
+  const handleContinuePayment = async () => {
+    if (!detail || isPaying) return;
+    setIsPaying(true);
+    try {
+      const session = await retryActivityPayment(detail.id);
+      if (session.status !== 'paid') {
+        try {
+          await launchActivityPayment(session);
+        } catch (error) {
+          if (isActivityPaymentCancelled(error)) {
+            Taro.showToast({ title: '已取消支付', icon: 'none' });
+            return;
+          }
+          throw error;
+        }
+      }
+      Taro.showLoading({ title: '正在确认支付…', mask: true });
+      const confirmed = await confirmActivityPayment(detail.id);
+      Taro.hideLoading();
+      setDetail(confirmed);
+      if (confirmed.status === 'confirmed' || confirmed.status === 'completed') {
+        Taro.showToast({ title: '支付成功', icon: 'success' });
+      } else {
+        Taro.showToast({ title: '支付结果确认中，请稍后刷新', icon: 'none' });
+      }
+    } catch (error) {
+      Taro.hideLoading();
+      const message = error instanceof Error ? error.message : '暂时无法继续支付';
+      Taro.showToast({ title: message, icon: 'none' });
+    } finally {
+      setIsPaying(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -90,6 +137,11 @@ const RegistrationDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.actionWrap}>
+        {isDirectActivityPaymentEnabled() && detail.status === 'pending' && detail.payable > 0 ? (
+          <Button type="primary" size="large" block loading={isPaying} disabled={isPaying} onClick={handleContinuePayment}>
+            {isPaying ? '正在拉起支付…' : `继续微信支付 ${formatPrice(detail.payable)}`}
+          </Button>
+        ) : null}
         <Button type="outline" size="large" block onClick={() => Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${detail.activityId}` })}>
           去看活动详情
         </Button>

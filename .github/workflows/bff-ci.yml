@@ -49,6 +49,9 @@ jobs:
       - name: Compile TypeScript
         run: npm run build
 
+      - name: Test payment signing, idempotency, and configuration checks
+        run: npm test
+
       - name: Smoke test HTTP health endpoints
         shell: bash
         run: |

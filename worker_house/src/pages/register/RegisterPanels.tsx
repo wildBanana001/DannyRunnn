@@ -21,9 +21,7 @@ interface ProfileSnapshotPanelProps {
 
 interface RegistrationSuccessModalProps {
   onClose: () => void;
-  onCopyWechat: () => void;
   visible: boolean;
-  wechatId?: string;
 }
 
 export const ProfileSelectionPanel: React.FC<ProfileSelectionPanelProps> = ({
@@ -91,9 +89,7 @@ export const ProfileSnapshotPanel: React.FC<ProfileSnapshotPanelProps> = ({ prof
 
 export const RegistrationSuccessModal: React.FC<RegistrationSuccessModalProps> = ({
   onClose,
-  onCopyWechat,
   visible,
-  wechatId = '请联系工作人员',
 }) => {
   if (!visible) {
     return null;
@@ -103,19 +99,9 @@ export const RegistrationSuccessModal: React.FC<RegistrationSuccessModalProps> =
     <View className={styles.modalMask} onClick={onClose}>
       <View className={styles.successModal} onClick={(event) => event.stopPropagation()}>
         <Text className={styles.modalTitle}>报名成功</Text>
-        <Text className={styles.modalText}>
-          添加主理人微信：
-          <Text className={styles.highlight}>{wechatId}</Text>
-          {' '}缴费报名
-        </Text>
-        <Text className={styles.modalHint}>长按下方微信号可复制</Text>
-        <View className={styles.wechatCard} onLongPress={() => onCopyWechat()}>
-          <Text className={styles.wechatValue}>{wechatId}</Text>
-        </View>
+        <Text className={styles.modalText}>支付结果已经由服务端确认，活动名额已为你保留。</Text>
+        <Text className={styles.modalHint}>可以在「我的报名」里随时查看活动与支付状态。</Text>
         <View className={styles.modalActions}>
-          <Button type="outline" size="medium" className={styles.modalAction} onClick={onCopyWechat}>
-            复制微信号
-          </Button>
           <Button type="primary" size="medium" className={styles.modalAction} onClick={onClose}>
             去我的报名
           </Button>

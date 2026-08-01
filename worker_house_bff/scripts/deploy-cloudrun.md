@@ -47,9 +47,11 @@ NODE_ENV=production
 MODE=cloudrun
 ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
 ENABLE_SHOP=false
+SHOP_ORDER_STORAGE=cloudbase
+SHOP_ORDER_COLLECTION=shop_orders
 ```
 
-支付、管理员与数据源相关密钥必须继续放在云托管环境变量中，不得写入 Git。当前 `ALLOW_EPHEMERAL_CLOUDRUN_DATA=false` 会安全地拦截业务 API，直到持久化数据源完成。
+支付、管理员与数据源相关密钥必须继续放在云托管环境变量中，不得写入 Git。商城与活动报名支付配置完成后再将 `ENABLE_SHOP` 改为 `true`；两类支付单会写入 CloudBase，其他文件型业务 API 仍由安全门禁拦截。
 
 ## 验证
 
@@ -57,6 +59,7 @@ ENABLE_SHOP=false
 2. 云托管操作历史应出现对应 `main` commit 的新版本。
 3. `GET /health` 应返回 HTTP `200`。
 4. `GET /api/health` 在持久化数据源未就绪时预期返回 HTTP `503` 和 `configuration_required`；这不代表容器启动失败。
+5. 开启支付后，`GET /api/shop/readiness` 应返回 `ready=true`，再把小程序变量 `TARO_APP_PAYMENT_API_MODE` 设为 `cloudrun`。
 
 ## 手动备用部署
 
