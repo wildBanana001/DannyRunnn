@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { fetchCommunitySiteConfig, defaultSiteConfigRecord, type SiteConfigRecord } from '@/services/siteConfig';
 import { fetchCardPackages } from '@/services/member';
@@ -35,10 +35,6 @@ export function useSiteConfig() {
     void loadConfig();
   });
 
-  useEffect(() => {
-    void loadConfig();
-  }, []);
-
   return config;
 }
 
@@ -66,10 +62,6 @@ export function useCardPackages() {
   useDidShow(() => {
     void loadPackages();
   });
-
-  useEffect(() => {
-    void loadPackages();
-  }, []);
 
   return packages;
 }

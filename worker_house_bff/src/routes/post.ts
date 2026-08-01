@@ -130,7 +130,7 @@ postRouter.post('/', wxCloudrunAuth, async (request, response) => {
   }
 });
 
-postRouter.get('/mine', async (request, response) => {
+postRouter.get('/mine', wxCloudrunAuth, async (request, response) => {
   const openid = resolveWxOpenid(request);
   if (!openid) {
     response.json({ data: [], list: [], total: 0 });

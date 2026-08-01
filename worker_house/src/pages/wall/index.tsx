@@ -4,7 +4,6 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import { commentWallPost, fetchPostDetail, fetchPostList } from '@/cloud/services';
 import Pressable from '@/components/Pressable';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
-import { useUserStore } from '@/store/userStore';
 import type { Comment, Post } from '@/types/post';
 import { estimatePostHeight, getFixedTilt, matchPostKeyword } from '@/utils/helpers';
 import NoteCard from './components/NoteCard';
@@ -29,16 +28,17 @@ const WallPage: React.FC = () => {
   const { style: enterStyle } = useEnterAnimation();
 
   const loadPosts = async () => {
-    const list = await fetchPostList();
-    setPosts(list);
+    try {
+      const list = await fetchPostList();
+      setPosts(list);
+    } catch (error) {
+      console.warn('[wall] 加载留言失败', error);
+      Taro.showToast({ title: '留言加载失败，请稍后重试', icon: 'none' });
+    }
   };
 
   useDidShow(() => {
-    if (!useUserStore.getState().isLoggedIn) {
-      Taro.switchTab({ url: '/pages/home/index' });
-      return;
-    }
-    loadPosts();
+    void loadPosts();
   });
 
   useEffect(() => {
@@ -105,21 +105,27 @@ const WallPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const newComment = await commentWallPost(detail.post.id, commentText.trim());
-    const updatedPost: Post = {
-      ...detail.post,
-      comments: detail.post.comments + 1,
-      commentsCount: (detail.post.commentsCount ?? detail.post.comments) + 1
-    };
+    try {
+      const newComment = await commentWallPost(detail.post.id, commentText.trim());
+      const updatedPost: Post = {
+        ...detail.post,
+        comments: detail.post.comments + 1,
+        commentsCount: (detail.post.commentsCount ?? detail.post.comments) + 1
+      };
 
-    setDetail({
-      post: updatedPost,
-      comments: [newComment, ...detail.comments]
-    });
-    setPosts((current) => current.map((item) => (item.id === updatedPost.id ? updatedPost : item)));
-    setCommentText('');
-    setIsSubmitting(false);
-    Taro.showToast({ title: '评论成功', icon: 'success' });
+      setDetail({
+        post: updatedPost,
+        comments: [newComment, ...detail.comments]
+      });
+      setPosts((current) => current.map((item) => (item.id === updatedPost.id ? updatedPost : item)));
+      setCommentText('');
+      Taro.showToast({ title: '评论成功', icon: 'success' });
+    } catch (error) {
+      console.warn('[wall] 评论提交失败', error);
+      Taro.showToast({ title: '评论失败，请稍后重试', icon: 'none' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

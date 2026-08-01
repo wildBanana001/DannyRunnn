@@ -1,80 +1,121 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #E63946;
+$shop-accent: #d9483b;
 
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
-  padding: 120rpx 48rpx 0;
   box-sizing: border-box;
-  background: $color-oat;
+  padding: 112rpx 48rpx 60rpx;
+  background: #f4efe5;
 }
 
 .icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 140rpx;
-  height: 140rpx;
-  border-radius: $radius-circle;
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 50%;
+  box-shadow: 0 16rpx 34rpx rgba(62, 44, 28, 0.14);
+}
+
+.success {
+  background: #4f8464;
+}
+
+.pending {
+  background: #c58a3d;
+}
+
+.fail {
   background: $shop-accent;
 }
 
 .iconText {
   font-size: 72rpx;
+  font-weight: $font-weight-heavy;
+  color: #fff;
+}
+
+.eyebrow {
+  margin-top: 42rpx;
+  font-size: 18rpx;
   font-weight: $font-weight-bold;
-  color: $color-white;
+  letter-spacing: 3rpx;
+  color: #9a7d61;
 }
 
 .title {
-  margin-top: 40rpx;
-  font-size: 44rpx;
+  margin-top: 12rpx;
+  font-size: 42rpx;
   font-weight: $font-weight-heavy;
-  color: $color-text-primary;
+  color: #35291f;
 }
 
 .subtitle {
+  max-width: 580rpx;
   margin-top: 16rpx;
-  font-size: $font-size-md;
-  color: $color-text-secondary;
+  font-size: 25rpx;
+  line-height: 1.7;
+  color: #806e60;
   text-align: center;
+}
+
+.orderNo {
+  margin-top: 24rpx;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(78, 54, 36, 0.06);
+  font-size: 20rpx;
+  color: #968477;
 }
 
 .actions {
   width: 100%;
-  margin-top: 80rpx;
+  margin-top: 72rpx;
 }
 
-.primaryBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: $button-height-md;
-  border-radius: $radius-button;
-  background: $shop-accent;
-}
-
-.primaryBtnText {
-  font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
-  color: $color-white;
-}
-
+.primaryBtn,
 .ghostBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: $button-height-md;
-  margin-top: 24rpx;
-  border-radius: $radius-button;
-  border: 2rpx solid $shop-accent;
-  background: transparent;
+  height: 90rpx;
+  margin-top: 20rpx;
+  border-radius: 999rpx;
+}
+
+.primaryBtn {
+  background: $shop-accent;
+  box-shadow: 0 10rpx 22rpx rgba(217, 72, 59, 0.2);
+}
+
+.ghostBtn {
+  border: 2rpx solid rgba(78, 54, 36, 0.18);
+  background: #fffdf8;
+}
+
+.primaryBtnText,
+.ghostBtnText {
+  font-size: 29rpx;
+  font-weight: $font-weight-bold;
+}
+
+.primaryBtnText {
+  color: #fff;
 }
 
 .ghostBtnText {
-  font-size: $font-size-lg;
-  font-weight: $font-weight-semibold;
-  color: $shop-accent;
+  color: #4f4034;
+}
+
+.textButton {
+  margin-top: 30rpx;
+  padding: 12rpx;
+  text-align: center;
+  font-size: 25rpx;
+  color: #8b7768;
 }

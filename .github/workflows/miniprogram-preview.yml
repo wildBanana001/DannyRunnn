@@ -1,0 +1,89 @@
+name: WeChat Mini Program Preview
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "worker_house/src/**"
+      - "worker_house/config/**"
+      - "worker_house/public/**"
+      - "worker_house/types/**"
+      - "worker_house/package.json"
+      - "worker_house/package-lock.json"
+      - "worker_house/.npmrc"
+      - "worker_house/project.config.json"
+      - "worker_house/babel.config.js"
+      - "worker_house/tsconfig.json"
+      - "worker_house/scripts/ci-upload.js"
+      - ".github/workflows/miniprogram-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wechat-miniprogram-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  upload-preview:
+    name: Build, upload development version, and create preview QR
+    runs-on: ${{ vars.WECHAT_MINIPROGRAM_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: worker_house
+    env:
+      NO_PROXY: servicewechat.com
+      no_proxy: servicewechat.com
+      TARO_APP_API_MODE: ${{ vars.TARO_APP_API_MODE || 'mock' }}
+      TARO_APP_BFF_BASE_URL: ${{ vars.TARO_APP_BFF_BASE_URL }}
+      TARO_APP_CLOUDRUN_ENV: ${{ vars.TARO_APP_CLOUDRUN_ENV || 'prod-d9g991lo4dba5a4da' }}
+      TARO_APP_CLOUDRUN_SERVICE: ${{ vars.TARO_APP_CLOUDRUN_SERVICE || 'worker-house-bff' }}
+      TARO_APP_FONT_ASSET_BASE_URL: ${{ vars.TARO_APP_FONT_ASSET_BASE_URL }}
+      TARO_APP_SHOP_ASSET_BASE_URL: ${{ vars.TARO_APP_SHOP_ASSET_BASE_URL }}
+      WECHAT_MINIPROGRAM_APPID: wx06f0bff0bed0dc80
+      WECHAT_MINIPROGRAM_ROBOT: ${{ vars.WECHAT_MINIPROGRAM_ROBOT || '1' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: worker_house/package-lock.json
+
+      - name: Verify WeChat upload key
+        env:
+          CI_PRIVATE_KEY: ${{ secrets.WECHAT_MINIPROGRAM_CI_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          if [[ -z "${CI_PRIVATE_KEY}" ]]; then
+            echo "::error::Missing repository secret WECHAT_MINIPROGRAM_CI_PRIVATE_KEY"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build WeChat Mini Program
+        run: npm run build:weapp
+
+      - name: Upload development version and generate preview QR
+        env:
+          WECHAT_MINIPROGRAM_PRIVATE_KEY: ${{ secrets.WECHAT_MINIPROGRAM_CI_PRIVATE_KEY }}
+          WECHAT_MINIPROGRAM_DESC: CI ${{ github.sha }}
+        run: npm run ci:weapp
+
+      - name: Save preview QR and CI results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wechat-miniprogram-preview-${{ github.run_number }}
+          path: worker_house/artifacts/ci
+          if-no-files-found: warn
+          retention-days: 7

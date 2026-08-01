@@ -19,22 +19,43 @@ import { siteRouter } from './routes/site.js';
 import { storiesRouter, adminMiniStoriesRouter } from './routes/stories.js';
 import { adminUploadRouter, userUploadRouter } from './routes/upload.js';
 const app = express();
+function isRuntimeReady() {
+    return config.cloudMode !== 'cloudrun' || config.allowEphemeralCloudrunData;
+}
 function buildHealthPayload() {
     return {
         mode: config.cloudMode,
-        status: 'ok',
+        persistence: config.cloudMode === 'cloudrun' ? 'ephemeral-filesystem' : 'local-filesystem',
+        status: isRuntimeReady() ? 'ok' : 'configuration_required',
         timestamp: Date.now(),
     };
 }
 app.use(cors());
-app.use(express.json({ limit: '12mb' }));
+app.use(express.json({
+    limit: '12mb',
+    verify: (request, _response, buffer) => {
+        request.rawBody = buffer.toString('utf-8');
+    },
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use('/static', express.static('public'));
 app.get('/health', (_request, response) => {
-    response.json(buildHealthPayload());
+    response.json({
+        status: 'ok',
+        timestamp: Date.now(),
+    });
 });
 app.get('/api/health', (_request, response) => {
-    response.json(buildHealthPayload());
+    response.status(isRuntimeReady() ? 200 : 503).json(buildHealthPayload());
+});
+app.use('/api', (_request, response, next) => {
+    if (!isRuntimeReady()) {
+        response.status(503).json({
+            message: 'cloudrun 当前仅实现临时文件存储；接入持久化数据源前，请勿作为生产服务启用',
+        });
+        return;
+    }
+    next();
 });
 app.get('/api/site-config', (_request, response) => {
     response.json(getCommunitySiteConfig());
@@ -56,7 +77,9 @@ app.use('/api/admin-mini', adminMiniRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/posts', postRouter);
 app.use('/api/site', siteRouter);
-app.use('/api/shop', shopRouter);
+if (config.enableShop) {
+    app.use('/api/shop', shopRouter);
+}
 app.use((error, _request, response, _next) => {
     const message = error instanceof Error ? error.message : '服务内部错误';
     response.status(500).json({ message });

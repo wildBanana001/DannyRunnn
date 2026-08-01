@@ -11,6 +11,8 @@
 | `worker_house/` | 微信小程序主端（C 端 + 原生管理分包 `pages/admin/*`） | Taro 4.1.9 + React 18 + TypeScript |
 | `worker_house_bff/` | 微信云托管后端（BFF） | Express + TypeScript，部署环境 `prod-d9g991lo4dba5a4da` |
 
+小程序包含首页、活动、商城、留言墙和个人中心五个主入口；商城本地使用安全的模拟支付，生产支付配置见 `worker_house_bff/README.md`。
+
 ## 快速开始
 
 ```bash
@@ -31,9 +33,9 @@ npm run build && npm start
 - 各子项目需自行基于 `.env.example` 复制出 `.env.local`（仓库未提交）。
 - 小程序上传微信的 `.keys/private.*.key` 私钥文件**未提交**，由微信公众平台下载后本地放置。
 
-### 默认凭据（请务必在生产环境修改！）
-- `worker_house/cloudfunctions/admin_auth/index.js` 默认 `admin / worker_house_2026`
-- `worker_house_bff/src/mock/seed.ts` 种子数据默认密码为 `admin123`
+### 本地模拟凭据
+- `worker_house_bff/src/mock/seed.ts` 的 `admin / admin123` 只用于本地 `MODE=mock` 联调。
+- 云函数管理端不再内置默认账号；生产账号需在 `admins` 集合中配置 `username / passwordHash / passwordSalt / token`。
 
 ### 主题 & 规范
 - 主色：`#E60000`

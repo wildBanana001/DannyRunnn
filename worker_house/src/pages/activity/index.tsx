@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
-import Taro, { useDidShow } from '@tarojs/taro';
+import Taro from '@tarojs/taro';
 import { fetchActivities } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
-import { useUserStore } from '@/store/userStore';
 import type { Activity } from '@/types/activity';
 import { formatDate, formatMonthTitle, getProgressPercent, groupActivitiesByMonth } from '@/utils/helpers';
 import styles from './index.module.scss';
@@ -13,13 +12,6 @@ const ActivityPage: React.FC = () => {
   const [ongoingList, setOngoingList] = useState<Activity[]>([]);
   const [endedList, setEndedList] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useDidShow(() => {
-    if (!useUserStore.getState().isLoggedIn) {
-      Taro.switchTab({ url: '/pages/home/index' });
-      return;
-    }
-  });
 
   useEffect(() => {
     let cancelled = false;

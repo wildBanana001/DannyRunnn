@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { assertWechatConfigReady, config } from './config.js';
+import { assertWechatConfigReady, config, hasWechatCloudConfig } from './config.js';
 import { mockStore } from './mock/store.js';
 import type {
   ActivityRecord,
@@ -167,10 +167,12 @@ export function getAdminSession(token: string) {
     return null;
   }
 
-  if (token === config.adminToken || token === 'admin-token') {
+  if (config.adminToken && token === config.adminToken) {
     return {
       token,
-      user: adminSessions.get(token)?.user ?? getMockAdminUserByToken(token) ?? createFallbackAdminUser(token),
+      user: adminSessions.get(token)?.user
+        ?? (config.cloudMode === 'mock' ? getMockAdminUserByToken(token) : null)
+        ?? createFallbackAdminUser(token),
     };
   }
 
@@ -179,9 +181,11 @@ export function getAdminSession(token: string) {
     return session;
   }
 
-  const mockUser = getMockAdminUserByToken(token);
-  if (mockUser) {
-    return { token, user: mockUser };
+  if (config.cloudMode === 'mock') {
+    const mockUser = getMockAdminUserByToken(token);
+    if (mockUser) {
+      return { token, user: mockUser };
+    }
   }
 
   return null;
@@ -560,8 +564,13 @@ export async function callCloudFunction<T>(
   }
 
   if (config.cloudMode === 'cloudrun') {
-    // TODO: 云托管真实部署完成后，接入 @cloudbase/node-sdk 并直连云开发数据库。
-    return invokeMockCloudFunction<T>(name, event);
+    if (hasWechatCloudConfig()) {
+      return invokeWechatCloudFunction<T>(name, event);
+    }
+    if (config.allowEphemeralCloudrunData) {
+      return invokeMockCloudFunction<T>(name, event);
+    }
+    return fail('cloudrun 模式未配置云开发数据源；请配置 CLOUD_APP_ID / CLOUD_APP_SECRET / CLOUD_ENV_ID');
   }
 
   return invokeMockCloudFunction<T>(name, event);

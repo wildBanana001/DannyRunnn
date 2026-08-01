@@ -71,7 +71,7 @@ const normalizeCardOrder = (cardOrder: CardOrder | null, usageLogs: CardUsageLog
     usedCount,
     remainingCount,
     usageLogs: sortByDateDesc(usageLogs),
-    status: remainingCount > 0 ? 'active' : 'used_up',
+    status: remainingCount > 0 ? 'active' : 'exhausted',
   };
 };
 

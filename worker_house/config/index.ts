@@ -2,7 +2,8 @@ import { defineConfig, type UserConfigExport } from '@tarojs/cli';
 import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
 import devConfig from './dev';
 import prodConfig from './prod';
-import vitePluginImp from 'vite-plugin-imp';
+
+const defineEnv = (name: string, fallback = '') => JSON.stringify(process.env[name] ?? fallback);
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
   const baseConfig: UserConfigExport<'webpack5'> = {
@@ -18,7 +19,15 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
     sourceRoot: 'src',
     outputRoot: process.env.TARO_OUTPUT_DIR || 'dist',
     plugins: ['@tarojs/plugin-html'],
-    defineConstants: {},
+    defineConstants: {
+      'process.env.TARO_APP_API_MODE': defineEnv('TARO_APP_API_MODE', 'mock'),
+      'process.env.TARO_APP_BFF_BASE_URL': defineEnv('TARO_APP_BFF_BASE_URL'),
+      'process.env.TARO_APP_CLOUD_ENV': defineEnv('TARO_APP_CLOUD_ENV'),
+      'process.env.TARO_APP_CLOUDRUN_ENV': defineEnv('TARO_APP_CLOUDRUN_ENV'),
+      'process.env.TARO_APP_CLOUDRUN_SERVICE': defineEnv('TARO_APP_CLOUDRUN_SERVICE', 'worker-house-bff'),
+      'process.env.TARO_APP_FONT_ASSET_BASE_URL': defineEnv('TARO_APP_FONT_ASSET_BASE_URL'),
+      'process.env.TARO_APP_SHOP_ASSET_BASE_URL': defineEnv('TARO_APP_SHOP_ASSET_BASE_URL'),
+    },
     copy: {
       patterns: [],
       options: {},

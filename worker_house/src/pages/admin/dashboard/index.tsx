@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from '@tarojs/components';
 import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
-import '@nutui/nutui-react-taro/dist/style.css';
+import '../nutuiStyles';
 import { fetchAdminStats, type AdminStatsResult } from '@/services/admin';
 import styles from './index.module.scss';
 

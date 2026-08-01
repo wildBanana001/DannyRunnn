@@ -2,6 +2,36 @@
 
 本指南旨在帮助开发者在 CI 自动上传受限（如 IP 白名单问题）时，通过微信开发者工具手动完成 `worker_house` 小程序的构建与上传。
 
+## 0. GitHub Actions 自动上传（推荐）
+
+仓库已配置 `.github/workflows/miniprogram-preview.yml`。向 `main` 推送小程序代码后，流水线会：
+
+1. 执行 `npm ci` 和 `npm run build:weapp`。
+2. 通过微信官方 `miniprogram-ci` 上传一个“开发版本”。
+3. 生成首页预览二维码。
+4. 将二维码、上传结果和 manifest 保存为 GitHub Actions 产物，保留 7 天。
+
+### 一次性配置
+
+1. 使用小程序管理员身份进入微信公众平台的 **开发管理 → 开发设置 → 小程序代码上传**，生成并下载上传密钥。
+2. 在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 新建 Secret：
+   - 名称：`WECHAT_MINIPROGRAM_CI_PRIVATE_KEY`
+   - 值：密钥文件的全部内容，包含 PEM 换行。
+3. 配置上传 IP：
+   - 更安全的做法：使用拥有固定出口 IP 的 self-hosted runner，将 IP 加入微信白名单，并把 GitHub Variable `WECHAT_MINIPROGRAM_RUNNER` 设为该 runner label。
+   - 快速做法：继续使用 `ubuntu-latest`，在微信平台关闭代码上传 IP 限制。GitHub 托管 runner 的出口 IP 会变动，不适合单一 IP 白名单。
+
+可选 GitHub Variables：
+
+- `WECHAT_MINIPROGRAM_ROBOT`：`1` 到 `30`，默认 `1`。
+- `TARO_APP_API_MODE`：默认 `mock`；BFF 与持久化数据源就绪后改为 `cloudrun`。
+- `TARO_APP_CLOUDRUN_ENV`：默认 `prod-d9g991lo4dba5a4da`。
+- `TARO_APP_CLOUDRUN_SERVICE`：默认 `worker-house-bff`。
+
+自动化只上传开发版本并生成预览码，不会自动提交审核、切换体验版或发布正式版。
+
+> 项目 `.npmrc` 会将历史锁文件中的内部 npm 镜像地址替换为公共 npm registry，以便 GitHub Runner 可以安装依赖。
+
 ## 1. 前置准备
 - **下载工具**：安装最新稳定版 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)。
 - **AppID**：确保你有权限访问 AppID `wx06f0bff0bed0dc80`。

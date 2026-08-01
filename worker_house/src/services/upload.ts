@@ -1,6 +1,8 @@
 import Taro from '@tarojs/taro';
 import { request } from './request';
 
+declare const wx: any;
+
 export interface UploadedImage {
   fileID: string;
   name: string;

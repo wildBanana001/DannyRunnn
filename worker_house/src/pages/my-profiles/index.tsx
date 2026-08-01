@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
-import BottomSheet from '@/components/BottomSheet';
 import Button from '@/components/Button';
+import BottomSheet from '@/components/BottomSheet';
 import EmptyState from '@/components/EmptyState';
 import ProfileForm from '@/components/ProfileForm';
 import { fetchProfiles, removeProfile, saveProfile, setDefaultProfile } from '@/services/member';

@@ -2,19 +2,22 @@ import React, { useState } from 'react';
 import { Button as TaroButton, Input, Text, View, Image } from '@tarojs/components';
 import Button from '@/components/Button';
 import { siteConfig } from '@/data/site';
+import { getApiMode } from '@/services/request';
 import { useUserStore } from '@/store/userStore';
 import styles from './WxLoginModal.module.scss';
 
 interface WxLoginModalProps {
   visible: boolean;
+  onClose?: () => void;
   onSuccess?: () => void;
 }
 
-const WxLoginModal: React.FC<WxLoginModalProps> = ({ visible, onSuccess }) => {
+const WxLoginModal: React.FC<WxLoginModalProps> = ({ visible, onClose, onSuccess }) => {
   const loginWithWx = useUserStore((state) => state.loginWithWx);
   const [loginNickname, setLoginNickname] = useState('');
   const [loginAvatar, setLoginAvatar] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMockMode = getApiMode() === 'mock';
 
   const handleChooseAvatar = (event: any) => {
     const avatarUrl = event?.detail?.avatarUrl;
@@ -34,8 +37,21 @@ const WxLoginModal: React.FC<WxLoginModalProps> = ({ visible, onSuccess }) => {
 
     setIsSubmitting(true);
     try {
-      await loginWithWx({ nickname: loginNickname, avatar: loginAvatar });
-      if (typeof onSuccess === 'function') {
+      const loggedIn = await loginWithWx({ nickname: loginNickname, avatar: loginAvatar });
+      if (loggedIn && typeof onSuccess === 'function') {
+        onSuccess();
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMockLogin = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const loggedIn = await loginWithWx({ nickname: '体验用户', avatar: siteConfig.ownerAvatar });
+      if (loggedIn && typeof onSuccess === 'function') {
         onSuccess();
       }
     } finally {
@@ -50,7 +66,7 @@ const WxLoginModal: React.FC<WxLoginModalProps> = ({ visible, onSuccess }) => {
   const titleText = '社畜没有派对';
 
   return (
-    <View className={styles.overlay} catchMove>
+    <View className={styles.overlay} catchMove onClick={onClose}>
       <View className={styles.modal} onClick={(event) => event.stopPropagation()}>
         <View className={styles.header}>
           <View className={styles.logoWrap}>
@@ -88,7 +104,13 @@ const WxLoginModal: React.FC<WxLoginModalProps> = ({ visible, onSuccess }) => {
             >
               确认登录
             </Button>
-            <Text className={styles.helperText}>登录成功后即可查看活动、报名记录和个人档案。</Text>
+            {isMockMode ? (
+              <Button type="secondary" size="large" block loading={isSubmitting} onClick={handleMockLogin}>
+                使用体验身份登录
+              </Button>
+            ) : null}
+            {onClose ? <Text className={styles.dismissAction} onClick={onClose}>暂不登录，先逛逛</Text> : null}
+            <Text className={styles.helperText}>浏览无需登录；报名、发布和保存个人资料时再登录即可。</Text>
           </View>
         </View>
       </View>

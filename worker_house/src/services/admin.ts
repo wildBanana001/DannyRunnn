@@ -3,6 +3,8 @@ import type { Activity, CardOrder, CardPackage, Registration, RegistrationStatus
 import type { Post } from '@/types/post';
 import { request } from './request';
 
+declare const wx: any;
+
 const jsonHeaders = {
   'content-type': 'application/json',
 };

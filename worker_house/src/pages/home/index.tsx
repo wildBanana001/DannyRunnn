@@ -1,17 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import BottomSheet from '@/components/BottomSheet';
 import Pressable from '@/components/Pressable';
-import WxLoginModal from '@/components/WxLoginModal';
 import { fetchActivities, fetchPosterList } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { ongoingActivities as activityFallback } from '@/data/activities';
 import { homeLandingConfig } from '@/data/site';
 import { wechatArticleImageUrls } from '@/data/wechat-images';
 import { useSiteConfig } from '@/shared/siteConfig';
+import { getApiMode } from '@/services/request';
 import { fetchStories } from '@/services/stories';
-import { useUserStore } from '@/store/userStore';
 import type { Activity, Story } from '@/types';
 import type { Poster } from '@/types/site';
 import { openChannelsHome } from '@/utils/video';
@@ -42,7 +41,7 @@ const TEXT_ASSETS = {
 
 // 默认内容大图直接走 CDN（项目已有），避免相对路径回落造成空白
 const HOME_ASSETS = {
-  hero: wechatArticleImageUrls.img05,
+  hero: require('@/assets/home/hero-cover.jpg'),
   april: wechatArticleImageUrls.img04,
   space: wechatArticleImageUrls.img29,
   stories: [
@@ -97,65 +96,31 @@ const HomePage: React.FC = () => {
   const [ongoingActivitiesState, setOngoingActivitiesState] = useState<Activity[]>(activityFallback);
   const [posters, setPosters] = useState<Poster[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
+  const [heroRemoteFailed, setHeroRemoteFailed] = useState(false);
   const [communityVisible, setCommunityVisible] = useState(false);
   const [communityState, setCommunityState] = useState<'opening' | 'closing'>('opening');
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
-  const [loginModalVisible, setLoginModalVisible] = useState(false);
-  const hasCheckedLoginRef = useRef(false);
   const sharedSiteConfig = useSiteConfig();
   const { style: enterStyle } = useEnterAnimation();
 
-  const loadActivities = () => {
-    fetchActivities('ongoing').then((activities) => {
-      setOngoingActivitiesState(activities.length > 0 ? activities : activityFallback);
-    }).catch(() => {
-      setOngoingActivitiesState(activityFallback);
-    });
-  };
+  const loadHomeData = useCallback(async () => {
+    const posterRequest = getApiMode() === 'mock' ? Promise.resolve([]) : fetchPosterList().catch(() => []);
+    const [activities, posterList, storyList] = await Promise.all([
+      fetchActivities('ongoing').catch(() => activityFallback),
+      posterRequest,
+      fetchStories(3).catch(() => []),
+    ]);
 
-  const loadPosters = () => {
-    fetchPosterList().then((list) => {
-      setPosters(Array.isArray(list) ? list.filter((item) => item && item.coverImage) : []);
-    }).catch(() => {
-      setPosters([]);
-    });
-  };
-
-  const loadStories = () => {
-    fetchStories(3).then((list) => {
-      setStories(Array.isArray(list) ? list : []);
-    }).catch(() => {
-      setStories([]);
-    });
-  };
-
-  useEffect(() => {
-    loadActivities();
-    loadPosters();
-    loadStories();
+    setOngoingActivitiesState(activities.length > 0 ? activities : activityFallback);
+    setPosters(Array.isArray(posterList) ? posterList.filter((item) => item && item.coverImage) : []);
+    setHeroRemoteFailed(false);
+    setStories(Array.isArray(storyList) ? storyList : []);
   }, []);
 
   useDidShow(() => {
-    loadActivities();
-    loadPosters();
-    loadStories();
+    void loadHomeData();
   });
 
   useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
-
-  useEffect(() => {
-    if (hasCheckedLoginRef.current) return;
-    hasCheckedLoginRef.current = true;
-    const timer = setTimeout(() => {
-      if (!useUserStore.getState().isLoggedIn) setLoginModalVisible(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!hasCheckedLoginRef.current) return;
-    setLoginModalVisible(!isLoggedIn);
-  }, [isLoggedIn]);
 
   const communityQr = sharedSiteConfig?.communityQrcode || homeLandingConfig.communityQr || '';
   const homeCopyLead = sharedSiteConfig?.homeCopyLead || 'Hiiii这里是社畜没有派对！';
@@ -239,7 +204,7 @@ const HomePage: React.FC = () => {
               <Text className={styles.heroSpark}>📷</Text>
             </View>
             <View className={styles.heroCard}>
-              {heroSlides.length > 0 ? (
+              {heroSlides.length > 0 && !heroRemoteFailed ? (
                 <Swiper
                   className={styles.heroSwiper}
                   autoplay
@@ -252,7 +217,13 @@ const HomePage: React.FC = () => {
                   {heroSlides.map((slide) => (
                     <SwiperItem key={slide.id}>
                       <View className={styles.heroSwiperItem} onClick={() => handleHeroTap(slide.id)}>
-                        <Image className={styles.heroImage} src={slide.image} mode="aspectFit" lazyLoad />
+                        <Image
+                          className={styles.heroImage}
+                          src={slide.image}
+                          mode="aspectFit"
+                          lazyLoad
+                          onError={() => setHeroRemoteFailed(true)}
+                        />
                       </View>
                     </SwiperItem>
                   ))}
@@ -401,8 +372,6 @@ const HomePage: React.FC = () => {
           <Text className={styles.communityNote}>真机扫码即可加入；若群码失效，可联系主理人更新。</Text>
         </View>
       </BottomSheet>
-
-      <WxLoginModal visible={loginModalVisible} />
     </View>
   );
 };

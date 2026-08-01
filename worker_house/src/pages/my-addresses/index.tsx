@@ -1,12 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { ScrollView, Text, View } from '@tarojs/components';
-import Taro, { useDidShow } from '@tarojs/taro';
+import { ScrollView, Text, View, type ITouchEvent } from '@tarojs/components';
+import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import { fetchAddresses, deleteAddress, type Address } from '@/services/address';
 import styles from './index.module.scss';
 
 const MyAddressesPage: React.FC = () => {
+  const router = useRouter();
+  const isSelecting = router.params.select === '1';
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -54,6 +56,17 @@ const MyAddressesPage: React.FC = () => {
     }
   };
 
+  const handleSelect = (address: Address) => {
+    if (!isSelecting) return;
+    Taro.eventCenter.trigger('shop:address-selected', address);
+    Taro.navigateBack();
+  };
+
+  const stopAndRun = (event: ITouchEvent, action: () => void) => {
+    event.stopPropagation();
+    action();
+  };
+
   if (loading && addresses.length === 0) {
     return (
       <View className={styles.container}>
@@ -76,6 +89,7 @@ const MyAddressesPage: React.FC = () => {
   return (
     <ScrollView className={styles.container} scrollY enableFlex>
       <View className={styles.actionHeader}>
+        {isSelecting ? <Text className={styles.selectHint}>选择一个地址用于本次订单</Text> : null}
         <Button type="primary" size="medium" onClick={() => Taro.navigateTo({ url: '/pages/address-edit/index' })}>
           添加地址
         </Button>
@@ -84,7 +98,7 @@ const MyAddressesPage: React.FC = () => {
       {addresses.length > 0 ? (
         <View className={styles.list}>
           {addresses.map((address) => (
-            <View key={address.id} className={styles.card}>
+            <View key={address.id} className={styles.card} onClick={() => handleSelect(address)}>
               <View className={styles.cardHeader}>
                 <Text className={styles.name}>{address.name}</Text>
                 <Text className={styles.phone}>{address.phone}</Text>
@@ -93,9 +107,11 @@ const MyAddressesPage: React.FC = () => {
               <Text className={styles.addressText}>{`${address.province} ${address.city} ${address.district}`}</Text>
               <Text className={styles.addressText}>{address.detail}</Text>
               <View className={styles.footer}>
-                <Text className={styles.actionText} onClick={() => Taro.navigateTo({ url: `/pages/address-edit/index?id=${address.id}` })}>编辑</Text>
+                {isSelecting ? <Text className={styles.selectAction}>选择此地址</Text> : null}
+                {isSelecting ? <Text className={styles.divider}>·</Text> : null}
+                <Text className={styles.actionText} onClick={(event) => stopAndRun(event, () => Taro.navigateTo({ url: `/pages/address-edit/index?id=${address.id}` }))}>编辑</Text>
                 <Text className={styles.divider}>·</Text>
-                <Text className={styles.deleteText} onClick={() => handleDelete(address.id)}>删除</Text>
+                <Text className={styles.deleteText} onClick={(event) => stopAndRun(event, () => handleDelete(address.id))}>删除</Text>
               </View>
             </View>
           ))}

@@ -1,12 +1,6 @@
-import { createDecipheriv, createSign, randomUUID } from 'node:crypto';
-import axios from 'axios';
+import { createDecipheriv, createSign, createVerify, randomUUID } from 'node:crypto';
+import axios, { type AxiosResponse } from 'axios';
 import { config } from '../config.js';
-
-/**
- * 微信支付 JSAPI v3 封装（仅使用 Node 内置 crypto + axios，无额外依赖）。
- * 说明：本文件只读取 WECHAT_PAY_* / WECHAT_APP_ID 等支付相关配置，
- * 不涉及也不会输出任何云托管注入的其他敏感信息。
- */
 
 const WECHAT_PAY_BASE_URL = 'https://api.mch.weixin.qq.com';
 const JSAPI_ORDER_PATH = '/v3/pay/transactions/jsapi';
@@ -22,8 +16,9 @@ export interface JsapiPayParams {
 export interface UnifiedOrderInput {
   description: string;
   outTradeNo: string;
-  amountTotal: number; // 单位：分
+  amountTotal: number;
   openid: string;
+  timeExpire: string;
   attach?: string;
 }
 
@@ -35,104 +30,197 @@ export interface DecryptedNotifyResource {
   original_type?: string;
 }
 
-/**
- * 判断微信支付是否已完整配置。缺任意一项即视为未配置（走 mock 模式）。
- */
+export interface WechatPaySignatureInput {
+  nonce: string;
+  rawBody: string;
+  serialNo: string;
+  signature: string;
+  timestamp: string;
+}
+
+export interface WechatPayOrderResult {
+  appid?: string;
+  mchid?: string;
+  out_trade_no?: string;
+  transaction_id?: string;
+  trade_state?: string;
+  trade_state_desc?: string;
+  trade_type?: string;
+  success_time?: string;
+  amount?: {
+    total?: number;
+    payer_total?: number;
+    currency?: string;
+    payer_currency?: string;
+  };
+}
+
+export class WechatPayApiError extends Error {
+  readonly code: string;
+  readonly requestId: string;
+  readonly status: number;
+
+  constructor(message: string, options: { code?: string; requestId?: string; status?: number } = {}) {
+    super(message);
+    this.name = 'WechatPayApiError';
+    this.code = options.code || 'WECHAT_PAY_ERROR';
+    this.requestId = options.requestId || '';
+    this.status = options.status || 502;
+  }
+}
+
 export function isWechatPayConfigured(): boolean {
-  const { mchId, serialNo, privateKeyBase64, apiV3Key, notifyUrl } = config.wechatPay;
-  return Boolean(mchId && serialNo && privateKeyBase64 && apiV3Key && notifyUrl);
+  const {
+    appId,
+    mchId,
+    serialNo,
+    privateKeyBase64,
+    apiV3Key,
+    notifyUrl,
+    payPublicKey,
+    payPublicKeyId,
+  } = config.wechatPay;
+  return Boolean(
+    appId
+    && mchId
+    && serialNo
+    && privateKeyBase64
+    && apiV3Key
+    && notifyUrl
+    && payPublicKey
+    && payPublicKeyId
+  );
+}
+
+function resolvePem(value: string, missingMessage: string): string {
+  if (!value) throw new Error(missingMessage);
+  if (value.includes('BEGIN') && (value.includes('KEY') || value.includes('CERTIFICATE'))) {
+    return value.replace(/\\n/g, '\n');
+  }
+
+  const decoded = Buffer.from(value, 'base64').toString('utf-8');
+  if (!decoded.includes('BEGIN') || (!decoded.includes('KEY') && !decoded.includes('CERTIFICATE'))) {
+    throw new Error(`${missingMessage}，且当前内容不是有效 PEM 或 base64 PEM`);
+  }
+  return decoded;
 }
 
 function resolvePrivateKeyPem(): string {
-  const { privateKeyBase64 } = config.wechatPay;
-  if (!privateKeyBase64) {
-    throw new Error('缺少商户私钥配置 WECHAT_PAY_PRIVATE_KEY');
-  }
+  return resolvePem(config.wechatPay.privateKeyBase64, '缺少商户私钥配置 WECHAT_PAY_PRIVATE_KEY');
+}
 
-  const decoded = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
-  // 兼容两种存储方式：base64 编码的 PEM，或直接存放的 PEM 文本。
-  if (decoded.includes('BEGIN') && decoded.includes('PRIVATE KEY')) {
-    return decoded;
-  }
-  if (privateKeyBase64.includes('BEGIN') && privateKeyBase64.includes('PRIVATE KEY')) {
-    return privateKeyBase64.replace(/\\n/g, '\n');
-  }
-  return decoded;
+function resolvePayPublicKeyPem(): string {
+  return resolvePem(config.wechatPay.payPublicKey, '缺少微信支付公钥 WECHAT_PAY_PUBLIC_KEY');
 }
 
 function createNonceStr(): string {
   return randomUUID().replace(/-/g, '').toUpperCase();
 }
 
-/**
- * 生成请求签名并组装 Authorization 头。
- * 签名串格式：HTTPMethod\nURL\ntimestamp\nnonce\nbody\n
- */
 function buildAuthorizationHeader(method: string, urlPath: string, body: string): string {
   const { mchId, serialNo } = config.wechatPay;
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonceStr = createNonceStr();
   const message = `${method}\n${urlPath}\n${timestamp}\n${nonceStr}\n${body}\n`;
-
   const signature = createSign('RSA-SHA256').update(message).sign(resolvePrivateKeyPem(), 'base64');
 
   return (
-    `WECHATPAY2-SHA256-RSA2048 mchid="${mchId}",` +
-    `nonce_str="${nonceStr}",` +
-    `signature="${signature}",` +
-    `timestamp="${timestamp}",` +
-    `serial_no="${serialNo}"`
+    `WECHATPAY2-SHA256-RSA2048 mchid="${mchId}",`
+    + `nonce_str="${nonceStr}",`
+    + `signature="${signature}",`
+    + `timestamp="${timestamp}",`
+    + `serial_no="${serialNo}"`
   );
 }
 
-/**
- * JSAPI 统一下单，返回 prepay_id。
- */
+function getHeader(response: AxiosResponse<string>, name: string): string {
+  const value = response.headers[name.toLowerCase()];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function parseJsonBody<T>(rawBody: string): T {
+  if (!rawBody) return {} as T;
+  return JSON.parse(rawBody) as T;
+}
+
+async function requestWechatPay<T>(method: 'GET' | 'POST', urlPath: string, body?: Record<string, unknown>): Promise<T> {
+  const bodyString = body ? JSON.stringify(body) : '';
+  const response = await axios.request<string>({
+    method,
+    url: `${WECHAT_PAY_BASE_URL}${urlPath}`,
+    data: body ? bodyString : undefined,
+    headers: {
+      Authorization: buildAuthorizationHeader(method, urlPath, bodyString),
+      Accept: 'application/json',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      'User-Agent': 'worker_house_bff/1.0',
+    },
+    responseType: 'text',
+    timeout: 10000,
+    transformResponse: [(value) => value],
+    validateStatus: () => true,
+  });
+
+  const rawBody = typeof response.data === 'string' ? response.data : JSON.stringify(response.data ?? {});
+  const requestId = getHeader(response, 'request-id');
+  if (requestId) {
+    console.info(`[wechat-pay] request-id=${requestId} status=${response.status} path=${urlPath}`);
+  }
+
+  const signatureValid = verifyWechatPaySignature({
+    nonce: getHeader(response, 'wechatpay-nonce'),
+    rawBody,
+    serialNo: getHeader(response, 'wechatpay-serial'),
+    signature: getHeader(response, 'wechatpay-signature'),
+    timestamp: getHeader(response, 'wechatpay-timestamp'),
+  });
+  if (!signatureValid) {
+    throw new WechatPayApiError('微信支付应答验签失败', { requestId, status: 502 });
+  }
+
+  if (response.status < 200 || response.status >= 300) {
+    const errorBody = parseJsonBody<{ code?: string; message?: string }>(rawBody);
+    throw new WechatPayApiError(errorBody.message || '微信支付接口请求失败', {
+      code: errorBody.code,
+      requestId,
+      status: response.status,
+    });
+  }
+
+  return parseJsonBody<T>(rawBody);
+}
+
 export async function jsapiUnifiedOrder(input: UnifiedOrderInput): Promise<string> {
   const { appId, mchId, notifyUrl } = config.wechatPay;
-
   const requestBody: Record<string, unknown> = {
     appid: appId,
     mchid: mchId,
-    description: input.description,
+    description: input.description.slice(0, 127),
     out_trade_no: input.outTradeNo,
+    time_expire: input.timeExpire,
     notify_url: notifyUrl,
-    amount: {
-      total: input.amountTotal,
-      currency: 'CNY',
-    },
-    payer: {
-      openid: input.openid,
-    },
+    amount: { total: input.amountTotal, currency: 'CNY' },
+    payer: { openid: input.openid },
   };
+  if (input.attach) requestBody.attach = input.attach.slice(0, 127);
 
-  if (input.attach) {
-    requestBody.attach = input.attach;
+  const result = await requestWechatPay<{ prepay_id?: string }>('POST', JSAPI_ORDER_PATH, requestBody);
+  if (!result.prepay_id) {
+    throw new WechatPayApiError('微信支付统一下单未返回 prepay_id');
   }
-
-  const bodyString = JSON.stringify(requestBody);
-  const authorization = buildAuthorizationHeader('POST', JSAPI_ORDER_PATH, bodyString);
-
-  const response = await axios.post(`${WECHAT_PAY_BASE_URL}${JSAPI_ORDER_PATH}`, bodyString, {
-    headers: {
-      Authorization: authorization,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'User-Agent': 'worker_house_bff/1.0',
-    },
-    timeout: 10000,
-  });
-
-  const prepayId = response.data?.prepay_id;
-  if (!prepayId) {
-    throw new Error('微信支付统一下单未返回 prepay_id');
-  }
-  return prepayId as string;
+  return result.prepay_id;
 }
 
-/**
- * 根据 prepay_id 生成前端拉起支付所需参数（含二次签名 paySign）。
- */
+export async function queryWechatPayOrder(outTradeNo: string): Promise<WechatPayOrderResult> {
+  const path = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}?mchid=${encodeURIComponent(config.wechatPay.mchId)}`;
+  return requestWechatPay<WechatPayOrderResult>('GET', path);
+}
+
+export async function closeWechatPayOrder(outTradeNo: string): Promise<void> {
+  const path = `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}/close`;
+  await requestWechatPay<Record<string, never>>('POST', path, { mchid: config.wechatPay.mchId });
+}
+
 export function buildJsapiPayParams(prepayId: string): JsapiPayParams {
   const { appId } = config.wechatPay;
   const timeStamp = Math.floor(Date.now() / 1000).toString();
@@ -141,59 +229,49 @@ export function buildJsapiPayParams(prepayId: string): JsapiPayParams {
   const message = `${appId}\n${timeStamp}\n${nonceStr}\n${packageValue}\n`;
   const paySign = createSign('RSA-SHA256').update(message).sign(resolvePrivateKeyPem(), 'base64');
 
-  return {
-    timeStamp,
-    nonceStr,
-    package: packageValue,
-    signType: 'RSA',
-    paySign,
-  };
+  return { timeStamp, nonceStr, package: packageValue, signType: 'RSA', paySign };
 }
 
-/**
- * 生成 mock 支付参数（未配置真实微信支付时使用），前端可直接进入成功态。
- */
-export function buildMockPayParams(): JsapiPayParams & { mock: true } {
-  const timeStamp = Math.floor(Date.now() / 1000).toString();
-  const nonceStr = createNonceStr();
-  return {
-    timeStamp,
-    nonceStr,
-    package: `prepay_id=mock_${randomUUID().slice(0, 12)}`,
-    signType: 'RSA',
-    paySign: 'mock_pay_sign',
-    mock: true,
-  };
+export function verifyWechatPaySignature(input: WechatPaySignatureInput): boolean {
+  const timestamp = Number(input.timestamp);
+  if (!Number.isFinite(timestamp) || Math.abs(Date.now() / 1000 - timestamp) > 300) return false;
+  if (!input.nonce || !input.signature) return false;
+  if (input.serialNo !== config.wechatPay.payPublicKeyId) return false;
+
+  try {
+    const message = `${input.timestamp}\n${input.nonce}\n${input.rawBody}\n`;
+    const verifier = createVerify('RSA-SHA256');
+    verifier.update(message);
+    verifier.end();
+    return verifier.verify(resolvePayPublicKeyPem(), input.signature, 'base64');
+  } catch (error) {
+    console.error('[wechat-pay] signature verification error', error instanceof Error ? error.message : error);
+    return false;
+  }
 }
 
-/**
- * 解密微信支付异步回调 resource（AES-256-GCM）。
- */
 export function decryptNotifyResource(resource: DecryptedNotifyResource): Record<string, unknown> {
   const { apiV3Key } = config.wechatPay;
-  if (!apiV3Key) {
-    throw new Error('缺少 APIv3 密钥配置 WECHAT_PAY_API_KEY_V3');
+  if (resource.algorithm !== 'AEAD_AES_256_GCM') {
+    throw new Error('不支持的微信支付回调加密算法');
+  }
+  if (!apiV3Key || Buffer.byteLength(apiV3Key, 'utf-8') !== 32) {
+    throw new Error('WECHAT_PAY_API_KEY_V3 必须是 32 字节');
   }
 
-  const key = Buffer.from(apiV3Key, 'utf-8');
   const cipherBuffer = Buffer.from(resource.ciphertext, 'base64');
+  if (cipherBuffer.length <= 16) throw new Error('微信支付回调密文格式错误');
   const authTag = cipherBuffer.subarray(cipherBuffer.length - 16);
   const encryptedData = cipherBuffer.subarray(0, cipherBuffer.length - 16);
-
-  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(resource.nonce, 'utf-8'));
+  const decipher = createDecipheriv('aes-256-gcm', Buffer.from(apiV3Key, 'utf-8'), Buffer.from(resource.nonce, 'utf-8'));
   decipher.setAuthTag(authTag);
-  if (resource.associated_data) {
-    decipher.setAAD(Buffer.from(resource.associated_data, 'utf-8'));
-  }
+  if (resource.associated_data) decipher.setAAD(Buffer.from(resource.associated_data, 'utf-8'));
 
   const decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
   return JSON.parse(decrypted.toString('utf-8')) as Record<string, unknown>;
 }
 
-/**
- * 生成商城订单号（out_trade_no）。
- */
 export function createOutTradeNo(): string {
   const datePart = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
-  return `WH${datePart}${randomUUID().slice(0, 8)}`;
+  return `WH${datePart}${randomUUID().slice(0, 8).toUpperCase()}`;
 }

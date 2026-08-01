@@ -1,41 +1,230 @@
-import React from 'react';
-import { Text, View } from '@tarojs/components';
-import Taro, { useRouter } from '@tarojs/taro';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Input, Text, View } from '@tarojs/components';
+import Taro, { useDidShow, useRouter } from '@tarojs/taro';
+import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
+import { fetchAddresses, type Address } from '@/services/address';
+import {
+  createShopClientRequestId,
+  fetchShopOrder,
+  fetchShopProduct,
+  isPaymentCancelled,
+  launchShopPayment,
+  startShopPayment,
+  type ShopProduct,
+} from '@/services/shop';
+import { useUserStore } from '@/store/userStore';
 import styles from './index.module.scss';
+
+const ADDRESS_EVENT = 'shop:address-selected';
 
 const OrderConfirmPage: React.FC = () => {
   const router = useRouter();
   const productId = router.params.id || '';
+  const initialQuantity = Math.max(1, Math.floor(Number(router.params.quantity) || 1));
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const [product, setProduct] = useState<ShopProduct | null>(null);
+  const [address, setAddress] = useState<Address | null>(null);
+  const [quantity, setQuantity] = useState(initialQuantity);
+  const [remark, setRemark] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const clientRequestIdRef = useRef(createShopClientRequestId());
+  const wasLoggedInRef = useRef(isLoggedIn);
 
-  const handlePay = () => {
-    Taro.redirectTo({ url: '/pages/shop/payment-result/index?status=success' });
+  const loadData = useCallback(async () => {
+    if (!productId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const [nextProduct, addresses] = await Promise.all([
+        fetchShopProduct(productId),
+        isLoggedIn ? fetchAddresses() : Promise.resolve([]),
+      ]);
+      setProduct(nextProduct);
+      setQuantity((current) => Math.max(1, Math.min(nextProduct.stock, current)));
+      if (addresses.length > 0) {
+        setAddress((current) => (
+          addresses.find((item) => item.id === current?.id)
+          || addresses.find((item) => item.isDefault)
+          || addresses[0]
+        ));
+      }
+    } catch (loadError) {
+      console.warn('[shop] load order confirmation failed', loadError);
+      Taro.showToast({ title: '订单信息加载失败', icon: 'none' });
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoggedIn, productId]);
+
+  useDidShow(() => {
+    loadData();
+  });
+
+  useEffect(() => {
+    const handleAddressSelected = (selected: Address) => setAddress(selected);
+    Taro.eventCenter.on(ADDRESS_EVENT, handleAddressSelected);
+    return () => {
+      Taro.eventCenter.off(ADDRESS_EVENT, handleAddressSelected);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn && !wasLoggedInRef.current) {
+      loadData();
+    }
+    wasLoggedInRef.current = isLoggedIn;
+  }, [isLoggedIn, loadData]);
+
+  const totalAmount = useMemo(() => {
+    if (!product) return 0;
+    return Math.round(product.price * 100) * quantity;
+  }, [product, quantity]);
+
+  const chooseAddress = () => {
+    if (!isLoggedIn) {
+      setShowLogin(true);
+      return;
+    }
+    Taro.navigateTo({ url: address ? '/pages/my-addresses/index?select=1' : '/pages/address-edit/index' });
   };
+
+  const handlePay = async () => {
+    if (paying || !product) return;
+    if (!isLoggedIn) {
+      setShowLogin(true);
+      return;
+    }
+    if (!address) {
+      Taro.showToast({ title: '请先添加收货地址', icon: 'none' });
+      return;
+    }
+    if (product.stock <= 0 || quantity > product.stock) {
+      Taro.showToast({ title: '商品库存不足', icon: 'none' });
+      return;
+    }
+
+    let outTradeNo = '';
+    setPaying(true);
+    try {
+      Taro.showLoading({ title: '正在创建订单…', mask: true });
+      const session = await startShopPayment({
+        address,
+        clientRequestId: clientRequestIdRef.current,
+        productId: product.id,
+        quantity,
+        remark,
+      });
+      outTradeNo = session.outTradeNo;
+      Taro.hideLoading();
+
+      await launchShopPayment(session);
+
+      Taro.showLoading({ title: '正在确认支付…', mask: true });
+      const order = await fetchShopOrder(session.outTradeNo);
+      const status = order.status === 'paid' ? 'success' : 'pending';
+      Taro.hideLoading();
+      Taro.redirectTo({
+        url: `/pages/shop/payment-result/index?status=${status}&orderId=${encodeURIComponent(session.outTradeNo)}`,
+      });
+    } catch (payError) {
+      Taro.hideLoading();
+      if (isPaymentCancelled(payError)) {
+        if (outTradeNo) {
+          Taro.redirectTo({
+            url: `/pages/shop/payment-result/index?status=pending&orderId=${encodeURIComponent(outTradeNo)}`,
+          });
+        } else {
+          Taro.showToast({ title: '已取消支付', icon: 'none' });
+        }
+      } else {
+        const message = payError instanceof Error ? payError.message : '支付发起失败，请稍后重试';
+        console.warn('[shop] payment failed', payError);
+        Taro.showToast({ title: message.slice(0, 20), icon: 'none' });
+      }
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  if (loading && !product) {
+    return <View className={styles.state}><Text>正在核对订单…</Text></View>;
+  }
+
+  if (!product) {
+    return <View className={styles.state}><Text>商品信息不存在，请返回商城重新选择。</Text></View>;
+  }
 
   return (
     <View className={styles.container}>
-      <View className={styles.section}>
-        <Text className={styles.sectionTitle}>收货地址</Text>
-        <Text className={styles.placeholder}>请选择收货地址（占位）</Text>
+      <View className={styles.section} onClick={chooseAddress}>
+        <View className={styles.sectionHeader}>
+          <Text className={styles.sectionTitle}>收货地址</Text>
+          <Text className={styles.changeText}>{address ? '更换' : '添加'} ›</Text>
+        </View>
+        {address ? (
+          <View className={styles.addressCard}>
+            <Text className={styles.addressName}>{address.name} · {address.phone}</Text>
+            <Text className={styles.addressText}>{address.province} {address.city} {address.district} {address.detail}</Text>
+          </View>
+        ) : (
+          <View className={styles.emptyAddress}>
+            <Text className={styles.emptyAddressIcon}>＋</Text>
+            <Text>{isLoggedIn ? '添加一个收货地址' : '登录后选择收货地址'}</Text>
+          </View>
+        )}
       </View>
 
       <View className={styles.section}>
-        <Text className={styles.sectionTitle}>商品信息</Text>
-        <Text className={styles.placeholder}>商品 ID：{productId || '未指定'}</Text>
-        <View className={styles.row}>
-          <Text className={styles.rowLabel}>小计</Text>
-          <Text className={styles.rowValue}>¥0</Text>
+        <Text className={styles.sectionTitle}>商品清单</Text>
+        <View className={styles.productRow}>
+          <View className={styles.productThumb}><Text>🎁</Text></View>
+          <View className={styles.productInfo}>
+            <Text className={styles.productName}>{product.name}</Text>
+            <Text className={styles.productMeta}>¥{product.price.toFixed(2)} × {quantity}</Text>
+          </View>
+          <View className={styles.quantityControl}>
+            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.max(1, value - 1))}><Text>−</Text></View>
+            <Text className={styles.quantityValue}>{quantity}</Text>
+            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))}><Text>＋</Text></View>
+          </View>
         </View>
+        <View className={styles.remarkRow}>
+          <Text className={styles.remarkLabel}>订单备注</Text>
+          <Input
+            className={styles.remarkInput}
+            maxlength={80}
+            placeholder="选填，最多 80 字"
+            value={remark}
+            onInput={(event) => setRemark(event.detail.value)}
+          />
+        </View>
+      </View>
+
+      <View className={styles.paymentNotice}>
+        <Text className={styles.paymentNoticeTitle}>微信支付安全确认</Text>
+        <Text className={styles.paymentNoticeText}>支付成功以后，系统还会向微信支付服务端确认订单状态，不会只凭页面提示发货。</Text>
       </View>
 
       <View className={styles.footer}>
         <View className={styles.total}>
           <Text className={styles.totalLabel}>合计</Text>
-          <Text className={styles.totalValue}>¥0</Text>
+          <Text className={styles.totalValue}>¥{(totalAmount / 100).toFixed(2)}</Text>
         </View>
-        <View className={styles.payBtn} onClick={handlePay}>
-          <Text className={styles.payBtnText}>提交订单</Text>
+        <View className={`${styles.payBtn} ${paying ? styles.payBtnDisabled : ''}`} onClick={handlePay}>
+          <Text className={styles.payBtnText}>{paying ? '处理中…' : '微信支付'}</Text>
         </View>
       </View>
+
+      <WxLoginModal
+        visible={showLogin}
+        onClose={() => setShowLogin(false)}
+        onSuccess={() => setShowLogin(false)}
+      />
     </View>
   );
 };

@@ -1,0 +1,73 @@
+name: BFF CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "worker_house_bff/**"
+      - ".github/workflows/bff-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "worker_house_bff/**"
+      - ".github/workflows/bff-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bff-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: worker_house_bff
+
+jobs:
+  verify:
+    name: Build, smoke test, and verify image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: worker_house_bff/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile TypeScript
+        run: npm run build
+
+      - name: Smoke test HTTP health endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="${RUNNER_TEMP}/worker-house-bff.log"
+          MODE=mock PORT=4000 npm start >"${log_file}" 2>&1 &
+          server_pid=$!
+          trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
+
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:4000/health >/dev/null; then
+              curl --fail --silent --show-error http://127.0.0.1:4000/api/health >/dev/null
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat "${log_file}"
+          exit 1
+
+      - name: Build production container
+        run: docker build --file Dockerfile --tag "worker-house-bff:${GITHUB_SHA}" .

@@ -103,7 +103,7 @@ postRouter.post('/', wxCloudrunAuth, async (request, response) => {
         response.status(500).json({ message: error instanceof Error ? error.message : '创建帖子失败' });
     }
 });
-postRouter.get('/mine', async (request, response) => {
+postRouter.get('/mine', wxCloudrunAuth, async (request, response) => {
     const openid = resolveWxOpenid(request);
     if (!openid) {
         response.json({ data: [], list: [], total: 0 });

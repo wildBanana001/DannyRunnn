@@ -10,7 +10,7 @@ interface UserState {
   isLoggedIn: boolean;
   setUser: (user: User | null) => void;
   bootstrapFromCache: () => void;
-  loginWithWx: (profile: { nickname: string; avatar: string }) => Promise<void>;
+  loginWithWx: (profile: { nickname: string; avatar: string }) => Promise<boolean>;
   refreshWxMe: () => Promise<void>;
   logout: () => void;
 }
@@ -44,7 +44,7 @@ export const useUserStore = create<UserState>((set, get) => ({
   loginWithWx: async (profile) => {
     if (!profile.nickname || !profile.avatar) {
       Taro.showToast({ title: '请先选择头像并填写昵称', icon: 'none' });
-      return;
+      return false;
     }
 
     try {
@@ -66,9 +66,11 @@ export const useUserStore = create<UserState>((set, get) => ({
       set({ user, isLoggedIn: true });
       persistUser(user);
       Taro.showToast({ title: '登录成功', icon: 'success' });
+      return true;
     } catch (error) {
       console.warn('[userStore] loginWithWx failed', error);
       Taro.showToast({ title: '登录失败，请稍后重试', icon: 'none' });
+      return false;
     } finally {
       Taro.hideLoading();
     }

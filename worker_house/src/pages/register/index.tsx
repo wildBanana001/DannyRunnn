@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
-import ProfileForm from '@/components/ProfileForm';
 import { fetchActivityDetail } from '@/cloud/services';
 import { calculateCardDeduction } from '@/data/mock-member';
 import { featuredActivity } from '@/data/activities';
@@ -15,6 +14,7 @@ import {
   ProfileSnapshotPanel,
   RegistrationSuccessModal,
 } from './RegisterPanels';
+import ProfileForm from '@/components/ProfileForm';
 import styles from './index.module.scss';
 
 type RegisterStep = 1 | 2 | 3;
@@ -82,10 +82,6 @@ const RegisterPage: React.FC = () => {
       await refreshMemberData();
     }
   }, [activityId, refreshMemberData]);
-
-  useEffect(() => {
-    void loadPage();
-  }, [loadPage]);
 
   useDidShow(() => {
     void loadPage();

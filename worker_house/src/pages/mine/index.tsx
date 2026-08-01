@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
+import WxLoginModal from '@/components/WxLoginModal';
 import { siteConfig } from '@/data/site';
 import { checkMiniAdmin } from '@/services/admin';
 import { fetchMemberOverview, type MemberOverview } from '@/services/member';
@@ -29,11 +30,13 @@ const MinePage: React.FC = () => {
   const { user, isLoggedIn, refreshWxMe } = useUserStore();
   const [overview, setOverview] = useState<MemberOverview>(defaultOverview);
   const [isAdmin, setIsAdmin] = useState(false);
-
+  const [loginModalVisible, setLoginModalVisible] = useState(false);
 
   useDidShow(() => {
-    if (!useUserStore.getState().isLoggedIn) {
-      Taro.switchTab({ url: '/pages/home/index' });
+    const loggedIn = useUserStore.getState().isLoggedIn;
+    if (!loggedIn) {
+      setOverview(defaultOverview);
+      setIsAdmin(false);
       return;
     }
 
@@ -48,10 +51,6 @@ const MinePage: React.FC = () => {
 
     // 登录态下进入页面时刷新一次后端用户信息（非阻塞）
     refreshWxMe();
-
-    if (!isLoggedIn) {
-      return;
-    }
 
     fetchMemberOverview()
       .then((result) => setOverview(result))
@@ -93,6 +92,14 @@ const MinePage: React.FC = () => {
         </View>
       </View>
 
+      {!isLoggedIn ? (
+        <View className={styles.loginWrap}>
+          <View className={styles.loginButton} onClick={() => setLoginModalVisible(true)}>
+            <Text className={styles.loginButtonText}>微信登录</Text>
+          </View>
+        </View>
+      ) : null}
+
       <View className={styles.statsCard}>
         <View className={styles.statItem}>
           <Text className={styles.statValue}>{overview.registrationsCount}</Text>
@@ -130,6 +137,11 @@ const MinePage: React.FC = () => {
       ) : null}
 
       <View className={styles.bottomSpacing} />
+      <WxLoginModal
+        visible={loginModalVisible}
+        onClose={() => setLoginModalVisible(false)}
+        onSuccess={() => setLoginModalVisible(false)}
+      />
     </ScrollView>
   );
 };

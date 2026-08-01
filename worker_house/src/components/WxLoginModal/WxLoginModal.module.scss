@@ -100,3 +100,10 @@ $color-text-placeholder: $color-text-secondary;
   color: $color-text-secondary;
   text-align: center;
 }
+
+.dismissAction {
+  padding: 12rpx 0;
+  font-size: $font-size-sm;
+  color: $color-text-primary;
+  text-align: center;
+}

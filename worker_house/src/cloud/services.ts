@@ -72,8 +72,12 @@ const safeCall = async <T>(
   fallback: () => T | Promise<T>,
   remote?: () => Promise<T>
 ): Promise<T> => {
+  const mockMode = isMockMode();
   try {
-    if (isMockMode()) {
+    if (mockMode) {
+      if (process.env.TARO_ENV !== 'weapp') {
+        return fallback();
+      }
       const response = await callFn<CloudResponse<T>>(name, data);
       if (response?.success) {
         return response.data as T;
@@ -87,6 +91,9 @@ const safeCall = async <T>(
 
     return remote();
   } catch (error) {
+    if (!mockMode) {
+      throw error;
+    }
     console.warn(`[cloud] ${name} 调用失败，使用本地 fallback`, error);
   }
 

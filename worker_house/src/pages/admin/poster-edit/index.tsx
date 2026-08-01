@@ -6,7 +6,7 @@ import Form from '@nutui/nutui-react-taro/dist/es/packages/form/index';
 import FormItem from '@nutui/nutui-react-taro/dist/es/packages/formitem/index';
 import Input from '@nutui/nutui-react-taro/dist/es/packages/input/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
-import '@nutui/nutui-react-taro/dist/style.css';
+import '../nutuiStyles';
 import {
   createAdminPoster,
   fetchAdminPosters,

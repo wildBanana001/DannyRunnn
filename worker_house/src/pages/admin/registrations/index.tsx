@@ -4,7 +4,7 @@ import Taro from '@tarojs/taro';
 import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
 import Input from '@nutui/nutui-react-taro/dist/es/packages/input/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
-import '@nutui/nutui-react-taro/dist/style.css';
+import '../nutuiStyles';
 import { fetchAdminActivities, fetchAdminRegistrations } from '@/services/admin';
 import type { Activity, Registration, RegistrationStatus } from '@/types';
 import styles from '../shared.module.scss';

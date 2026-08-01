@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
-import '@nutui/nutui-react-taro/dist/style.css';
+import '../nutuiStyles';
 import { deleteAdminCardPackage, fetchAdminCardPackages } from '@/services/admin';
 import type { CardPackage } from '@/types';
 import { formatPrice } from '@/utils/helpers';

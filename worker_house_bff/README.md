@@ -42,9 +42,9 @@ BFF 会先通过微信开放平台接口获取 `access_token`，再调用：
 适合直接部署到微信云托管 CloudRun。
 
 - 通过 `X-WX-OPENID / X-WX-UNIONID / X-WX-APPID / X-WX-SOURCE / X-WX-FROM-OPENID` 读取微信自动注入身份
-- `GET /api/health` 可作为容器健康检查端点
-- 当前阶段仍复用 `mock` 的内存存储，方便先把容器链路跑通
-- 后续真实部署后，再接入 `@cloudbase/node-sdk` / 云开发数据库（本轮未接）
+- `GET /health` 是容器存活检查；`GET /api/health` 反映业务配置是否就绪
+- 当前数据文件仍位于容器临时文件系统，默认返回 `503 configuration_required`，避免误把临时数据当成生产数据
+- 只在链路联调时显式设置 `ALLOW_EPHEMERAL_CLOUDRUN_DATA=true`；正式上线前必须接入持久化数据源
 
 ## 环境变量
 
@@ -56,6 +56,9 @@ CLOUD_ENV_ID=your-cloud-env-id
 CLOUD_APP_ID=your-wechat-app-id
 CLOUD_APP_SECRET=your-wechat-app-secret
 ADMIN_TOKEN=mock-admin-token
+ADMIN_OPENID_WHITELIST=
+ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
+ENABLE_SHOP=true
 PORT=4000
 ```
 
@@ -64,7 +67,38 @@ PORT=4000
 - `MODE`：`mock`、`wechat` 或 `cloudrun`，默认 `mock`
 - `CLOUD_MODE`：兼容旧配置的别名，未设置 `MODE` 时仍可继续使用
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
+- `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
+- `ENABLE_SHOP`：本地 `mock` 默认开启；生产环境需显式设置为 `true`
 - `PORT`：本地运行端口，默认 `4000`
+
+### 微信支付 APIv3 配置
+
+商城采用“小程序 JSAPI 下单 → `Taro.requestPayment` → 服务端查单/支付通知确认”的流程。生产环境还需配置：
+
+```bash
+WECHAT_APP_ID=wx06f0bff0bed0dc80
+WECHAT_PAY_MCH_ID=
+WECHAT_PAY_SERIAL_NO=
+WECHAT_PAY_PRIVATE_KEY=
+WECHAT_PAY_API_KEY_V3=
+WECHAT_PAY_NOTIFY_URL=https://你的公网域名/api/shop/orders/notify
+WECHAT_PAY_PUBLIC_KEY=
+WECHAT_PAY_PUBLIC_KEY_ID=
+```
+
+- `WECHAT_PAY_SERIAL_NO` 是商户 API 证书序列号。
+- `WECHAT_PAY_PRIVATE_KEY` 支持原始 PEM（换行写成 `\n`）或 base64 编码的 PEM，禁止提交到 Git。
+- `WECHAT_PAY_API_KEY_V3` 必须是 32 字节，只用于解密支付通知。
+- `WECHAT_PAY_PUBLIC_KEY / ID` 推荐使用商户平台下载的微信支付公钥及其 `PUB_KEY_ID_*`。
+- `WECHAT_PAY_NOTIFY_URL` 必须是微信支付可访问的 HTTPS 地址，并保留原始请求体和 `Wechatpay-*` 请求头。
+
+安全规则：
+
+- `MODE=mock` 始终模拟支付，不会因为本机误配证书而发起真实扣款。
+- 非 `mock` 模式缺少任一支付配置时，下单返回 `503`，不会生成免费订单。
+- 前端支付成功只代表收银台返回成功；订单必须以后端主动查单或验签后的支付通知为准。
+- 回调会校验签名时间、微信支付公钥 ID、AppID、商户号、订单号、金额和币种，并按通知 ID 幂等处理。
+- 生产开启商城前必须把订单与库存切换到持久化数据库，并按照交易类小程序规范接入发货管理。
 
 ## 本地启动
 
@@ -90,15 +124,16 @@ npm run migrate-images
 
 ## 健康检查
 
-- `GET /health`
-- `GET /api/health`
+- `GET /health`：只检查 Node 进程是否存活，正常时返回 `200`
+- `GET /api/health`：检查业务运行配置；云托管未接入持久化数据源时返回 `503 configuration_required`
 
 返回示例：
 
 ```json
 {
-  "status": "ok",
+  "status": "configuration_required",
   "mode": "cloudrun",
+  "persistence": "ephemeral-filesystem",
   "timestamp": 1760000000000
 }
 ```
@@ -189,9 +224,12 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 ### 开通与部署步骤
 
 1. 在微信公众平台中开通云托管，拿到环境 ID。
-2. 保持 `container.config.json` 中的 `MODE=cloudrun`。
-3. 通过控制台“上传代码包”或 `@cloudbase/cli` 部署当前目录。
-4. 部署完成后，通过 `wx.cloud.callContainer` 或公网访问地址验证：
+2. 保持 `container.config.json` 中的 `MODE=cloudrun`；未接入持久化数据源前，不要把 `ALLOW_EPHEMERAL_CLOUDRUN_DATA` 改成 `true` 用于生产。
+3. 推荐在服务更新页选择“Git 仓库部署”，绑定 GitHub 仓库 `wildBanana001/DannyRunnn`。
+4. 选择分支 `main`，目标目录填 `worker_house_bff`，Dockerfile 填 `Dockerfile`，端口填 `80`。
+5. 开启“自动部署”并选择 push / PR 合并到 `main` 后触发；GitHub Actions 会同时执行 TypeScript 编译、HTTP 冒烟测试和 Docker 构建校验。
+6. 部署完成后，通过 `wx.cloud.callContainer` 或公网访问地址验证：
+   - `GET /health`
    - `GET /api/health`
    - 微信身份 Header 自动注入的受保护接口
 
@@ -202,8 +240,9 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 1. 在微信公众平台开通云托管并创建服务
 2. 获取环境 ID（例如 `prod-xxxx`）
 3. 将 `worker_house` 小程序环境变量切到 `TARO_APP_API_MODE=cloudrun`
-4. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
-5. 重启服务并验证 `/api/health` 与小程序写接口
+4. 接入持久化数据源，并确认 `/api/health` 不再报告临时文件存储风险
+5. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
+6. 重启服务并验证 `/api/health` 与小程序写接口
 
 ## 部署建议
 
@@ -225,6 +264,6 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 
 ## 已知限制
 
-- `mock` 与 `cloudrun` 模式当前都使用内存存储，服务重启后会恢复种子数据
+- `cloudrun` 仍使用容器临时文件存储；默认安全门禁会阻止业务请求，只有显式开启联调开关才会放行
 - `wechat` 模式下，BFF 仍依赖 `CLOUD_APP_ID / CLOUD_APP_SECRET / CLOUD_ENV_ID`
-- 云托管环境下的云开发数据库直连能力已预留改造位，本轮未启用
+- 云托管环境下的云开发数据库直连能力仍需在部署前完成

@@ -4,7 +4,7 @@ import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
 import Input from '@nutui/nutui-react-taro/dist/es/packages/input/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
-import '@nutui/nutui-react-taro/dist/style.css';
+import '../nutuiStyles';
 import { fetchAdminCardOrderDetail, updateAdminCardOrder } from '@/services/admin';
 import type { CardOrderStatus } from '@/types';
 import { formatPrice } from '@/utils/helpers';

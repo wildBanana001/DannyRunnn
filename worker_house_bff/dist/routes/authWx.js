@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { isOpenidAdmin } from '../config/adminWhitelist.js';
 import { getUserByOpenid, upsertUser } from '../data/users.js';
+import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
 export const authWxRouter = Router();
 function resolveWxOpenid(request) {
-    // 由微信云托管自动注入 x-wx-openid header
-    const value = request.header('x-wx-openid') ?? request.header('X-WX-OPENID');
-    return typeof value === 'string' ? value.trim() : '';
+    return request.wxUser?.openid?.trim() || request.header('x-wx-openid')?.trim() || '';
 }
+authWxRouter.use(wxCloudrunAuth);
 authWxRouter.post('/wx-login', (request, response) => {
     const openid = resolveWxOpenid(request);
     if (!openid) {

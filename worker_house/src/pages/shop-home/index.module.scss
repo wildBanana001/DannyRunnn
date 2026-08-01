@@ -1,95 +1,211 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #E63946;
+$shop-accent: #d9483b;
 
 .container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: $color-oat;
+  background: #f4efe5;
 }
 
 .header {
-  position: relative;
-  padding: 48rpx 32rpx 32rpx;
-  background: $color-white;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 42rpx 30rpx 30rpx;
+  background: #fffaf0;
+  border-bottom: 2rpx solid rgba(78, 54, 36, 0.08);
+}
+
+.eyebrow,
+.title,
+.subtitle {
+  display: block;
+}
+
+.eyebrow {
+  font-size: 18rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 3rpx;
+  color: #a17d52;
 }
 
 .title {
-  display: block;
-  font-size: 56rpx;
+  margin-top: 8rpx;
+  font-size: 52rpx;
+  line-height: 1.15;
   font-weight: $font-weight-heavy;
-  color: $color-text-primary;
+  color: #30261e;
 }
 
 .subtitle {
-  display: block;
-  margin-top: 12rpx;
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #806d5c;
 }
 
 .ordersEntry {
-  position: absolute;
-  top: 52rpx;
-  right: 32rpx;
-  padding: 12rpx 24rpx;
-  border-radius: $radius-circle;
-  background: rgba(230, 57, 70, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 20rpx;
+  border: 2rpx solid rgba(217, 72, 59, 0.22);
+  border-radius: 999rpx;
+  background: rgba(217, 72, 59, 0.06);
+}
+
+.ordersEntryIcon,
+.ordersEntryText {
+  color: $shop-accent;
 }
 
 .ordersEntryText {
-  font-size: $font-size-xs;
-  color: $shop-accent;
+  font-size: 24rpx;
+  font-weight: $font-weight-semibold;
 }
 
 .scroll {
   flex: 1;
-  padding: 24rpx;
-  box-sizing: border-box;
+}
+
+.notice {
+  margin: 24rpx 24rpx 4rpx;
+  padding: 24rpx 28rpx;
+  border-radius: 22rpx;
+  background: #3e352d;
+  box-shadow: 0 12rpx 30rpx rgba(62, 53, 45, 0.14);
+}
+
+.noticeTitle,
+.noticeText {
+  display: block;
+}
+
+.noticeTitle {
+  font-size: 30rpx;
+  font-weight: $font-weight-bold;
+  color: #fff8e9;
+}
+
+.noticeText {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: rgba(255, 248, 233, 0.72);
 }
 
 .grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20rpx;
+  padding: 24rpx;
 }
 
 .card {
-  @include paper-card($color-white);
-  width: 336rpx;
-  margin-bottom: 24rpx;
-  padding: 16rpx;
-  box-sizing: border-box;
+  min-width: 0;
+  padding: 14rpx 14rpx 20rpx;
+  border: 2rpx solid rgba(78, 54, 36, 0.08);
+  border-radius: 24rpx;
+  background: #fffdf8;
+  box-shadow: 0 10rpx 24rpx rgba(68, 48, 34, 0.07);
 }
 
 .cover {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 300rpx;
-  border-radius: $radius-card-sm;
-  background: $color-oat;
+  height: 280rpx;
+  overflow: hidden;
+  border-radius: 18rpx;
 }
 
-.coverPlaceholder {
-  font-size: $font-size-sm;
-  color: $color-text-secondary;
+.coverWarm {
+  background: linear-gradient(145deg, #f5d4bb, #e9a990);
+}
+
+.coverCool {
+  background: linear-gradient(145deg, #d9e3d3, #a7c0a4);
+}
+
+.coverImage {
+  width: 100%;
+  height: 100%;
+}
+
+.coverEmoji {
+  font-size: 92rpx;
+  filter: drop-shadow(0 8rpx 8rpx rgba(54, 37, 25, 0.12));
+}
+
+.tag {
+  position: absolute;
+  top: 12rpx;
+  left: 12rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 253, 248, 0.86);
+  font-size: 18rpx;
+  font-weight: $font-weight-semibold;
+  color: #5d4938;
 }
 
 .cardTitle {
-  display: block;
+  display: -webkit-box;
+  min-height: 72rpx;
   margin-top: 16rpx;
-  font-size: $font-size-md;
+  overflow: hidden;
+  font-size: 27rpx;
+  line-height: 1.35;
   font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+  color: #33271f;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10rpx;
+  margin-top: 10rpx;
 }
 
 .cardPrice {
+  font-size: 32rpx;
+  font-weight: $font-weight-heavy;
+  color: $shop-accent;
+}
+
+.originalPrice {
+  font-size: 20rpx;
+  color: #a69a8d;
+  text-decoration: line-through;
+}
+
+.stock {
   display: block;
   margin-top: 8rpx;
-  font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
-  color: $shop-accent;
+  font-size: 20rpx;
+  color: #928273;
+}
+
+.state,
+.errorState {
+  padding: 90rpx 32rpx;
+  text-align: center;
+  color: #89776a;
+}
+
+.retryButton {
+  width: 220rpx;
+  margin: 24rpx auto 0;
+  padding: 18rpx 0;
+  border-radius: 999rpx;
+  background: #3e352d;
+  color: #fffaf0;
+}
+
+.bottomSpacing {
+  height: 44rpx;
 }

@@ -1,73 +1,89 @@
-# worker_house_bff 云托管部署 Runbook
+# worker_house_bff 云托管 CI/CD Runbook
 
-本文档仅作为部署说明，不会在本轮任务里实际执行部署。
+## 当前生产配置
 
-## 一、前置准备
+- GitHub 仓库：`wildBanana001/DannyRunnn`
+- 生产分支：`main`
+- 云开发环境：`prod-d9g991lo4dba5a4da`
+- 云托管服务：`worker-house-bff`
+- 构建目录：`worker_house_bff`
+- Dockerfile：`worker_house_bff/Dockerfile`
+- 容器端口：`80`
 
-1. 先在微信公众平台为小程序 `wx06f0bff0bed0dc80` 开通云托管。
-2. 开通完成后，记录环境 ID，格式通常类似 `prod-xxxx`。
-3. 部署前确认仓库内已包含以下文件：
-   - `Dockerfile`
-   - `.dockerignore`
-   - `container.config.json`
+> 注意：当前远程默认分支是 `main`。云托管必须绑定该分支，推送代码才会触发部署。
 
-## 二、部署方式
+## 流水线
 
-### 方式 A：公众平台控制台上传代码包（推荐）
+```text
+PR / push -> GitHub Actions -> npm ci -> TypeScript 编译
+                                -> HTTP 冒烟测试
+                                -> Docker 镜像构建校验
 
-1. 打开公众平台控制台。
-2. 进入 **云托管 → 服务管理 → 新建服务**。
-3. 选择 **上传代码包**。
-4. 将 `worker_house_bff/` 打成 zip 后上传。
-5. 打包时不要包含：
-   - `node_modules`
-   - `dist`
-   - `.env*`
-   - `logs`
-6. 确认控制台读取到 `container.config.json` 中的端口与伸缩配置。
-7. 完成发布并等待服务启动。
-
-## 三、方式 B：使用 `@cloudbase/cli` CLI 部署
-
-> 该方式需要用户本人具备可用的云托管 / CI 凭据，本轮仅提供命令示例。
-
-```bash
-npm install -g @cloudbase/cli
-cloudbase login
-cloudbase functions:deploy worker-house-bff --envId <你的环境ID>
+push / merge to main -> 微信云托管 Webhook -> 拉取 worker_house_bff
+                                                 -> 构建镜像
+                                                 -> 发布新版本
 ```
 
-如果团队后续采用 CLI，请以用户自己的凭据和实际服务名为准，再补充正式 CI 脚本。
+GitHub Actions 配置位于 `.github/workflows/bff-ci.yml`。CD 使用微信云托管官方 Git 自动部署，不需要在 GitHub 中存放腾讯云永久 SecretId / SecretKey。
 
-## 四、部署后的服务设置
+## 一次性开启 CD
 
-1. 进入 **服务设置 → 公网访问**，按需开启公网访问。
-2. 如果小程序直接通过 `wx.cloud.callContainer` 调用，推荐优先使用这种方式：
-   - 免 HTTPS 证书处理
-   - 免自建鉴权
-   - 微信会自动注入 `X-WX-OPENID` 等身份 Header
-3. 若需要排查容器状态，可先访问：
-   - `GET /api/health`
+1. 打开微信云托管的 `worker-house-bff` 服务更新页。
+2. 部署方式选择“通过 Git 仓库部署”，授权 GitHub 账号。
+3. 选择仓库 `wildBanana001/DannyRunnn`。
+4. 分支选择 `main`。
+5. 目标目录 / Dockerfile 目录填 `worker_house_bff`。
+6. Dockerfile 名称填 `Dockerfile`，服务端口填 `80`。
+7. 开启“自动部署”，触发规则选择 push 到 `main`（PR 合并最终也是一次 `main` push）。
+8. 选择部署成功后自动切换 100% 流量；生产环境如需人工验证，则改用灰度发布。
+9. 保存并执行一次手动部署，确认 GitHub Webhook 授权和构建参数生效。
 
-## 五、小程序切换步骤
+## 环境变量
 
-部署完成后，在 `worker_house/.env` 中至少配置：
-
-```bash
-TARO_APP_API_MODE=cloudrun
-TARO_APP_CLOUDRUN_ENV=<你的环境ID>
-TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
-```
-
-然后重新执行小程序构建与上传：
+云端更新部署来源时，不要覆盖现有敏感环境变量。最低基础配置为：
 
 ```bash
-cd worker_house
-npm run build:weapp
+NODE_ENV=production
+MODE=cloudrun
+ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
+ENABLE_SHOP=false
 ```
 
-接着在开发者工具中重新 upload 即可。
+支付、管理员与数据源相关密钥必须继续放在云托管环境变量中，不得写入 Git。当前 `ALLOW_EPHEMERAL_CLOUDRUN_DATA=false` 会安全地拦截业务 API，直到持久化数据源完成。
 
-## 六、交接说明
+## 验证
 
-当前仓库已完成“云托管就绪”改造，但尚未真正部署。待用户提供真实环境 ID 后，可基于本 Runbook 继续执行部署任务。
+1. GitHub 的 `BFF CI` 工作流应绿灯通过。
+2. 云托管操作历史应出现对应 `main` commit 的新版本。
+3. `GET /health` 应返回 HTTP `200`。
+4. `GET /api/health` 在持久化数据源未就绪时预期返回 HTTP `503` 和 `configuration_required`；这不代表容器启动失败。
+
+## 手动备用部署
+
+只有在 Git Webhook 暂时不可用时才使用 CLI：
+
+```bash
+npm install --global @cloudbase/cli@3.6.4
+tcb login
+tcb cloudrun deploy \
+  --env-id prod-d9g991lo4dba5a4da \
+  --serviceName worker-house-bff \
+  --port 80 \
+  --source ./worker_house_bff \
+  --force
+```
+
+## 回滚
+
+1. 进入 `worker-house-bff` 的版本 / 流量管理。
+2. 将 100% 流量切回上一个已验证版本。
+3. 回滚代码后再合并到 `main`，让自动部署恢复到 Git 中的正确状态。
+
+## 不触发时的排查顺序
+
+1. 确认提交已推送到 `origin/main`，而不是一个本地分支。
+2. 确认云托管绑定分支是 `main`。
+3. 确认“自动部署”开关已开启，GitHub 授权没有过期。
+4. 确认目标目录是 `worker_house_bff`，Dockerfile 名称是 `Dockerfile`。
+5. 在 GitHub 仓库 Webhooks 中查看最近一次请求是否成功。
+6. 在云托管构建日志中区分“没触发”、“构建失败”和“启动失败”。

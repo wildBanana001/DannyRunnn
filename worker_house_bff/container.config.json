@@ -8,7 +8,9 @@
   "policyThreshold": 60,
   "envParams": {
     "NODE_ENV": "production",
-    "MODE": "cloudrun"
+    "MODE": "cloudrun",
+    "ALLOW_EPHEMERAL_CLOUDRUN_DATA": "false",
+    "ENABLE_SHOP": "false"
   },
   "customLogs": "stdout",
   "initialDelaySeconds": 2,

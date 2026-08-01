@@ -3,7 +3,7 @@ import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
-import '@nutui/nutui-react-taro/dist/style.css';
+import '../nutuiStyles';
 import {
   deleteAdminPoster,
   fetchAdminPosters,

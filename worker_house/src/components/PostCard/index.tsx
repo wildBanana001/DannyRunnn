@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Image } from '@tarojs/components';
+import type { ITouchEvent } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import type { Post } from '@/types/post';
@@ -24,7 +25,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, className, onClick, onLike })
     }
   };
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = (e: ITouchEvent) => {
     e.stopPropagation();
     if (onLike) {
       onLike(post);

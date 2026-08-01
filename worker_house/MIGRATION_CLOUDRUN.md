@@ -28,8 +28,8 @@ flowchart LR
   A -->|TARO_APP_API_MODE=cloudrun| C[wx.cloud.callContainer]
   C --> E[worker_house_bff 云托管服务]
   B --> E
-  E --> F[mock 内存存储]
-  E -.后续任务.- G[云开发数据库 / CloudBase]
+  E -->|仅显式允许临时数据时| F[本地临时文件存储]
+  E -.正式上线前接入.- G[云开发数据库 / CloudBase]
 ```
 
 ## 二、本轮已完成的改动清单
@@ -45,8 +45,9 @@ flowchart LR
   - 管理端写接口继续使用原有 `authMiddleware`
   - 小程序写接口改为使用 `wxCloudrunAuth`
   - 公开读接口对小程序直接开放
-- 补充 `GET /api/health`，返回 `status / mode / timestamp`。
-- 将 `cloudrun` 模式暂时复用 `mock` 内存存储，并在代码中标记后续接入 CloudBase 的 TODO。
+- 补充 `GET /api/health`，返回 `status / mode / persistence / timestamp`。
+- 云托管默认禁止使用临时文件数据处理业务请求；只有显式设置
+  `ALLOW_EPHEMERAL_CLOUDRUN_DATA=true` 时才允许联调用的临时数据，避免把容器文件系统误当成生产数据库。
 - 更新 `README.md`，补充三种运行模式与云托管部署指南。
 - 新增 `scripts/deploy-cloudrun.md` 作为部署 runbook。
 
@@ -99,4 +100,6 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 
 - 本轮没有登录微信公众平台，也没有调用云托管 API。
 - 本轮没有把 `cloudrun` 模式接到真实云开发数据库。
+- 在接入真实持久化前，`cloudrun` 的健康检查返回
+  `configuration_required`，业务接口返回 `503`；这是有意设置的上线保护。
 - 本轮没有改动小程序 UI，也没有删除 `PAYMENT_REMOVAL_NOTES.md`、`UPLOAD_GUIDE.md`、`REDESIGN_CHANGELOG.md`、`UI_TUNING_NOTES.md`。

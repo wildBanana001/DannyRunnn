@@ -5,7 +5,7 @@ import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
 import Cell from '@nutui/nutui-react-taro/dist/es/packages/cell/index';
 import CellGroup from '@nutui/nutui-react-taro/dist/es/packages/cellgroup/index';
 import Toast from '@nutui/nutui-react-taro/dist/es/packages/toast/index';
-import '@nutui/nutui-react-taro/dist/style.css';
+import '../nutuiStyles';
 import { deleteAdminStory, fetchAdminStories, type AdminMiniStory } from '@/services/admin';
 import { formatDate } from '@/utils/helpers';
 import styles from './index.module.scss';

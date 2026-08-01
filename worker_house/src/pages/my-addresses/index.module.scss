@@ -9,6 +9,13 @@
   padding: 24rpx 24rpx 0;
 }
 
+.selectHint {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: 24rpx;
+  color: $color-text-secondary;
+}
+
 .list {
   padding: 20rpx 24rpx 0;
 }
@@ -63,6 +70,7 @@
 }
 
 .actionText,
+.selectAction,
 .deleteText,
 .divider {
   font-size: $font-size-sm;
@@ -71,6 +79,11 @@
 .actionText,
 .divider {
   color: $color-text-secondary;
+}
+
+.selectAction {
+  color: $color-accent;
+  font-weight: $font-weight-semibold;
 }
 
 .deleteText {
