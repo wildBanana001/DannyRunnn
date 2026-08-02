@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "test": "npm run build && node --test dist/data/orders.test.js dist/utils/wechat-pay.test.js",
-    "build": "tsc && node scripts/copy-runtime-data.mjs",
+    "check:runtime-deps": "node scripts/check-runtime-dependencies.mjs",
+    "build": "npm run check:runtime-deps && tsc && node scripts/copy-runtime-data.mjs",
     "start": "node dist/index.js",
     "migrate-images": "tsx scripts/migrate-images.ts",
     "seed:past-activities": "tsx scripts/seed-past-activities.ts"
   },
   "dependencies": {
     "@cloudbase/js-sdk": "3.7.0",
+    "@cloudbase/signature-nodejs": "2.0.0",
     "axios": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
