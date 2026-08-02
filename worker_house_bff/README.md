@@ -252,7 +252,7 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 1. 在微信公众平台中开通云托管，拿到环境 ID。
 2. 保持 `container.config.json` 中的 `MODE=cloudrun`、`SHOP_ORDER_STORAGE=cloudbase`；不要把 `ALLOW_EPHEMERAL_CLOUDRUN_DATA` 改成 `true` 用于生产。
 3. 推荐在服务更新页选择“Git 仓库部署”，绑定 GitHub 仓库 `wildBanana001/DannyRunnn`。
-4. 选择分支 `main`，目标目录填 `worker_house_bff`，Dockerfile 填 `Dockerfile`，端口填 `80`。
+4. 选择分支 `main`，目标目录填 `worker_house_bff`，Dockerfile 填 `Dockerfile`，端口填 `8080`。
 5. 开启“自动部署”并选择 push / PR 合并到 `main` 后触发；GitHub Actions 会同时执行 TypeScript 编译、HTTP 冒烟测试和 Docker 构建校验。
 6. 部署完成后，通过 `wx.cloud.callContainer` 或公网访问地址验证：
    - `GET /health`
@@ -281,7 +281,7 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 ### 微信云托管
 
 - 推荐直接使用仓库根目录的 `Dockerfile` 构建镜像
-- 容器默认监听 `80`
+- 容器默认监听非特权端口 `8080`，以便使用非 root 用户安全运行
 - `minNum=0`，空闲时可自动缩容到 0 以节省成本
 
 ### 传统云服务器 / 容器

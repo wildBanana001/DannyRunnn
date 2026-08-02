@@ -8,7 +8,7 @@
 - 云托管服务：`worker-house-bff`
 - 构建目录：`worker_house_bff`
 - Dockerfile：`worker_house_bff/Dockerfile`
-- 容器端口：`80`
+- 容器端口：`8080`
 
 > 注意：当前远程默认分支是 `main`。云托管必须绑定该分支，推送代码才会触发部署。
 
@@ -33,7 +33,7 @@ GitHub Actions 配置位于 `.github/workflows/bff-ci.yml`。CD 使用微信云�
 3. 选择仓库 `wildBanana001/DannyRunnn`。
 4. 分支选择 `main`。
 5. 目标目录 / Dockerfile 目录填 `worker_house_bff`。
-6. Dockerfile 名称填 `Dockerfile`，服务端口填 `80`。
+6. Dockerfile 名称填 `Dockerfile`，服务端口填 `8080`。
 7. 开启“自动部署”，触发规则选择 push 到 `main`（PR 合并最终也是一次 `main` push）。
 8. 选择部署成功后自动切换 100% 流量；生产环境如需人工验证，则改用灰度发布。
 9. 保存并执行一次手动部署，确认 GitHub Webhook 授权和构建参数生效。
@@ -75,7 +75,7 @@ tcb login
 tcb cloudrun deploy \
   --env-id prod-d9g991lo4dba5a4da \
   --serviceName worker-house-bff \
-  --port 80 \
+  --port 8080 \
   --source ./worker_house_bff \
   --force
 ```
