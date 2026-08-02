@@ -7,6 +7,7 @@ import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchAddresses, type Address } from '@/services/address';
+import { getPaymentErrorMessage } from '@/services/apiError';
 import {
   createShopClientRequestId,
   confirmShopPayment,
@@ -163,9 +164,9 @@ const OrderConfirmPage: React.FC = () => {
           Taro.showToast({ title: '已取消支付', icon: 'none' });
         }
       } else {
-        const message = payError instanceof Error ? payError.message : '支付发起失败，请稍后重试';
+        const message = getPaymentErrorMessage(payError, '支付发起失败，请稍后重试');
         console.warn('[shop] payment failed', payError);
-        Taro.showToast({ title: message.slice(0, 20), icon: 'none' });
+        Taro.showToast({ title: message, icon: 'none', duration: 10000 });
       }
     } finally {
       setPaying(false);

@@ -3,6 +3,7 @@ import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
+import { getPaymentErrorMessage } from '@/services/apiError';
 import {
   confirmActivityPayment,
   fetchRegistrationDetail,
@@ -72,8 +73,8 @@ const RegistrationDetailPage: React.FC = () => {
       }
     } catch (error) {
       Taro.hideLoading();
-      const message = error instanceof Error ? error.message : '暂时无法继续支付';
-      Taro.showToast({ title: message, icon: 'none' });
+      const message = getPaymentErrorMessage(error, '暂时无法继续支付');
+      Taro.showToast({ title: message, icon: 'none', duration: 10000 });
     } finally {
       setIsPaying(false);
     }

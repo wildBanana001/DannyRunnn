@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro';
 import { PAYMENT_API_MODE } from '../constants/runtime';
+import { createApiRequestError } from './apiError';
 import { cloudrunRequest, type CloudrunRequestOptions } from './cloudrun';
 
 export type ApiMode = 'mock' | 'bff' | 'cloudrun';
@@ -35,7 +36,7 @@ async function bffRequest<T>(options: RequestOptions): Promise<T> {
     });
 
     if (response.statusCode >= 400) {
-      throw new Error((response.data as any)?.message || '请求失败');
+      throw createApiRequestError(response.statusCode, response.data, '请求失败');
     }
 
     return response.data as T;

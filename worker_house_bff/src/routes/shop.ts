@@ -38,6 +38,10 @@ import {
   type DecryptedNotifyResource,
   type WechatPayOrderResult,
 } from '../utils/wechat-pay.js';
+import {
+  buildPaymentFailureResponse,
+  type PaymentFailureStage,
+} from '../utils/payment-diagnostics.js';
 import { requireWxOpenid } from './utils.js';
 
 export const shopRouter = Router();
@@ -64,6 +68,25 @@ function asyncHandler(handler: RequestHandler): RequestHandler {
   return (request, response, next) => {
     Promise.resolve(handler(request, response, next)).catch(next);
   };
+}
+
+function sendPaymentFailure(
+  response: Response,
+  error: unknown,
+  options: {
+    fallbackMessage: string;
+    operation: string;
+    stage: PaymentFailureStage;
+  },
+) {
+  const failure = buildPaymentFailureResponse(error, options);
+  const diagnostic = failure.payload.diagnostic;
+  console.error(
+    `[payment] ${options.operation} failed trace=${diagnostic.diagnosticId}`,
+    JSON.stringify(diagnostic),
+    error instanceof Error ? error.stack || error.message : error,
+  );
+  response.status(failure.status).json(failure.payload);
 }
 
 const requireShopEnabled: RequestHandler = (_request, response, next) => {
@@ -520,6 +543,7 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
 
+  let failureStage: PaymentFailureStage = 'request_validation';
   try {
     const productId = sanitizeString(request.body?.productId, 80);
     const quantity = parseQuantity(request.body?.quantity);
@@ -551,6 +575,7 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
 
     const outTradeNo = createOutTradeNo(openid, clientRequestId);
     const paymentRequest = { clientRequestId, productId, quantity, amount, address, remark };
+    failureStage = 'order_lookup';
     const existing = await getOrderById(outTradeNo);
     if (existing) {
       if (!matchesPaymentRequest(existing, paymentRequest)) {
@@ -562,6 +587,7 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
         return;
       }
       if (existing.status === 'pending' && existing.amount === 0) {
+        failureStage = 'order_settle';
         response.json(toPaymentSession(await settleFreeOrder(existing)));
         return;
       }
@@ -569,7 +595,9 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
         response.status(409).json({ message: '原订单已失效，请刷新页面重新下单' });
         return;
       }
+      failureStage = 'payment_preparation';
       const prepared = config.cloudMode === 'mock' ? existing : await prepareRealPayment(existing);
+      failureStage = 'payment_params';
       response.json(toPaymentSession(prepared));
       return;
     }
@@ -584,6 +612,7 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
     }
 
     const timestamp = new Date().toISOString();
+    failureStage = 'order_create';
     let order = await createOrder({
       id: outTradeNo,
       kind: 'shop',
@@ -617,19 +646,24 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
     }
 
     if (isFreeOrder) {
+      failureStage = 'order_settle';
       if (order.status === 'pending') order = await settleFreeOrder(order);
     } else if (!isMockPayment) {
+      failureStage = 'payment_preparation';
       order = await prepareRealPayment(order);
     }
+    failureStage = 'payment_params';
     response.json(toPaymentSession(order));
   } catch (error) {
-    console.error('[shop] create payment failed', error instanceof Error ? error.message : error);
     if (error instanceof PaymentPreparationInProgressError) {
       response.status(409).json({ message: error.message });
       return;
     }
-    response.status(error instanceof WechatPayApiError ? 502 : 500)
-      .json({ message: '支付订单创建失败，请稍后重试' });
+    sendPaymentFailure(response, error, {
+      fallbackMessage: '支付订单创建失败',
+      operation: 'shop_create',
+      stage: failureStage,
+    });
   }
 }));
 
@@ -669,9 +703,15 @@ shopRouter.post('/orders/:id/retry', requireShopEnabled, wxPaymentAuth, asyncHan
   try {
     response.json(toPaymentSession(refreshed.mock ? refreshed : await prepareRealPayment(refreshed)));
   } catch (error) {
-    console.error('[shop] retry payment failed', error instanceof Error ? error.message : error);
-    response.status(error instanceof PaymentPreparationInProgressError ? 409 : 502)
-      .json({ message: error instanceof PaymentPreparationInProgressError ? error.message : '暂时无法继续支付，请稍后重试' });
+    if (error instanceof PaymentPreparationInProgressError) {
+      response.status(409).json({ message: error.message });
+      return;
+    }
+    sendPaymentFailure(response, error, {
+      fallbackMessage: '暂时无法继续支付',
+      operation: 'shop_retry',
+      stage: 'payment_retry',
+    });
   }
 }));
 
@@ -707,6 +747,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
 
+  let failureStage: PaymentFailureStage = 'request_validation';
   try {
     const activityId = sanitizeString(request.body?.activityId, 80);
     const clientRequestId = sanitizeString(request.body?.clientRequestId, 64);
@@ -738,6 +779,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
 
     const outTradeNo = createOutTradeNo(openid, clientRequestId, 'WA');
     const paymentRequest = { clientRequestId, activityId, profile, amount };
+    failureStage = 'order_lookup';
     const existing = await getOrderById(outTradeNo);
     if (existing) {
       if (!matchesActivityPaymentRequest(existing, paymentRequest)) {
@@ -749,6 +791,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
         return;
       }
       if (existing.status === 'pending' && existing.amount === 0) {
+        failureStage = 'order_settle';
         response.json(toActivityPaymentSession(await settleFreeOrder(existing)));
         return;
       }
@@ -767,7 +810,9 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
         response.status(409).json({ message: '原报名支付单已失效，请刷新页面重新报名' });
         return;
       }
+      failureStage = 'payment_preparation';
       const prepared = config.cloudMode === 'mock' ? existing : await prepareRealPayment(existing);
+      failureStage = 'payment_params';
       response.json(toActivityPaymentSession(prepared));
       return;
     }
@@ -813,6 +858,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
     }
 
     const timestamp = new Date().toISOString();
+    failureStage = 'order_create';
     let order = await createActivityOrderWithCapacity({
       id: outTradeNo,
       kind: 'activity',
@@ -867,10 +913,13 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
         return;
       }
       if (order.status === 'pending' && order.amount === 0) {
+        failureStage = 'order_settle';
         order = await settleFreeOrder(order);
       } else if (order.status === 'pending' && !order.mock && config.cloudMode !== 'mock') {
+        failureStage = 'payment_preparation';
         order = await prepareRealPayment(order);
       }
+      failureStage = 'payment_params';
       response.json(toActivityPaymentSession(order));
       return;
     }
@@ -880,13 +929,15 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
       return;
     }
     if (isFreeRegistration) {
+      failureStage = 'order_settle';
       if (order.status === 'pending') order = await settleFreeOrder(order);
     } else if (!isMockPayment) {
+      failureStage = 'payment_preparation';
       order = await prepareRealPayment(order);
     }
+    failureStage = 'payment_params';
     response.status(201).json(toActivityPaymentSession(order));
   } catch (error) {
-    console.error('[activity-payment] create failed', error instanceof Error ? error.message : error);
     if (isActivityCapacityExceededError(error)) {
       response.status(409).json({ message: '活动名额已满' });
       return;
@@ -899,8 +950,11 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
       response.status(409).json({ message: error.message });
       return;
     }
-    response.status(error instanceof WechatPayApiError ? 502 : 500)
-      .json({ message: '活动支付单创建失败，请稍后重试' });
+    sendPaymentFailure(response, error, {
+      fallbackMessage: '活动支付单创建失败',
+      operation: 'activity_create',
+      stage: failureStage,
+    });
   }
 }));
 
@@ -940,9 +994,15 @@ shopRouter.post('/activity-registrations/:id/retry', requireShopEnabled, wxPayme
   try {
     response.json(toActivityPaymentSession(refreshed.mock ? refreshed : await prepareRealPayment(refreshed)));
   } catch (error) {
-    console.error('[activity-payment] retry failed', error instanceof Error ? error.message : error);
-    response.status(error instanceof PaymentPreparationInProgressError ? 409 : 502)
-      .json({ message: error instanceof PaymentPreparationInProgressError ? error.message : '暂时无法继续支付，请稍后重试' });
+    if (error instanceof PaymentPreparationInProgressError) {
+      response.status(409).json({ message: error.message });
+      return;
+    }
+    sendPaymentFailure(response, error, {
+      fallbackMessage: '暂时无法继续支付',
+      operation: 'activity_retry',
+      stage: 'payment_retry',
+    });
   }
 }));
 

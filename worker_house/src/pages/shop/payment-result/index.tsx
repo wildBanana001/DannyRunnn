@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
+import { getPaymentErrorMessage } from '@/services/apiError';
 import {
   confirmShopPayment,
   fetchShopOrder,
@@ -67,8 +68,8 @@ const PaymentResultPage: React.FC = () => {
       setIsFree(order.amount <= 0);
     } catch (error) {
       if (!isPaymentCancelled(error)) {
-        const message = error instanceof Error ? error.message : '支付重试失败';
-        Taro.showToast({ title: message.slice(0, 20), icon: 'none' });
+        const message = getPaymentErrorMessage(error, '支付重试失败');
+        Taro.showToast({ title: message, icon: 'none', duration: 10000 });
       }
     } finally {
       setRetrying(false);

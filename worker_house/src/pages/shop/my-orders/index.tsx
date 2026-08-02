@@ -5,6 +5,7 @@ import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import { getPaymentErrorMessage } from '@/services/apiError';
 import {
   confirmShopPayment,
   fetchMyShopOrders,
@@ -90,8 +91,8 @@ const MyOrdersPage: React.FC = () => {
       }
     } catch (payError) {
       if (!isPaymentCancelled(payError)) {
-        const message = payError instanceof Error ? payError.message : '支付失败';
-        Taro.showToast({ title: message.slice(0, 20), icon: 'none' });
+        const message = getPaymentErrorMessage(payError, '支付失败');
+        Taro.showToast({ title: message, icon: 'none', duration: 10000 });
       }
     } finally {
       setPayingOrderId('');

@@ -7,6 +7,7 @@ import SafeImage from '@/components/SafeImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
 import { calculateCardDeduction } from '@/data/mock-member';
+import { getPaymentErrorMessage } from '@/services/apiError';
 import {
   confirmActivityPayment,
   createActivityPaymentClientRequestId,
@@ -250,8 +251,8 @@ const RegisterPage: React.FC = () => {
     } catch (error) {
       console.warn('[register] submit order failed', error);
       Taro.hideLoading();
-      const message = error instanceof Error ? error.message : '报名失败，请稍后再试';
-      Taro.showToast({ title: message, icon: 'none' });
+      const message = getPaymentErrorMessage(error, '报名失败，请稍后再试');
+      Taro.showToast({ title: message, icon: 'none', duration: 10000 });
     } finally {
       setIsSubmitting(false);
     }

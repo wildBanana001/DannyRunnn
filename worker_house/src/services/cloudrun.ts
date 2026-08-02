@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro';
 import { cloudEnvId, cloudrunService } from '../cloud/config';
+import { createApiRequestError } from './apiError';
 
 declare const wx: any;
 
@@ -63,7 +64,11 @@ export async function cloudrunRequest<T>(options: CloudrunRequestOptions): Promi
     });
 
     if ((response as any).statusCode >= 400) {
-      throw new Error(getResponseErrorMessage(response));
+      throw createApiRequestError(
+        Number((response as any).statusCode) || 0,
+        (response as any).data,
+        getResponseErrorMessage(response),
+      );
     }
 
     return (response as any).data as T;
