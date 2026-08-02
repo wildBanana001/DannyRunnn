@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import { cloudEnvId, cloudrunService } from '../cloud/config';
 
 declare const wx: any;
 
@@ -46,21 +47,15 @@ export async function cloudrunRequest<T>(options: CloudrunRequestOptions): Promi
     throw new Error('当前环境不支持微信云托管调用');
   }
 
-  const env = process.env.TARO_APP_CLOUDRUN_ENV?.trim();
-  if (!env) {
-    throw new Error('未配置 TARO_APP_CLOUDRUN_ENV');
-  }
-
-  const service = process.env.TARO_APP_CLOUDRUN_SERVICE?.trim();
   const cloud = getCloudApi();
 
   Taro.showNavigationBarLoading();
   try {
     const response = await cloud.callContainer({
-      config: { env },
+      config: { env: cloudEnvId },
       data: options.data,
       header: {
-        ...(service ? { 'X-WX-SERVICE': service } : {}),
+        'X-WX-SERVICE': cloudrunService,
         ...(options.header ?? {}),
       },
       method: options.method ?? 'GET',

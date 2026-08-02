@@ -37,11 +37,7 @@ jobs:
     env:
       NO_PROXY: servicewechat.com
       TARO_APP_API_MODE: ${{ vars.TARO_APP_API_MODE || 'mock' }}
-      TARO_APP_PAYMENT_API_MODE: ${{ vars.TARO_APP_PAYMENT_API_MODE || vars.TARO_APP_SHOP_API_MODE || 'mock' }}
-      TARO_APP_SHOP_API_MODE: ${{ vars.TARO_APP_SHOP_API_MODE || 'mock' }}
       TARO_APP_BFF_BASE_URL: ${{ vars.TARO_APP_BFF_BASE_URL }}
-      TARO_APP_CLOUDRUN_ENV: ${{ vars.TARO_APP_CLOUDRUN_ENV }}
-      TARO_APP_CLOUDRUN_SERVICE: ${{ vars.TARO_APP_CLOUDRUN_SERVICE || 'worker-house-bff' }}
       TARO_APP_FONT_ASSET_BASE_URL: ${{ vars.TARO_APP_FONT_ASSET_BASE_URL }}
       TARO_APP_SHOP_ASSET_BASE_URL: ${{ vars.TARO_APP_SHOP_ASSET_BASE_URL }}
       WECHAT_MINIPROGRAM_APPID: wx06f0bff0bed0dc80

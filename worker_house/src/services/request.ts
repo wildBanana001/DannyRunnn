@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import { PAYMENT_API_MODE } from '../constants/runtime';
 import { cloudrunRequest, type CloudrunRequestOptions } from './cloudrun';
 
 export type ApiMode = 'mock' | 'bff' | 'cloudrun';
@@ -48,15 +49,7 @@ export function getApiMode(): ApiMode {
 }
 
 export function getPaymentApiMode(): ApiMode {
-  const paymentMode = process.env.TARO_APP_PAYMENT_API_MODE?.trim();
-  if (paymentMode === 'mock' || paymentMode === 'bff' || paymentMode === 'cloudrun') {
-    return paymentMode;
-  }
-  const legacyShopMode = process.env.TARO_APP_SHOP_API_MODE?.trim();
-  if (legacyShopMode === 'mock' || legacyShopMode === 'bff' || legacyShopMode === 'cloudrun') {
-    return legacyShopMode;
-  }
-  return getApiMode();
+  return process.env.TARO_ENV === 'weapp' ? PAYMENT_API_MODE : 'mock';
 }
 
 export async function requestWithMode<T>(apiMode: ApiMode, options: RequestOptions): Promise<T> {

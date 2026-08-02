@@ -1,3 +1,5 @@
+import { CLOUD_ENV_ID, CLOUDRUN_SERVICE } from '../constants/runtime';
+
 const trimEnv = (value?: string) => value?.trim() ?? '';
 
 const normalizeBaseUrl = (value?: string) => {
@@ -5,10 +7,9 @@ const normalizeBaseUrl = (value?: string) => {
   return nextValue ? nextValue.replace(/\/$/, '') : '';
 };
 
-export const cloudEnvId = trimEnv(process.env.TARO_APP_CLOUD_ENV)
-  || trimEnv(process.env.TARO_APP_CLOUDRUN_ENV);
+export const cloudEnvId = CLOUD_ENV_ID;
 
-export const cloudrunService = trimEnv(process.env.TARO_APP_CLOUDRUN_SERVICE);
+export const cloudrunService = CLOUDRUN_SERVICE;
 
 export const fontAssetBaseUrl = normalizeBaseUrl(process.env.TARO_APP_FONT_ASSET_BASE_URL)
   || normalizeBaseUrl(process.env.TARO_APP_BFF_BASE_URL);

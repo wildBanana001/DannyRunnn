@@ -63,7 +63,7 @@ CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 2. 云托管操作历史应出现对应 `main` commit 的新版本。
 3. `GET /health` 应返回 HTTP `200`。
 4. `GET /api/health` 在持久化数据源未就绪时预期返回 HTTP `503` 和 `configuration_required`；这不代表容器启动失败。
-5. 开启支付后，`GET /api/shop/readiness` 应返回 `ready=true`，再把小程序变量 `TARO_APP_PAYMENT_API_MODE` 设为 `cloudrun`。
+5. 开启支付后，`GET /api/shop/readiness` 应返回 `ready=true`；小程序支付模式已在 `src/constants/runtime.ts` 固定为 `cloudrun`。
 
 ## 手动备用部署
 

@@ -31,7 +31,6 @@ jobs:
         working-directory: worker_house
     env:
       TARO_APP_API_MODE: mock
-      TARO_APP_PAYMENT_API_MODE: mock
 
     steps:
       - name: Check out repository

@@ -25,10 +25,8 @@
 
 - `WECHAT_MINIPROGRAM_ROBOT`：`1` 到 `30`，默认 `1`。
 - `TARO_APP_API_MODE`：默认 `mock`；BFF 与持久化数据源就绪后改为 `cloudrun`。
-- `TARO_APP_PAYMENT_API_MODE`：商城与活动报名支付共用，默认 `mock`；支付配置与订单库就绪后可单独改为 `cloudrun`，不会影响其他模块。
-- `TARO_APP_SHOP_API_MODE`：旧版兼容变量；未设置 `TARO_APP_PAYMENT_API_MODE` 时仍会读取它。
-- `TARO_APP_CLOUDRUN_ENV`：必须显式填写目标云环境 ID；`mock` 模式不会初始化或访问云环境。
-- `TARO_APP_CLOUDRUN_SERVICE`：默认 `worker-house-bff`。
+
+支付模式、云环境 ID 和云托管服务名已固定在 `src/constants/runtime.ts`，不再依赖 GitHub Variables。
 
 自动化只上传开发版本并生成预览码，不会自动提交审核、切换体验版或发布正式版。
 
@@ -61,7 +59,7 @@
 1. 点击开发者工具左上角的 **"云开发"** 按钮。
 2. 在打开的云开发控制台中，创建或选择一个现有的云开发环境。
 3. 复制 **环境 ID (Env ID)**。
-4. 通过本地 `.env` 或 CI Variable 配置 `TARO_APP_CLOUDRUN_ENV`，不要把生产环境 ID 写进源码。
+4. 确认 `src/constants/runtime.ts` 中的环境 ID 与当前生产云环境一致。
 5. **再次运行** `npm run build:weapp` 以确保配置生效。
 
 ## 5. 部署云函数

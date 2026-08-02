@@ -2,8 +2,8 @@
 
 > [!IMPORTANT]
 > **当前状态：环境 ID 已配置**
-> - 环境 ID 已填：`prod-d9g991lo4dba5a4da`
-> - **支付切换**：支付配置与 CloudBase 订单库就绪后，只需把 `TARO_APP_PAYMENT_API_MODE` 切换为 `cloudrun`；商城与活动报名会一起切换，其他模块可继续保持原模式。
+> - 环境 ID 已固定：`prod-d9g991lo4dba5a4da`
+> - **支付链路**：商城与活动报名已固定使用 `cloudrun`，不再读取小程序构建环境变量。
 
 本轮目标是把 `worker_house` 小程序与 `worker_house_bff` 后端改造成“微信云托管就绪”状态，但**不执行部署**。后续待用户开通云托管并提供真实环境 ID 后，再执行部署任务。
 
@@ -38,7 +38,7 @@ flowchart LR
 
 - 新增 `Dockerfile`，采用多阶段构建，最终镜像仅保留 `dist` 与生产依赖。
 - 新增 `.dockerignore`，排除 `node_modules`、`dist`、`.env*`、`logs`、`.git`。
-- 新增 `container.config.json`，包含 `containerPort=80`、`minNum=0`、`MODE=cloudrun` 等云托管元数据。
+- 新增 `container.config.json`，包含 `containerPort=8080`、`minNum=0`、`MODE=cloudrun` 等云托管元数据。
 - 新增 `src/middlewares/wx-cloudrun-auth.ts`，读取微信云托管自动注入的身份 Header。
 - 扩展 `src/config.ts`，支持 `mock / wechat / cloudrun` 三种模式，并兼容旧的 `CLOUD_MODE`。
 - 调整路由鉴权模型：
@@ -55,9 +55,9 @@ flowchart LR
 
 - 新增 `src/services/cloudrun.ts`，封装 `wx.cloud.callContainer`。
 - 新增 `src/services/request.ts`，支持 `mock / bff / cloudrun` 三档运行时切换。
-- 更新 `src/cloud/index.ts`，将云初始化改为读取 `TARO_APP_CLOUDRUN_ENV`，未配置时自动跳过。
+- 更新 `src/cloud/index.ts`，使用 `src/constants/runtime.ts` 中的固定云环境配置完成初始化。
 - 更新 `src/cloud/services.ts`，在不改页面业务调用方式的前提下，把请求层接入到新的 runtime 开关。
-- 新增 `.env.example`，列出 `TARO_APP_API_MODE / TARO_APP_PAYMENT_API_MODE / TARO_APP_SHOP_API_MODE / TARO_APP_BFF_BASE_URL / TARO_APP_CLOUDRUN_ENV / TARO_APP_CLOUDRUN_SERVICE` 示例。
+- 新增 `.env.example`，仅保留通用 API 模式、BFF 和资源地址等可变配置示例。
 
 ## 三、用户还需要做的步骤
 
@@ -67,16 +67,9 @@ flowchart LR
 4. 把环境 ID 告诉我。
 5. 我再基于当前仓库继续执行下一轮“实际部署 + 联调验证”任务。
 
-## 四、部署后小程序需要改的配置
+## 四、部署后小程序配置
 
-在 `worker_house/.env` 中填写：
-
-```bash
-TARO_APP_API_MODE=mock
-TARO_APP_PAYMENT_API_MODE=cloudrun
-TARO_APP_CLOUDRUN_ENV=prod-xxxx
-TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
-```
+支付模式、云环境 ID 与云托管服务名已在 `worker_house/src/constants/runtime.ts` 固定，不需要再配置 `.env` 或 GitHub Variables。
 
 如需先走公网 BFF，则改为：
 
@@ -87,7 +80,7 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 
 ## 五、回滚方案
 
-如果需要立即回到当前稳定链路，可直接调整小程序环境变量并重新构建：
+如果需要回滚支付链路，需修改 `worker_house/src/constants/runtime.ts` 并重新构建小程序。其他通用数据链路仍可通过环境变量调整：
 
 - 回滚到纯本地数据：`TARO_APP_API_MODE=mock`
 - 回滚到公网 BFF：`TARO_APP_API_MODE=bff`

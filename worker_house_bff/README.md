@@ -229,13 +229,7 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 
 ### 走微信云托管（`TARO_APP_API_MODE=cloudrun`）
 
-在 `worker_house/.env` 中配置：
-
-```bash
-TARO_APP_API_MODE=cloudrun
-TARO_APP_CLOUDRUN_ENV=prod-xxxx
-TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
-```
+支付链路的云环境与服务名已固定在 `worker_house/src/constants/runtime.ts`。如果其他通用数据链路也需要切换到云托管，只需配置 `TARO_APP_API_MODE=cloudrun`。
 
 小程序会通过 `wx.cloud.callContainer` 调用云托管服务，无需额外域名与小程序侧鉴权。
 
@@ -265,7 +259,7 @@ TARO_APP_CLOUDRUN_SERVICE=worker-house-bff
 
 1. 在微信公众平台开通云托管并创建服务
 2. 获取环境 ID（例如 `prod-xxxx`）
-3. 先只将 `worker_house` 的 `TARO_APP_PAYMENT_API_MODE` 切到 `cloudrun`；商城和活动报名支付会一起启用，其他模块可继续保持 `TARO_APP_API_MODE=mock`
+3. 确认 `worker_house/src/constants/runtime.ts` 中的支付模式为 `cloudrun`；商城和活动报名支付会一起启用，其他模块可继续保持 `TARO_APP_API_MODE=mock`
 4. 确认 `/api/shop/readiness` 返回支付配置与 CloudBase 订单库均为 `ready=true`
 5. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
 6. 重启服务并验证 `/api/health` 与小程序写接口
