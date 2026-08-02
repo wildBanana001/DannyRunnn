@@ -16,7 +16,7 @@ export interface PaymentFailureDiagnostic {
   diagnosticId: string;
   operation: string;
   requestId: string;
-  source: 'bff' | 'cloudbase' | 'wechat-pay';
+  source: 'bff' | 'mysql' | 'wechat-pay';
   stage: PaymentFailureStage;
   status: number;
 }
@@ -56,12 +56,13 @@ function firstString(records: Record<string, unknown>[], keys: string[]): string
 function sanitizeDiagnosticText(value: string, fallback: string): string {
   const sanitized = (value || fallback)
     .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, '[REDACTED_PEM]')
+    .replace(/\bmysql:\/\/[^\s"'`]+/gi, 'mysql://[REDACTED_CONNECTION]')
     .replace(/\b(authorization|api[_-]?key|secret(?:id|key)?|token|private[_-]?key|openid)\s*[:=]\s*["']?[^"',;\s]+/gi, '$1=[REDACTED]')
     .replace(/\b[A-Za-z0-9+/_=-]{64,}\b/g, '[REDACTED_VALUE]')
     .replace(/https?:\/\/[^\s?]+\?[^\s]+/g, (url) => `${url.split('?')[0]}?[REDACTED_QUERY]`)
     .replace(/\s+/g, ' ')
     .trim();
-  return (sanitized || fallback).slice(0, 240);
+  return (sanitized || fallback).slice(0, 1_200);
 }
 
 function normalizeCode(value: string, detail: string): string {
@@ -69,19 +70,49 @@ function normalizeCode(value: string, detail: string): string {
   if (explicit && !/^error$/i.test(explicit)) {
     return explicit.replace(/[^A-Za-z0-9_.:-]/g, '_').slice(0, 80).toUpperCase();
   }
+  if (/MySQL 订单库配置不完整|MYSQL_(ADDRESS|USERNAME|PASSWORD|DATABASE)/i.test(detail)) {
+    return 'MYSQL_CONFIGURATION_REQUIRED';
+  }
+  if (/ER_NO_SUCH_TABLE|doesn't exist|table.*not found/i.test(detail)) return 'ER_NO_SUCH_TABLE';
+  if (/ER_BAD_DB_ERROR|unknown database/i.test(detail)) return 'ER_BAD_DB_ERROR';
+  if (/ER_ACCESS_DENIED_ERROR|access denied/i.test(detail)) return 'ER_ACCESS_DENIED_ERROR';
   if (/fetch failed|network|ECONN|ENOTFOUND|ETIMEDOUT/i.test(detail)) return 'NETWORK_FETCH_FAILED';
-  if (/collection|database|cloudbase|数据库|集合/i.test(detail)) return 'CLOUDBASE_STORAGE_ERROR';
+  if (/mysql|database|数据库/i.test(detail)) return 'MYSQL_STORAGE_ERROR';
   if (/private key|私钥/i.test(detail)) return 'PRIVATE_KEY_INVALID';
   if (/signature|验签|签名/i.test(detail)) return 'SIGNATURE_ERROR';
   if (/config|配置/i.test(detail)) return 'PAYMENT_CONFIGURATION_ERROR';
   return 'PAYMENT_ORDER_ERROR';
 }
 
+function normalizeDetail(code: string, detail: string): string {
+  if (code === 'MYSQL_CONFIGURATION_REQUIRED') return '微信云托管 MySQL 配置不完整。请配置 MYSQL_ADDRESS、MYSQL_USERNAME、MYSQL_PASSWORD、MYSQL_DATABASE。';
+  if (code === 'ER_ACCESS_DENIED_ERROR') return 'MySQL 用户名或密码无效，请核对云托管 MySQL 连接信息。';
+  if (code === 'ER_BAD_DB_ERROR') return 'MySQL 数据库不存在，请先在微信云托管的 MySQL 页面创建数据库，并核对 MYSQL_DATABASE。';
+  if (code === 'ER_NO_SUCH_TABLE') return 'MySQL 订单表尚未初始化，请保持 MYSQL_AUTO_MIGRATE=true 后重新部署，或执行 npm run migrate:orders。';
+  if (['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'NETWORK_FETCH_FAILED'].includes(code)) {
+    return 'BFF 无法连接微信云托管 MySQL，请核对内网地址、端口与网络环境。';
+  }
+  return detail;
+}
+
 function inferSource(error: unknown, stage: PaymentFailureStage, code: string, detail: string): PaymentFailureDiagnostic['source'] {
   if (error instanceof WechatPayApiError) return 'wechat-pay';
-  if (stage === 'order_lookup' || stage === 'order_create' || stage === 'order_settle') return 'cloudbase';
-  if (/cloudbase|database|collection|数据库|集合/i.test(`${code} ${detail}`)) return 'cloudbase';
+  if (stage === 'order_lookup' || stage === 'order_create' || stage === 'order_settle') return 'mysql';
+  if (/mysql|database|数据库|^ER_|ECONN|ENOTFOUND|ETIMEDOUT/i.test(`${code} ${detail}`)) return 'mysql';
   return 'bff';
+}
+
+function isStorageUnavailable(code: string) {
+  return [
+    'MYSQL_CONFIGURATION_REQUIRED',
+    'ER_ACCESS_DENIED_ERROR',
+    'ER_BAD_DB_ERROR',
+    'ER_NO_SUCH_TABLE',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'ENOTFOUND',
+    'NETWORK_FETCH_FAILED',
+  ].includes(code);
 }
 
 export function buildPaymentFailureResponse(
@@ -96,11 +127,12 @@ export function buildPaymentFailureResponse(
   const rawDetail = error instanceof Error
     ? error.message
     : firstString(records, ['message', 'errMsg', 'errmsg', 'error']) || String(error || '');
-  const detail = sanitizeDiagnosticText(rawDetail, options.fallbackMessage);
+  const sanitizedDetail = sanitizeDiagnosticText(rawDetail, options.fallbackMessage);
   const rawCode = error instanceof WechatPayApiError
     ? error.code
     : firstString(records, ['code', 'errCode', 'errcode', 'name']);
-  const code = normalizeCode(rawCode, detail);
+  const code = normalizeCode(rawCode, sanitizedDetail);
+  const detail = normalizeDetail(code, sanitizedDetail);
   const requestId = sanitizeDiagnosticText(
     error instanceof WechatPayApiError
       ? error.requestId
@@ -109,7 +141,9 @@ export function buildPaymentFailureResponse(
   );
   const upstreamStatus = error instanceof WechatPayApiError && error.status >= 400 && error.status <= 599
     ? error.status
-    : 500;
+    : isStorageUnavailable(code)
+      ? 503
+      : 500;
   const diagnostic: PaymentFailureDiagnostic = {
     code,
     detail,
@@ -127,7 +161,11 @@ export function buildPaymentFailureResponse(
   ].filter(Boolean).join('；');
 
   return {
-    status: error instanceof WechatPayApiError ? 502 : 500,
+    status: error instanceof WechatPayApiError
+      ? 502
+      : isStorageUnavailable(code)
+        ? 503
+        : 500,
     payload: {
       message: `${options.fallbackMessage} [${diagnostic.code}] ${diagnostic.detail}（${metadata}）`,
       diagnostic,

@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { getActivityById } from '../data/activities.js';
 import { getProductById, listProducts } from '../data/shop.js';
-import { createOrder, createActivityOrderWithCapacity, claimOrderPaymentPreparation, checkOrderStorageReady, finishOrderPaymentPreparation, getOrderById, getOrderStorageType, getOrdersByOpenid, getOrdersByProductId, isActivityCapacityExceededError, isActivityCapacityInitializationError, settleFreeOrder, updateOrderStatus, } from '../data/orders.js';
+import { createOrder, createActivityOrderWithCapacity, claimOrderPaymentPreparation, checkOrderStorageReady, finishOrderPaymentPreparation, getOrderById, getOrderStorageType, getOrdersByOpenid, getOrdersByProductId, isActivityCapacityExceededError, settleFreeOrder, updateOrderStatus, } from '../data/orders.js';
 import { wxPaymentAuth } from '../middlewares/wx-cloudrun-auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { buildJsapiPayParams, closeWechatPayOrder, createOutTradeNo, decryptNotifyResource, getWechatPayConfigurationStatus, isWechatPayConfigured, jsapiUnifiedOrder, queryWechatPayOrder, verifyWechatPaySignature, verifyWechatPayConnectivity, WechatPayApiError, } from '../utils/wechat-pay.js';
@@ -28,7 +28,7 @@ function asyncHandler(handler) {
 function sendPaymentFailure(response, error, options) {
     const failure = buildPaymentFailureResponse(error, options);
     const diagnostic = failure.payload.diagnostic;
-    console.error(`[payment] ${options.operation} failed trace=${diagnostic.diagnosticId}`, JSON.stringify(diagnostic), error instanceof Error ? error.stack || error.message : error);
+    console.error(`[payment] ${options.operation} failed trace=${diagnostic.diagnosticId} diagnostic=${JSON.stringify(diagnostic)}`);
     response.status(failure.status).json(failure.payload);
 }
 const requireShopEnabled = (_request, response, next) => {
@@ -395,7 +395,7 @@ shopRouter.get('/readiness', asyncHandler(async (_request, response) => {
 shopRouter.post('/readiness/verify', authMiddleware, asyncHandler(async (_request, response) => {
     const storageReady = await checkOrderStorageReady();
     if (!storageReady) {
-        response.status(503).json({ ready: false, message: 'CloudBase 订单库尚未就绪' });
+        response.status(503).json({ ready: false, message: 'MySQL 订单库尚未就绪' });
         return;
     }
     await verifyWechatPayConnectivity();
@@ -766,6 +766,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
         }, {
             currentParticipants: activity.currentParticipants,
             maxParticipants: activity.maxParticipants,
+            configurationVersion: activity.updatedAt,
         });
         if (order.id !== outTradeNo) {
             if (order.status === 'paid') {
@@ -816,10 +817,6 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
     catch (error) {
         if (isActivityCapacityExceededError(error)) {
             response.status(409).json({ message: '活动名额已满' });
-            return;
-        }
-        if (isActivityCapacityInitializationError(error)) {
-            response.status(503).json({ message: '活动名额数据需要迁移，请联系管理员' });
             return;
         }
         if (error instanceof PaymentPreparationInProgressError) {

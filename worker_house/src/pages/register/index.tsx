@@ -4,10 +4,10 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
 import { calculateCardDeduction } from '@/data/mock-member';
-import { getPaymentErrorMessage } from '@/services/apiError';
 import {
   confirmActivityPayment,
   createActivityPaymentClientRequestId,
@@ -66,6 +66,7 @@ const RegisterPage: React.FC = () => {
   const [successRegistrationId, setSuccessRegistrationId] = useState('');
   const [clientRequestId] = useState(createActivityPaymentClientRequestId);
   const directPaymentEnabled = isDirectActivityPaymentEnabled();
+  const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
 
   const refreshMemberData = useCallback(async () => {
     const [profileResult, cardResult] = await Promise.allSettled([fetchProfiles(), fetchCurrentCardOrder()]);
@@ -251,8 +252,7 @@ const RegisterPage: React.FC = () => {
     } catch (error) {
       console.warn('[register] submit order failed', error);
       Taro.hideLoading();
-      const message = getPaymentErrorMessage(error, '报名失败，请稍后再试');
-      Taro.showToast({ title: message, icon: 'none', duration: 10000 });
+      showPaymentError(error, '报名失败，请稍后再试');
     } finally {
       setIsSubmitting(false);
     }
@@ -407,6 +407,7 @@ const RegisterPage: React.FC = () => {
         visible={Boolean(successRegistrationId)}
         onClose={handleCloseSuccessModal}
       />
+      {paymentErrorDialog}
     </View>
   );
 };

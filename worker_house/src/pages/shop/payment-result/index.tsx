@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
-import { getPaymentErrorMessage } from '@/services/apiError';
+import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import {
   confirmShopPayment,
   fetchShopOrder,
@@ -38,6 +38,7 @@ const PaymentResultPage: React.FC = () => {
   const [isFree, setIsFree] = useState(false);
   const [checking, setChecking] = useState(Boolean(orderId));
   const [retrying, setRetrying] = useState(false);
+  const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
 
   const refreshStatus = useCallback(async () => {
     if (!orderId) return;
@@ -68,8 +69,7 @@ const PaymentResultPage: React.FC = () => {
       setIsFree(order.amount <= 0);
     } catch (error) {
       if (!isPaymentCancelled(error)) {
-        const message = getPaymentErrorMessage(error, '支付重试失败');
-        Taro.showToast({ title: message, icon: 'none', duration: 10000 });
+        showPaymentError(error, '支付重试失败');
       }
     } finally {
       setRetrying(false);
@@ -107,6 +107,7 @@ const PaymentResultPage: React.FC = () => {
           <Text>继续逛逛</Text>
         </View>
       </View>
+      {paymentErrorDialog}
     </View>
   );
 };

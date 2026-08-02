@@ -22,18 +22,47 @@ function readBoolean(value) {
     return value?.trim().toLowerCase() === 'true';
 }
 function readShopOrderStorage(value, cloudMode) {
-    if (value?.trim().toLowerCase() === 'cloudbase')
-        return 'cloudbase';
-    if (value?.trim().toLowerCase() === 'file')
+    const normalized = value?.trim().toLowerCase();
+    if (normalized === 'mysql')
+        return 'mysql';
+    if (normalized === 'file')
         return 'file';
-    return cloudMode === 'cloudrun' ? 'cloudbase' : 'file';
+    if (normalized === 'cloudbase') {
+        throw new Error('SHOP_ORDER_STORAGE=cloudbase 已停用；请先完成历史订单迁移，再显式改为 mysql');
+    }
+    if (normalized)
+        throw new Error(`不支持的 SHOP_ORDER_STORAGE=${normalized}`);
+    return cloudMode === 'cloudrun' ? 'mysql' : 'file';
 }
-function readCollectionName(value) {
-    const name = value?.trim() || 'shop_orders';
-    return /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name) ? name : 'shop_orders';
+function readBoundedInteger(value, fallback, minimum, maximum) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed))
+        return fallback;
+    return Math.min(maximum, Math.max(minimum, parsed));
+}
+function readMysqlAddress(value) {
+    const address = value?.trim() || '';
+    if (!address)
+        return { host: '', port: undefined };
+    const ipv6 = address.match(/^\[([^\]]+)](?::(\d+))?$/);
+    if (ipv6) {
+        return {
+            host: ipv6[1],
+            port: ipv6[2] ? readBoundedInteger(ipv6[2], 3306, 1, 65_535) : undefined,
+        };
+    }
+    const hostAndPort = address.match(/^([^:]+):(\d+)$/);
+    if (hostAndPort) {
+        return {
+            host: hostAndPort[1],
+            port: readBoundedInteger(hostAndPort[2], 3306, 1, 65_535),
+        };
+    }
+    return { host: address, port: undefined };
 }
 const cloudMode = readCloudMode(process.env.MODE?.trim() || process.env.CLOUD_MODE?.trim());
 const enableShopValue = process.env.ENABLE_SHOP?.trim();
+const mysqlAddress = readMysqlAddress(process.env.MYSQL_ADDRESS);
 export const config = {
     adminToken: process.env.ADMIN_TOKEN?.trim() || (!isProduction && cloudMode === 'mock' ? 'mock-admin-token' : ''),
     allowEphemeralCloudrunData: readBoolean(process.env.ALLOW_EPHEMERAL_CLOUDRUN_DATA),
@@ -43,8 +72,19 @@ export const config = {
     cloudEnvId: process.env.CLOUD_ENV_ID?.trim() || '',
     cloudMode,
     enableShop: enableShopValue ? readBoolean(enableShopValue) : cloudMode === 'mock',
+    mysql: {
+        autoMigrate: readBoolean(process.env.MYSQL_AUTO_MIGRATE),
+        connectionLimit: readBoundedInteger(process.env.MYSQL_CONNECTION_LIMIT, 5, 1, 10),
+        connectTimeoutMs: readBoundedInteger(process.env.MYSQL_CONNECT_TIMEOUT_MS, 10_000, 1_000, 30_000),
+        database: process.env.MYSQL_DATABASE?.trim() || process.env.DB_NAME?.trim() || 'worker_house',
+        host: mysqlAddress.host || process.env.DB_HOST?.trim() || '',
+        password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+        port: mysqlAddress.port
+            || readBoundedInteger(process.env.DB_PORT, 3306, 1, 65_535),
+        url: process.env.MYSQL_URL?.trim() || process.env.CONNECTION_URI?.trim() || '',
+        username: process.env.MYSQL_USERNAME?.trim() || process.env.DB_USER?.trim() || '',
+    },
     port: readPort(process.env.PORT),
-    shopOrderCollection: readCollectionName(process.env.SHOP_ORDER_COLLECTION),
     shopOrderStorage: readShopOrderStorage(process.env.SHOP_ORDER_STORAGE, cloudMode),
     wechatPay: {
         appId: process.env.WECHAT_APP_ID?.trim() || process.env.CLOUD_APP_ID?.trim() || '',

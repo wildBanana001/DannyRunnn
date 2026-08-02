@@ -5,9 +5,9 @@ import { Add, ArrowRight, Minus, Plus } from '@nutui/icons-react-taro';
 import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
+import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchAddresses, type Address } from '@/services/address';
-import { getPaymentErrorMessage } from '@/services/apiError';
 import {
   createShopClientRequestId,
   confirmShopPayment,
@@ -37,6 +37,7 @@ const OrderConfirmPage: React.FC = () => {
   const clientRequestIdRef = useRef(createShopClientRequestId());
   const wasLoggedInRef = useRef(isLoggedIn);
   const viewportStyle = useViewportLayout();
+  const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
 
   const loadData = useCallback(async () => {
     if (!productId) {
@@ -164,9 +165,8 @@ const OrderConfirmPage: React.FC = () => {
           Taro.showToast({ title: '已取消支付', icon: 'none' });
         }
       } else {
-        const message = getPaymentErrorMessage(payError, '支付发起失败，请稍后重试');
         console.warn('[shop] payment failed', payError);
-        Taro.showToast({ title: message, icon: 'none', duration: 10000 });
+        showPaymentError(payError, '支付发起失败，请稍后重试');
       }
     } finally {
       setPaying(false);
@@ -272,6 +272,7 @@ const OrderConfirmPage: React.FC = () => {
         onClose={() => setShowLogin(false)}
         onSuccess={() => setShowLogin(false)}
       />
+      {paymentErrorDialog}
     </View>
   );
 };

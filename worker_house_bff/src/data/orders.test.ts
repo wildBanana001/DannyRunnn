@@ -12,7 +12,6 @@ import {
   getOrdersByOpenid,
   getOrdersByProductId,
   settleFreeOrder,
-  unwrapCloudTransactionDocuments,
   updateOrderStatus,
 } from './orders.js';
 import { getActivityById } from './activities.js';
@@ -23,10 +22,10 @@ const storageFilePath = fileURLToPath(new URL('./orders.store.json', import.meta
 rmSync(storageFilePath, { force: true });
 after(() => rmSync(storageFilePath, { force: true }));
 
-function createPendingOrder(amount = 5_990) {
+function createPendingOrder(amount = 5_990, id = 'WH0123456789ABCDEF0123456789ABCD') {
   return createOrder({
-    id: 'WH0123456789ABCDEF0123456789ABCD',
-    clientRequestId: 'shop-request-lock-test',
+    id,
+    clientRequestId: `shop-request-${id}`,
     productId: 'prod-coffee-box',
     productName: '测试商品',
     productImageUrl: '',
@@ -72,17 +71,6 @@ function buildCapacityActivityOrder(id: string, activityId: string, openid: stri
     expiresAt: new Date(Date.now() + 15 * 60 * 1_000).toISOString(),
   };
 }
-
-test('unwraps CloudBase Gateway transaction document responses', () => {
-  const order = { id: 'WA_GATEWAY_WRAPPER', kind: 'activity' };
-  assert.deepEqual(unwrapCloudTransactionDocuments(order), [order]);
-  assert.deepEqual(unwrapCloudTransactionDocuments([order]), [order]);
-  assert.deepEqual(unwrapCloudTransactionDocuments({ list: [order] }), [order]);
-  assert.deepEqual(unwrapCloudTransactionDocuments([{ list: [order] }]), [order]);
-  assert.deepEqual(unwrapCloudTransactionDocuments({ data: { list: [order] } }), [order]);
-  assert.deepEqual(unwrapCloudTransactionDocuments({ list: [null] }), []);
-  assert.deepEqual(unwrapCloudTransactionDocuments(null), []);
-});
 
 test('keeps order creation idempotent and serializes prepay_id preparation', async () => {
   const created = await createPendingOrder();
@@ -359,4 +347,76 @@ test('keeps expired pending activity orders reserved until they are explicitly c
     { currentParticipants: 0, maxParticipants: 1 },
   );
   assert.equal(replacement.id, 'WA_CAPACITY_AFTER_CLOSED');
+});
+
+test('protects paid orders while allowing late payment confirmation', async () => {
+  const activityId = 'act-late-payment';
+  const input = buildCapacityActivityOrder(
+    'WA_LATE_PAYMENT_CONFIRMATION',
+    activityId,
+    'openid-late-payment',
+  );
+  const pending = await createActivityOrderWithCapacity(input, { currentParticipants: 0, maxParticipants: 1 });
+  await updateOrderStatus(pending.id, 'closed', { failureReason: '支付超时' });
+
+  const paid = await updateOrderStatus(pending.id, 'paid', {
+    transactionId: 'wx-transaction-late',
+    notifyId: 'notify-late',
+  });
+  assert.equal(paid?.status, 'paid');
+  assert.equal(paid?.transactionId, 'wx-transaction-late');
+
+  const protectedOrder = await updateOrderStatus(pending.id, 'failed', { failureReason: '不应覆盖' });
+  assert.equal(protectedOrder?.status, 'paid');
+  assert.equal(protectedOrder?.failureReason, '支付超时');
+
+  await assert.rejects(
+    updateOrderStatus(pending.id, 'paid', { transactionId: 'wx-transaction-conflict' }),
+    /流水号不一致/,
+  );
+});
+
+test('releases activity capacity after failure and allows the same user to register again', async () => {
+  const activityId = 'act-capacity-reopen';
+  const openid = 'openid-capacity-reopen';
+  const first = await createActivityOrderWithCapacity(
+    buildCapacityActivityOrder('WA_CAPACITY_REOPEN_FIRST', activityId, openid),
+    { currentParticipants: 0, maxParticipants: 1 },
+  );
+  await updateOrderStatus(first.id, 'failed', { failureReason: '统一下单失败' });
+
+  const replacement = await createActivityOrderWithCapacity(
+    buildCapacityActivityOrder('WA_CAPACITY_REOPEN_SECOND', activityId, openid),
+    { currentParticipants: 0, maxParticipants: 1 },
+  );
+  assert.equal(replacement.id, 'WA_CAPACITY_REOPEN_SECOND');
+
+  const unlimited = await Promise.all([
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder('WA_CAPACITY_UNLIMITED_FIRST', 'act-capacity-unlimited', 'openid-u1'),
+      { currentParticipants: 99, maxParticipants: 0 },
+    ),
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder('WA_CAPACITY_UNLIMITED_SECOND', 'act-capacity-unlimited', 'openid-u2'),
+      { currentParticipants: 99, maxParticipants: 0 },
+    ),
+  ]);
+  assert.equal(unlimited.length, 2);
+});
+
+test('clears a payment preparation lease when an order leaves pending state', async () => {
+  const order = await createPendingOrder(100, 'WH_CLEAR_PAYMENT_PREPARATION_LEASE');
+  const claim = await claimOrderPaymentPreparation(order.id, 'lease-owner', 10_000);
+  assert.equal(claim.claimed, true);
+
+  const failed = await updateOrderStatus(order.id, 'failed', { failureReason: '统一下单失败' });
+  assert.equal(failed?.paymentPreparationToken, '');
+  assert.equal(failed?.paymentPreparingUntil, '');
+
+  const staleFinish = await finishOrderPaymentPreparation(order.id, 'lease-owner', {
+    prepayId: 'should-not-be-saved',
+    failureReason: '',
+  });
+  assert.equal(staleFinish?.status, 'failed');
+  assert.equal(staleFinish?.prepayId, '');
 });

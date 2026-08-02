@@ -43,7 +43,7 @@ BFF 会先通过微信开放平台接口获取 `access_token`，再调用：
 
 - 通过 `X-WX-OPENID / X-WX-UNIONID / X-WX-APPID / X-WX-SOURCE / X-WX-FROM-OPENID` 读取微信自动注入身份
 - `GET /health` 是容器存活检查；`GET /api/health` 反映业务配置是否就绪
-- 商城订单和活动报名支付单共用 CloudBase 文档数据库，并通过 `kind` 字段隔离；其余文件型业务接口仍由安全门禁保护
+- 商城订单和活动报名支付单共用微信云托管内置 MySQL，并通过 `kind` 字段隔离；不依赖 CloudBase 文档库或 `CLOUDBASE_APIKEY`
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA=true` 只用于临时联调，商城与活动支付均不依赖该开关
 
 ## 环境变量
@@ -59,8 +59,13 @@ ADMIN_TOKEN=mock-admin-token
 ADMIN_OPENID_WHITELIST=
 CLOUD_ADMIN_SERVICE_TOKEN=
 ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
-SHOP_ORDER_STORAGE=cloudbase
-SHOP_ORDER_COLLECTION=shop_orders
+SHOP_ORDER_STORAGE=mysql
+MYSQL_ADDRESS=内网地址:3306
+MYSQL_USERNAME=
+MYSQL_PASSWORD=
+MYSQL_DATABASE=worker_house
+MYSQL_CONNECTION_LIMIT=5
+MYSQL_AUTO_MIGRATE=true
 PORT=4000
 ```
 
@@ -71,9 +76,12 @@ PORT=4000
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
 - `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用管理云函数的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
-- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单和示例部署变量不声明该变量，避免自动部署覆盖控制台设置。当前鸡尾酒为不限库存、现点现做；有限名额的活动会在 CloudBase 事务内原子占位，若未来新增限量商品，再为商品补充对应的事务预占。
-- `SHOP_ORDER_STORAGE`：云托管默认 `cloudbase`；`file` 只用于本地或临时联调
-- `SHOP_ORDER_COLLECTION`：支付订单集合，默认 `shop_orders`，同时保存商城订单和活动报名支付单，缺失时由服务创建
+- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。当前鸡尾酒为不限库存、现点现做；有限名额活动通过 MySQL 行锁与事务原子占位。
+- `SHOP_ORDER_STORAGE`：云托管默认 `mysql`；`file` 只用于本地或临时联调。旧值 `cloudbase` 会明确拒绝启动，避免尚未迁移的历史订单被静默切断
+- `MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD`：微信云托管 MySQL 的内网地址、用户名和密码；密码只放服务 Secret，禁止提交到 Git。也支持 `DB_HOST / DB_PORT / DB_USER / DB_PASSWORD` 或完整 `CONNECTION_URI`
+- `MYSQL_DATABASE`：数据库名，默认 `worker_house`
+- `MYSQL_CONNECTION_LIMIT`：单实例连接池上限，默认 `5`；当前最多 5 个 BFF 实例，数据库至少需允许约 25 条业务连接
+- `MYSQL_AUTO_MIGRATE`：是否由 BFF 自动执行幂等建表。首次发布及现有云托管服务升级建议保持 `true`，确认表结构就绪后可按需关闭
 - `PORT`：本地运行端口，默认 `4000`
 
 ### 微信支付 APIv3 配置
@@ -108,7 +116,7 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 - 回调会校验签名时间、微信支付公钥 ID、AppID、商户号、订单号、金额和币种，并按通知 ID 幂等处理。
 - `ENABLE_SHOP` 由云托管控制台管理。支付配置与 `/api/shop/readiness` 验证通过后可设置为 `true`；自动部署不会覆盖该值。
 - 首次开启该变量前，先等待新 BFF 版本切换到 100% 流量，避免新旧实例并存期间接收支付订单。
-- 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=cloudbase`；商城还需按照交易类小程序规范接入发货管理。
+- 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=mysql`；商城还需按照交易类小程序规范接入发货管理。
 
 ## 本地启动
 
@@ -154,12 +162,12 @@ npm run migrate-images
 {
   "status": "configuration_required",
   "mode": "cloudrun",
-  "persistence": "ephemeral-filesystem",
+  "persistence": "mysql-orders+bundled-content",
   "shop": {
     "enabled": false,
     "payment": "configuration_required",
     "keyMode": "unknown",
-    "orderStorage": "cloudbase"
+    "orderStorage": "mysql"
   },
   "timestamp": 1760000000000
 }
@@ -245,11 +253,13 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 ### 开通与部署步骤
 
 1. 在微信公众平台中开通云托管，拿到环境 ID。
-2. 保持 `container.config.json` 中的 `MODE=cloudrun`、`SHOP_ORDER_STORAGE=cloudbase`；不要把 `ALLOW_EPHEMERAL_CLOUDRUN_DATA` 改成 `true` 用于生产。
-3. 推荐在服务更新页选择“Git 仓库部署”，绑定 GitHub 仓库 `wildBanana001/DannyRunnn`。
-4. 选择分支 `main`，目标目录填 `worker_house_bff`，Dockerfile 填 `Dockerfile`，端口填 `8080`。
-5. 开启“自动部署”并选择 push / PR 合并到 `main` 后触发；GitHub Actions 会同时执行 TypeScript 编译、HTTP 冒烟测试和 Docker 构建校验。
-6. 部署完成后，通过 `wx.cloud.callContainer` 或公网访问地址验证：
+2. 在同一个微信云托管环境的“ MySQL ”页面创建 `worker_house` 数据库，并启用供云托管访问的内网连接。
+3. 保持 `container.config.json` 中的 `MODE=cloudrun`、`SHOP_ORDER_STORAGE=mysql`；不要把 `ALLOW_EPHEMERAL_CLOUDRUN_DATA` 改成 `true` 用于生产。
+4. 在 BFF 服务变量中配置 MySQL 内网连接信息；无需打开独立 CloudBase 控制台，也无需配置 `CLOUDBASE_APIKEY`。
+5. 推荐在服务更新页选择“Git 仓库部署”，绑定 GitHub 仓库 `wildBanana001/DannyRunnn`。
+6. 选择分支 `main`，目标目录填 `worker_house_bff`，Dockerfile 填 `Dockerfile`，端口填 `8080`。
+7. 开启“自动部署”并选择 push / PR 合并到 `main` 后触发；GitHub Actions 会同时执行 TypeScript 编译、HTTP 冒烟测试和 Docker 构建校验。
+8. 部署完成后，通过 `wx.cloud.callContainer` 或公网访问地址验证：
    - `GET /health`
    - `GET /api/health`
    - 微信身份 Header 自动注入的受保护接口
@@ -261,7 +271,7 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 1. 在微信公众平台开通云托管并创建服务
 2. 获取环境 ID（例如 `prod-xxxx`）
 3. 确认 `worker_house/src/constants/runtime.ts` 中的支付模式为 `cloudrun`；商城和活动报名支付会一起启用，其他模块可继续保持 `TARO_APP_API_MODE=mock`
-4. 确认 `/api/shop/readiness` 返回支付配置与 CloudBase 订单库均为 `ready=true`
+4. 确认 `/api/shop/readiness` 返回支付配置与 MySQL 订单库均为 `ready=true`
 5. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
 6. 重启服务并验证 `/api/health` 与小程序写接口
 
@@ -285,6 +295,6 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 
 ## 已知限制
 
-- 商城订单已支持 CloudBase 持久化；其余仍使用文件存储的 BFF 写接口会继续被默认安全门禁阻止
+- 商城订单与活动报名已支持云托管 MySQL 持久化；其余仍使用文件存储的 BFF 写接口会继续被默认安全门禁阻止
 - `wechat` 模式下，BFF 仍依赖 `CLOUD_APP_ID / CLOUD_APP_SECRET / CLOUD_ENV_ID`
-- CloudBase 集合首次创建需要云托管服务具备同环境数据库访问权限
+- MySQL 首次创建和表初始化由云托管流水线 SQL 或 `MYSQL_AUTO_MIGRATE=true` 完成

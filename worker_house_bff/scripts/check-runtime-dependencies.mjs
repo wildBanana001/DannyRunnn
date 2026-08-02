@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 );
-const requiredRuntimeDependencies = ["@cloudbase/signature-nodejs"];
+const requiredRuntimeDependencies = ["mysql2"];
 
 for (const dependency of requiredRuntimeDependencies) {
   if (!Object.hasOwn(packageJson.dependencies ?? {}, dependency)) {

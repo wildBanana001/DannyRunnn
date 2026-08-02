@@ -1,0 +1,80 @@
+@use '@/styles/variables.scss' as *;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(32rpx, env(safe-area-inset-top)) 32rpx max(32rpx, env(safe-area-inset-bottom));
+  background: rgba(21, 16, 11, 0.62);
+}
+
+.dialog {
+  @include paper-card($color-white);
+  width: 100%;
+  max-width: 650rpx;
+  max-height: calc(100vh - 96rpx);
+  padding: 32rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  flex: none;
+}
+
+.eyebrow {
+  display: block;
+  color: $color-brand;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-heavy;
+  letter-spacing: 0.12em;
+}
+
+.title {
+  display: block;
+  margin-top: 8rpx;
+  color: $color-text-primary;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-heavy;
+}
+
+.hint {
+  display: block;
+  margin-top: 12rpx;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  line-height: $line-height-normal;
+}
+
+.messageScroll {
+  flex: 1;
+  min-height: 180rpx;
+  max-height: 48vh;
+  margin-top: 24rpx;
+  padding: 24rpx;
+  border: 2rpx solid $color-text-primary;
+  background: $color-oat;
+}
+
+.message {
+  display: block;
+  color: $color-text-primary;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: $font-size-sm;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.actions {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}

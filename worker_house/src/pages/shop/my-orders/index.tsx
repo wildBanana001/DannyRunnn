@@ -5,7 +5,7 @@ import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
-import { getPaymentErrorMessage } from '@/services/apiError';
+import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import {
   confirmShopPayment,
   fetchMyShopOrders,
@@ -47,6 +47,7 @@ const MyOrdersPage: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState('');
   const wasLoggedInRef = useRef(isLoggedIn);
+  const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
 
   const loadOrders = useCallback(async () => {
     if (!isLoggedIn) {
@@ -91,8 +92,7 @@ const MyOrdersPage: React.FC = () => {
       }
     } catch (payError) {
       if (!isPaymentCancelled(payError)) {
-        const message = getPaymentErrorMessage(payError, '支付失败');
-        Taro.showToast({ title: message, icon: 'none', duration: 10000 });
+        showPaymentError(payError, '支付失败');
       }
     } finally {
       setPayingOrderId('');
@@ -179,6 +179,7 @@ const MyOrdersPage: React.FC = () => {
       </ScrollView>
 
       <WxLoginModal visible={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => setShowLogin(false)} />
+      {paymentErrorDialog}
     </View>
   );
 };

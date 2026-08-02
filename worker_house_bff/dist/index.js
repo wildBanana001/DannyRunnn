@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { config } from './config.js';
 import { getSiteConfig as getCommunitySiteConfig } from './data/siteConfig.js';
+import { checkOrderStorageReady } from './data/orders.js';
 import { activityRouter } from './routes/activity.js';
 import { adminMiniRouter } from './routes/adminMini.js';
 import { adminRouter } from './routes/admin.js';
@@ -26,10 +27,10 @@ function isRuntimeReady() {
 function isRequestRuntimeReady(path, method) {
     if (isRuntimeReady())
         return true;
-    const paymentStorageReady = config.shopOrderStorage === 'cloudbase'
+    const paymentStorageReady = config.shopOrderStorage === 'mysql'
         && (path === '/shop' || path.startsWith('/shop/'));
     const paymentRegistrationAdminRead = config.enableShop
-        && config.shopOrderStorage === 'cloudbase'
+        && config.shopOrderStorage === 'mysql'
         && method === 'GET'
         && (path === '/admin-mini/registrations' || path.startsWith('/admin-mini/registrations/'));
     return paymentStorageReady || paymentRegistrationAdminRead;
@@ -38,7 +39,11 @@ function buildHealthPayload() {
     const paymentConfiguration = getWechatPayConfigurationStatus();
     return {
         mode: config.cloudMode,
-        persistence: config.cloudMode === 'cloudrun' ? 'ephemeral-filesystem' : 'local-filesystem',
+        persistence: config.cloudMode === 'cloudrun'
+            ? config.shopOrderStorage === 'mysql'
+                ? 'mysql-orders+bundled-content'
+                : 'ephemeral-filesystem'
+            : 'local-filesystem',
         shop: {
             enabled: config.enableShop,
             payment: config.cloudMode === 'mock'
@@ -74,7 +79,7 @@ app.get('/api/health', (_request, response) => {
 app.use('/api', (request, response, next) => {
     if (!isRequestRuntimeReady(request.path, request.method)) {
         response.status(503).json({
-            message: 'cloudrun 当前仅实现临时文件存储；接入持久化数据源前，请勿作为生产服务启用',
+            message: '该接口仍使用临时文件存储，云托管生产环境暂未开放；支付订单与活动报名已独立使用 MySQL',
         });
         return;
     }
@@ -110,6 +115,10 @@ app.use((error, _request, response, _next) => {
 app.listen(config.port, () => {
     console.log(`worker_house_bff 已启动：http://localhost:${config.port} （mode=${config.cloudMode}）`);
     if (config.enableShop && config.cloudMode !== 'mock') {
+        void checkOrderStorageReady().then((ready) => {
+            if (!ready)
+                console.warn('[orders store] configuration_required');
+        });
         const paymentConfiguration = getWechatPayConfigurationStatus();
         if (!paymentConfiguration.ready) {
             console.warn(`[wechat-pay] configuration_required issues=${paymentConfiguration.issues.join(',')}`);

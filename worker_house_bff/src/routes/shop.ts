@@ -14,7 +14,6 @@ import {
   getOrdersByOpenid,
   getOrdersByProductId,
   isActivityCapacityExceededError,
-  isActivityCapacityInitializationError,
   settleFreeOrder,
   updateOrderStatus,
   type ActivityRegistrationSnapshot,
@@ -82,9 +81,7 @@ function sendPaymentFailure(
   const failure = buildPaymentFailureResponse(error, options);
   const diagnostic = failure.payload.diagnostic;
   console.error(
-    `[payment] ${options.operation} failed trace=${diagnostic.diagnosticId}`,
-    JSON.stringify(diagnostic),
-    error instanceof Error ? error.stack || error.message : error,
+    `[payment] ${options.operation} failed trace=${diagnostic.diagnosticId} diagnostic=${JSON.stringify(diagnostic)}`,
   );
   response.status(failure.status).json(failure.payload);
 }
@@ -506,7 +503,7 @@ shopRouter.get('/readiness', asyncHandler(async (_request, response) => {
 shopRouter.post('/readiness/verify', authMiddleware, asyncHandler(async (_request, response) => {
   const storageReady = await checkOrderStorageReady();
   if (!storageReady) {
-    response.status(503).json({ ready: false, message: 'CloudBase 订单库尚未就绪' });
+    response.status(503).json({ ready: false, message: 'MySQL 订单库尚未就绪' });
     return;
   }
 
@@ -892,6 +889,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
     }, {
       currentParticipants: activity.currentParticipants,
       maxParticipants: activity.maxParticipants,
+      configurationVersion: activity.updatedAt,
     });
 
     if (order.id !== outTradeNo) {
@@ -940,10 +938,6 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
   } catch (error) {
     if (isActivityCapacityExceededError(error)) {
       response.status(409).json({ message: '活动名额已满' });
-      return;
-    }
-    if (isActivityCapacityInitializationError(error)) {
-      response.status(503).json({ message: '活动名额数据需要迁移，请联系管理员' });
       return;
     }
     if (error instanceof PaymentPreparationInProgressError) {

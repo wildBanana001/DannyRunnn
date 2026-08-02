@@ -52,8 +52,28 @@ function getRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? value as Record<string, unknown> : null;
 }
 
-function getText(value: unknown, maxLength = 300): string {
+function getText(value: unknown, maxLength = 4000): string {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+const LEGACY_CLOUDBASE_PATTERN = /credentials?\s+missing|missing\s+credentials?|cloudbase/i;
+const LEGACY_CLOUDBASE_DETAIL = [
+  '当前请求仍命中了依赖 CloudBase 的旧版 BFF。',
+  '请确认 main 最新版本已经在微信云托管部署并切换到 100% 流量；新版订单库使用云托管 MySQL，不再需要 CLOUDBASE_APIKEY。',
+  '失败位置：订单库查询，当前尚未调用微信支付。',
+].join('\n');
+
+function isLegacyCloudBaseFailure(code: string, detail: string): boolean {
+  return code.startsWith('CLOUDBASE_') || LEGACY_CLOUDBASE_PATTERN.test(detail);
+}
+
+function normalizeStandaloneMessage(message: string): string {
+  if (!LEGACY_CLOUDBASE_PATTERN.test(message)) return message;
+  return [
+    `支付失败：${LEGACY_CLOUDBASE_DETAIL}`,
+    `[LEGACY_CLOUDBASE_BFF] · 阶段:${STAGE_LABELS.order_lookup}`,
+    `原始错误：${message}`,
+  ].join('\n');
 }
 
 function parseDiagnostic(value: unknown): ApiDiagnosticPayload | null {
@@ -72,17 +92,21 @@ function parseDiagnostic(value: unknown): ApiDiagnosticPayload | null {
 }
 
 function formatDiagnosticMessage(diagnostic: ApiDiagnosticPayload, fallback: string): string {
-  const detail = diagnostic.detail || fallback;
+  const rawDetail = diagnostic.detail || fallback;
+  const legacyCloudBase = isLegacyCloudBaseFailure(diagnostic.code || '', rawDetail);
+  const detail = legacyCloudBase ? LEGACY_CLOUDBASE_DETAIL : rawDetail;
+  const code = legacyCloudBase ? 'LEGACY_CLOUDBASE_BFF' : diagnostic.code;
   const location = diagnostic.stage
     ? `阶段:${STAGE_LABELS[diagnostic.stage] || diagnostic.stage}`
     : '';
   const identifiers = [
-    diagnostic.code ? `[${diagnostic.code}]` : '',
+    code ? `[${code}]` : '',
     location,
     diagnostic.requestId ? `req:${diagnostic.requestId}` : '',
     diagnostic.diagnosticId ? `trace:${diagnostic.diagnosticId}` : '',
   ].filter(Boolean).join(' · ');
-  return [`支付失败：${detail}`, identifiers].filter(Boolean).join('\n').slice(0, 500);
+  const original = legacyCloudBase && rawDetail !== detail ? `原始错误：${rawDetail}` : '';
+  return [`支付失败：${detail}`, identifiers, original].filter(Boolean).join('\n');
 }
 
 export function createApiRequestError(statusCode: number, responseData: unknown, fallback: string): ApiRequestError {
@@ -92,14 +116,17 @@ export function createApiRequestError(statusCode: number, responseData: unknown,
   const diagnostic = parseDiagnostic(payload?.diagnostic);
   const message = diagnostic
     ? formatDiagnosticMessage(diagnostic, serverMessage || fallback)
-    : serverMessage || fallback;
+    : normalizeStandaloneMessage(serverMessage || fallback);
 
   return new ApiRequestError(message, { diagnostic, responseData: parsedData, statusCode });
 }
 
 export function getPaymentErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (error instanceof ApiRequestError && error.diagnostic) {
+    return formatDiagnosticMessage(error.diagnostic, error.message.trim() || fallback);
+  }
+  if (error instanceof Error && error.message.trim()) return normalizeStandaloneMessage(error.message.trim());
   const input = getRecord(error);
   const errMsg = getText(input?.errMsg);
-  return errMsg || fallback;
+  return normalizeStandaloneMessage(errMsg || fallback);
 }

@@ -32,6 +32,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: worker_house
+          MYSQL_ROOT_PASSWORD: mysql-ci-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmysql-ci-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -51,6 +65,8 @@ jobs:
 
       - name: Test payment signing, idempotency, and configuration checks
         run: npm test
+        env:
+          MYSQL_TEST_URL: mysql://root:mysql-ci-password@127.0.0.1:3306/worker_house
 
       - name: Smoke test HTTP health endpoints
         shell: bash

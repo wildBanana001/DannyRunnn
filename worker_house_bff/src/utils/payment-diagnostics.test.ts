@@ -22,7 +22,7 @@ test('returns WeChat Pay code, request id, stage and trace id to the client', ()
   assert.match(failure.payload.message, /商户号与 AppID 不匹配/);
 });
 
-test('exposes a useful CloudBase error while redacting credential values', () => {
+test('exposes a useful MySQL error while redacting credential values', () => {
   const failure = buildPaymentFailureResponse(
     Object.assign(new Error('database request failed secretKey=very-sensitive-value'), {
       code: 'DATABASE_REQUEST_FAILED',
@@ -31,7 +31,7 @@ test('exposes a useful CloudBase error while redacting credential values', () =>
   );
 
   assert.equal(failure.status, 500);
-  assert.equal(failure.payload.diagnostic.source, 'cloudbase');
+  assert.equal(failure.payload.diagnostic.source, 'mysql');
   assert.equal(failure.payload.diagnostic.code, 'DATABASE_REQUEST_FAILED');
   assert.match(failure.payload.diagnostic.detail, /secretKey=\[REDACTED\]/);
   assert.doesNotMatch(failure.payload.message, /very-sensitive-value/);
@@ -45,4 +45,30 @@ test('assigns a stable diagnostic code to generic network failures', () => {
 
   assert.equal(failure.payload.diagnostic.code, 'NETWORK_FETCH_FAILED');
   assert.match(failure.payload.message, /stage=order_lookup/);
+});
+
+test('translates missing MySQL configuration into an actionable configuration error', () => {
+  const failure = buildPaymentFailureResponse(
+    Object.assign(new Error('MySQL 订单库配置不完整：MYSQL_ADDRESS、MYSQL_PASSWORD'), {
+      code: 'MYSQL_CONFIGURATION_REQUIRED',
+    }),
+    { fallbackMessage: '支付订单创建失败', operation: 'shop_create', stage: 'order_lookup' },
+  );
+
+  assert.equal(failure.status, 503);
+  assert.equal(failure.payload.diagnostic.status, 503);
+  assert.equal(failure.payload.diagnostic.code, 'MYSQL_CONFIGURATION_REQUIRED');
+  assert.equal(failure.payload.diagnostic.source, 'mysql');
+  assert.match(failure.payload.diagnostic.detail, /MYSQL_ADDRESS/);
+  assert.match(failure.payload.message, /MYSQL_PASSWORD/);
+});
+
+test('redacts MySQL passwords embedded in connection URIs', () => {
+  const failure = buildPaymentFailureResponse(
+    new Error('connect failed mysql://worker:super-secret@10.0.0.8:3306/worker_house'),
+    { fallbackMessage: '支付订单创建失败', operation: 'shop_create', stage: 'order_lookup' },
+  );
+
+  assert.doesNotMatch(failure.payload.message, /super-secret/);
+  assert.match(failure.payload.message, /REDACTED_CONNECTION/);
 });

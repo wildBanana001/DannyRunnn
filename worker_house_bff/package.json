@@ -5,22 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "test": "npm run build && node --test dist/data/orders.test.js dist/utils/payment-diagnostics.test.js dist/utils/wechat-pay.test.js",
+    "test": "npm run build && node --test dist/data/mysql-orders.integration.test.js dist/data/mysql-orders.test.js dist/data/orders.test.js dist/utils/payment-diagnostics.test.js dist/utils/wechat-pay.test.js",
     "check:runtime-deps": "node scripts/check-runtime-dependencies.mjs",
     "build": "npm run check:runtime-deps && tsc && node scripts/copy-runtime-data.mjs",
     "start": "node dist/index.js",
+    "migrate:orders": "npm run build && node dist/scripts/migrate-orders.js",
     "migrate-images": "tsx scripts/migrate-images.ts",
     "seed:past-activities": "tsx scripts/seed-past-activities.ts"
   },
   "dependencies": {
-    "@cloudbase/js-sdk": "3.7.0",
-    "@cloudbase/signature-nodejs": "2.0.0",
     "axios": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.22.2",
     "form-data": "^4.0.6",
     "multer": "^2.2.0",
+    "mysql2": "^3.15.3",
     "ws": "^8.21.1"
   },
   "devDependencies": {
