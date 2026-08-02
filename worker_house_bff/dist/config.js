@@ -21,14 +21,16 @@ function readPort(value) {
 function readBoolean(value) {
     return value?.trim().toLowerCase() === 'true';
 }
-function readShopOrderStorage(value, cloudMode) {
+export function readShopOrderStorage(value, cloudMode) {
     const normalized = value?.trim().toLowerCase();
     if (normalized === 'mysql')
         return 'mysql';
     if (normalized === 'file')
         return 'file';
+    if (normalized === 'cloudbase' && cloudMode === 'cloudrun')
+        return 'mysql';
     if (normalized === 'cloudbase') {
-        throw new Error('SHOP_ORDER_STORAGE=cloudbase 已停用；请先完成历史订单迁移，再显式改为 mysql');
+        throw new Error('SHOP_ORDER_STORAGE=cloudbase 仅允许云托管迁移期兼容，请改为 mysql');
     }
     if (normalized)
         throw new Error(`不支持的 SHOP_ORDER_STORAGE=${normalized}`);
@@ -63,6 +65,11 @@ function readMysqlAddress(value) {
 const cloudMode = readCloudMode(process.env.MODE?.trim() || process.env.CLOUD_MODE?.trim());
 const enableShopValue = process.env.ENABLE_SHOP?.trim();
 const mysqlAddress = readMysqlAddress(process.env.MYSQL_ADDRESS);
+const shopOrderStorageValue = process.env.SHOP_ORDER_STORAGE?.trim();
+const shopOrderStorage = readShopOrderStorage(shopOrderStorageValue, cloudMode);
+if (cloudMode === 'cloudrun' && shopOrderStorageValue?.toLowerCase() === 'cloudbase') {
+    console.warn('[config] SHOP_ORDER_STORAGE=cloudbase 已废弃；本次按 mysql 启动，请删除云托管中的旧服务变量');
+}
 export const config = {
     adminToken: process.env.ADMIN_TOKEN?.trim() || (!isProduction && cloudMode === 'mock' ? 'mock-admin-token' : ''),
     allowEphemeralCloudrunData: readBoolean(process.env.ALLOW_EPHEMERAL_CLOUDRUN_DATA),
@@ -85,7 +92,7 @@ export const config = {
         username: process.env.MYSQL_USERNAME?.trim() || process.env.DB_USER?.trim() || '',
     },
     port: readPort(process.env.PORT),
-    shopOrderStorage: readShopOrderStorage(process.env.SHOP_ORDER_STORAGE, cloudMode),
+    shopOrderStorage,
     wechatPay: {
         appId: process.env.WECHAT_APP_ID?.trim() || process.env.CLOUD_APP_ID?.trim() || '',
         mchId: process.env.WECHAT_PAY_MCH_ID?.trim() || '',

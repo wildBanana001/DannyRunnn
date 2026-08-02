@@ -58,6 +58,8 @@ CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 
 `ENABLE_SHOP` 不属于上面的部署清单；请在云托管服务变量中单独维护。支付、管理员与 MySQL 密码必须继续放在云托管 Secret 中，不得写入 Git。支付配置及订单存储 readiness 验证通过后，才在服务变量中把 `ENABLE_SHOP` 设置为 `true`；开关关闭期间支付回调与已有订单查询仍保持可用。有限名额的活动会在 MySQL 事务内原子占位。
 
+如果服务变量中还残留 `SHOP_ORDER_STORAGE=cloudbase`，新版本会在启动时临时兼容为 `mysql` 并记录警告；部署稳定后请删除该旧变量，使用仓库清单中的 `SHOP_ORDER_STORAGE=mysql`。
+
 首次启用时必须等新版本完成部署并切换到 100% 流量，再设置 `ENABLE_SHOP=true`；不要在新旧实例分别写 CloudBase 与 MySQL 的滚动阶段提前开单。若旧版已经产生支付订单，应先暂停新单与支付回调，完成历史订单迁移和核对。
 
 本项目的 `container.config.json` 不声明 `ENABLE_SHOP`，该开关由云托管服务变量管理，自动部署不会覆盖控制台设置。当前鸡尾酒按不限库存处理；如果后续新增限量商品，应先为商品补充独立的事务预占。
