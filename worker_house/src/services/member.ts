@@ -2,7 +2,6 @@ import Taro from '@tarojs/taro';
 import { fetchActivity } from '@/cloud/services';
 import {
   buyMockCard,
-  createMockRegistration,
   deleteMockProfile,
   getMockCardUsageLogs,
   getMockCurrentCard,
@@ -60,10 +59,25 @@ export interface MemberOverview {
 
 const isMockMode = () => getApiMode() === 'mock';
 const isRegistrationMockMode = () => getPaymentApiMode() === 'mock';
+const REAL_PAYMENT_ONLY_MESSAGE = '当前仅支持在微信小程序中进行真实支付测试';
+const MOCK_PAYMENT_REJECTED_MESSAGE = '支付服务仍处于模拟模式，请先部署真实微信支付配置';
 
 const registrationRequest = <T>(options: RequestOptions) => (
   requestWithMode<T>(getPaymentApiMode(), options)
 );
+
+function assertRealPaymentRuntime() {
+  if (isRegistrationMockMode()) {
+    throw new Error(REAL_PAYMENT_ONLY_MESSAGE);
+  }
+}
+
+function assertRealPaymentSession(session: ActivityPaymentSession): ActivityPaymentSession {
+  if (session.mock) {
+    throw new Error(MOCK_PAYMENT_REJECTED_MESSAGE);
+  }
+  return session;
+}
 
 const withMode = async <T>(fallback: () => T | Promise<T>, remote?: () => Promise<T>): Promise<T> => {
   if (isMockMode() || !remote) {
@@ -185,22 +199,9 @@ export async function fetchRegistrationDetail(id: string): Promise<Registration 
 }
 
 export async function submitRegistrationOrder(payload: SubmitRegistrationPayload): Promise<ActivityPaymentSession> {
-  if (isRegistrationMockMode()) {
-    const registration = createMockRegistration({
-      activityId: payload.activityId,
-      profileId: payload.profile.id,
-      useCard: payload.useCard,
-    });
-    return {
-      registration,
-      outTradeNo: registration.id,
-      amount: Math.round(registration.payable * 100),
-      status: 'paid',
-      mock: true,
-    };
-  }
+  assertRealPaymentRuntime();
 
-  return registrationRequest<ActivityPaymentSession>({
+  const session = await registrationRequest<ActivityPaymentSession>({
     data: {
       activityId: payload.activityId,
       clientRequestId: payload.clientRequestId,
@@ -225,6 +226,7 @@ export async function submitRegistrationOrder(payload: SubmitRegistrationPayload
     method: 'POST',
     path: '/api/shop/activity-registrations/pay',
   });
+  return assertRealPaymentSession(session);
 }
 
 export function createActivityPaymentClientRequestId() {
@@ -232,7 +234,7 @@ export function createActivityPaymentClientRequestId() {
 }
 
 export function isDirectActivityPaymentEnabled() {
-  return !isRegistrationMockMode();
+  return true;
 }
 
 export function isActivityPaymentCancelled(error: unknown) {
@@ -243,27 +245,19 @@ export function isActivityPaymentCancelled(error: unknown) {
 }
 
 export async function launchActivityPayment(session: ActivityPaymentSession) {
-  if (session.mock || session.status === 'paid') return;
+  assertRealPaymentSession(session);
+  if (session.status === 'paid') return;
   if (!session.payment) throw new Error('支付参数缺失，请重新报名');
   await Taro.requestPayment(session.payment);
 }
 
 export async function retryActivityPayment(registrationId: string): Promise<ActivityPaymentSession> {
-  if (isRegistrationMockMode()) {
-    const registration = getMockRegistrationDetail(registrationId);
-    if (!registration) throw new Error('报名记录不存在');
-    return {
-      registration,
-      outTradeNo: registration.id,
-      amount: Math.round(registration.payable * 100),
-      status: registration.status === 'confirmed' ? 'paid' : 'pending',
-      mock: true,
-    };
-  }
-  return registrationRequest<ActivityPaymentSession>({
+  assertRealPaymentRuntime();
+  const session = await registrationRequest<ActivityPaymentSession>({
     method: 'POST',
     path: `/api/shop/activity-registrations/${encodeURIComponent(registrationId)}/retry`,
   });
+  return assertRealPaymentSession(session);
 }
 
 function wait(milliseconds: number) {

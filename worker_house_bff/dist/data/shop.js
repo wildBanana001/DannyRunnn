@@ -11,7 +11,7 @@ const DEFAULT_PRODUCTS = [
     {
         id: 'cocktail-afterwork-sour',
         name: '下班快乐威士忌酸',
-        price: 39.9,
+        price: 0.01,
         originalPrice: 49,
         imageUrl: '/static/images/shop/cocktail-afterwork-sour.jpg',
         description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。',
@@ -28,7 +28,7 @@ const DEFAULT_PRODUCTS = [
     {
         id: 'cocktail-mint-mojito',
         name: '薄荷青柠莫吉托',
-        price: 36,
+        price: 0.01,
         originalPrice: 45,
         imageUrl: '/static/images/shop/cocktail-mint-mojito.jpg',
         description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。',
@@ -45,7 +45,7 @@ const DEFAULT_PRODUCTS = [
     {
         id: 'cocktail-berry-fizz',
         name: '莓果微醺气泡',
-        price: 42,
+        price: 0.01,
         originalPrice: 52,
         imageUrl: '/static/images/shop/cocktail-berry-fizz.jpg',
         description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。',
@@ -62,7 +62,7 @@ const DEFAULT_PRODUCTS = [
     {
         id: 'cocktail-sunset-highball',
         name: '落日柑橘嗨棒',
-        price: 38,
+        price: 0.01,
         originalPrice: 48,
         imageUrl: '/static/images/shop/cocktail-sunset-highball.jpg',
         description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。',
@@ -79,7 +79,7 @@ const DEFAULT_PRODUCTS = [
     {
         id: 'cocktail-espresso-martini',
         name: '浓缩咖啡马天尼',
-        price: 46,
+        price: 0.01,
         originalPrice: 56,
         imageUrl: '/static/images/shop/cocktail-espresso-martini.jpg',
         description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。',
@@ -96,7 +96,7 @@ const DEFAULT_PRODUCTS = [
     {
         id: 'cocktail-elderflower-zero',
         name: '接骨木花零度特调',
-        price: 32,
+        price: 0.01,
         originalPrice: 39,
         imageUrl: '/static/images/shop/cocktail-elderflower-zero.jpg',
         description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。',

@@ -15,6 +15,7 @@ import {
   unwrapCloudTransactionDocuments,
   updateOrderStatus,
 } from './orders.js';
+import { getActivityById } from './activities.js';
 import { getProductById, listProducts, normalizeShopProduct } from './shop.js';
 import { resolveShopOrderAddress } from '../routes/shop.js';
 
@@ -193,6 +194,7 @@ test('normalizes legacy shop products and only lists enabled products', () => {
   assert.ok(listedProducts.every((item) => item.enabled));
   assert.ok(listedProducts.every((item) => item.category === 'cocktail'));
   assert.ok(listedProducts.every((item) => item.fulfillmentType === 'onsite'));
+  assert.ok(listedProducts.every((item) => item.price === 0.01));
   assert.equal(listedProducts.some((item) => item.id === 'prod-coffee-box'), false);
   assert.equal(getProductById('prod-coffee-box')?.enabled, false);
   assert.equal(getProductById(listedProducts[0].id)?.id, listedProducts[0].id);
@@ -211,6 +213,15 @@ test('requires addresses only for delivery fulfillment', () => {
   assert.equal(resolveShopOrderAddress('delivery', null), null);
   assert.equal(resolveShopOrderAddress('onsite', address), null);
   assert.equal(resolveShopOrderAddress('pickup', address), null);
+});
+
+test('keeps upcoming activity payment fixtures at one cent', () => {
+  const firstActivity = getActivityById('act-001');
+  const secondActivity = getActivityById('act-002');
+  assert.equal(firstActivity?.price, 0.01);
+  assert.equal(secondActivity?.price, 0.01);
+  assert.equal(firstActivity?.startDate, '2026-08-08');
+  assert.equal(secondActivity?.startDate, '2026-08-14');
 });
 
 test('settles free onsite shop orders without preparing WeChat payment', async () => {

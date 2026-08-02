@@ -1,4 +1,5 @@
 import type { Activity, Host, Venue } from '@/types';
+import { REAL_PAYMENT_TEST_PRICE_YUAN } from '@/constants/runtime';
 import { wechatArticleImageUrls } from './wechat-images';
 
 const sharedHostId = 'host-orange';
@@ -19,7 +20,7 @@ export const ongoingActivities: Activity[] = [
   buildActivity({
     id: 'act-001',
     _id: 'act-001',
-    title: '5.10 周六晚 · deeptalk：人生里的 N 种选择',
+    title: '8.8 周六晚 · deeptalk：人生里的 N 种选择',
     description: '聊那些和主流成功叙事不完全一致、却依然诚实的选择。',
     fullDescription:
       '这一晚会围绕“人生里的 N 种选择”展开大型聊天局：上班还是考研、选高薪还是选轻松、选喜欢自己的还是自己喜欢的。橙子会分享自己从大厂上班、裸辞到开始经营社畜快乐屋的真实经历，也会把更多时间留给每个人说自己的版本。我们会在欢迎仪式、主题提问、开放分享和夸夸 time 里，把那些说不出口的犹豫慢慢讲开，让每个选择都被认真听见。',
@@ -27,11 +28,11 @@ export const ongoingActivities: Activity[] = [
     cover: wechatArticleImageUrls.img06,
     gallery: [wechatArticleImageUrls.img07],
     covers: [wechatArticleImageUrls.img06, wechatArticleImageUrls.img07],
-    startDate: '2026-05-10',
-    endDate: '2026-05-10',
+    startDate: '2026-08-08',
+    endDate: '2026-08-08',
     startTime: '19:30',
     endTime: '23:00',
-    price: 148,
+    price: REAL_PAYMENT_TEST_PRICE_YUAN,
     originalPrice: 168,
     maxParticipants: 11,
     currentParticipants: 7,
@@ -54,7 +55,7 @@ export const ongoingActivities: Activity[] = [
   buildActivity({
     id: 'act-002',
     _id: 'act-002',
-    title: '5.16 周五晚 · deeptalk：幸福的奥义',
+    title: '8.14 周五晚 · deeptalk：幸福的奥义',
     description: '从记忆里的幸福瞬间出发，重新定义什么才算“过得不错”。',
     fullDescription:
       '这场 deeptalk 想聊的不是标准答案里的幸福，而是每个人身体最诚实的感受。我们会从“你最近一次感到幸福是什么时候”开始，慢慢聊到工作、关系、家庭、自我照顾与期待落差。现场会有轻量破冰、幸福时刻卡片、自由分享和互相夸奖环节，让大家把那些很小、很日常、却足够支撑人的幸福重新捡回来。',
@@ -62,11 +63,11 @@ export const ongoingActivities: Activity[] = [
     cover: wechatArticleImageUrls.img08,
     gallery: [wechatArticleImageUrls.img09],
     covers: [wechatArticleImageUrls.img08, wechatArticleImageUrls.img09],
-    startDate: '2026-05-16',
-    endDate: '2026-05-16',
+    startDate: '2026-08-14',
+    endDate: '2026-08-14',
     startTime: '19:30',
     endTime: '23:00',
-    price: 148,
+    price: REAL_PAYMENT_TEST_PRICE_YUAN,
     originalPrice: 168,
     maxParticipants: 11,
     currentParticipants: 6,

@@ -300,7 +300,7 @@ const RegisterPage: React.FC = () => {
           <View className={styles.activityInfo}>
             <Text className={styles.activityTitle}>{activity.title}</Text>
             <Text className={styles.activityMeta}>{formatDate(activity.startDate)} · {activity.startTime}-{activity.endTime}</Text>
-            <Text className={styles.activityPrice}>原价 {formatPrice(activity.price)}</Text>
+            <Text className={styles.activityPrice}>报名价 {formatPrice(activity.price)}</Text>
           </View>
         </View>
 
@@ -367,7 +367,7 @@ const RegisterPage: React.FC = () => {
               ) : null}
 
               <View className={styles.pricePanel}>
-                <View className={styles.priceRow}><Text className={styles.priceLabel}>原价</Text><Text className={styles.priceValue}>{formatPrice(activity.price)}</Text></View>
+                <View className={styles.priceRow}><Text className={styles.priceLabel}>报名价</Text><Text className={styles.priceValue}>{formatPrice(activity.price)}</Text></View>
                 <View className={styles.priceRow}><Text className={styles.priceLabel}>抵扣</Text><Text className={styles.discountValue}>- {formatPrice(paymentSummary.deductionAmount)}</Text></View>
                 <View className={styles.priceRowStrong}><Text className={styles.priceStrongLabel}>实付</Text><Text className={styles.priceStrongValue}>{formatPrice(paymentSummary.payableAmount)}</Text></View>
               </View>

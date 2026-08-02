@@ -6,7 +6,10 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const destinationDirectory = path.join(projectRoot, 'dist', 'data');
 
 mkdirSync(destinationDirectory, { recursive: true });
-copyFileSync(
-  path.join(projectRoot, 'src', 'data', 'shop.store.json'),
-  path.join(destinationDirectory, 'shop.store.json'),
-);
+
+for (const fileName of ['shop.store.json', 'activities.store.json']) {
+  copyFileSync(
+    path.join(projectRoot, 'src', 'data', fileName),
+    path.join(destinationDirectory, fileName),
+  );
+}

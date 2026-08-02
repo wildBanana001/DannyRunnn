@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import { REAL_PAYMENT_TEST_PRICE_YUAN } from '../constants/runtime';
 import type { Address } from './address';
 import { getPaymentApiMode, requestWithMode, type RequestOptions } from './request';
 
@@ -80,15 +81,17 @@ export interface StartShopPaymentInput {
 }
 
 const MOCK_PRODUCTS: ShopProduct[] = [
-  { id: 'cocktail-afterwork-sour', name: '下班快乐威士忌酸', price: 39.9, originalPrice: 49, imageUrl: '', description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。', tags: ['威士忌', '酸甜', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 14, volumeMl: 180, enabled: true },
-  { id: 'cocktail-mint-mojito', name: '薄荷青柠莫吉托', price: 36, originalPrice: 45, imageUrl: '', description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。', tags: ['朗姆酒', '清爽', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 10, volumeMl: 300, enabled: true },
-  { id: 'cocktail-berry-fizz', name: '莓果微醺气泡', price: 42, originalPrice: 52, imageUrl: '', description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。', tags: ['莓果', '气泡', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 8, volumeMl: 300, enabled: true },
-  { id: 'cocktail-sunset-highball', name: '落日柑橘嗨棒', price: 38, originalPrice: 48, imageUrl: '', description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。', tags: ['嗨棒', '柑橘', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 9, volumeMl: 320, enabled: true },
-  { id: 'cocktail-espresso-martini', name: '浓缩咖啡马天尼', price: 46, originalPrice: 56, imageUrl: '', description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。', tags: ['咖啡', '醇香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 16, volumeMl: 180, enabled: true },
-  { id: 'cocktail-elderflower-zero', name: '接骨木花零度特调', price: 32, originalPrice: 39, imageUrl: '', description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。', tags: ['无酒精', '花香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: false, abv: 0, volumeMl: 300, enabled: true },
+  { id: 'cocktail-afterwork-sour', name: '下班快乐威士忌酸', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 49, imageUrl: '', description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。', tags: ['威士忌', '酸甜', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 14, volumeMl: 180, enabled: true },
+  { id: 'cocktail-mint-mojito', name: '薄荷青柠莫吉托', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 45, imageUrl: '', description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。', tags: ['朗姆酒', '清爽', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 10, volumeMl: 300, enabled: true },
+  { id: 'cocktail-berry-fizz', name: '莓果微醺气泡', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 52, imageUrl: '', description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。', tags: ['莓果', '气泡', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 8, volumeMl: 300, enabled: true },
+  { id: 'cocktail-sunset-highball', name: '落日柑橘嗨棒', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 48, imageUrl: '', description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。', tags: ['嗨棒', '柑橘', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 9, volumeMl: 320, enabled: true },
+  { id: 'cocktail-espresso-martini', name: '浓缩咖啡马天尼', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 56, imageUrl: '', description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。', tags: ['咖啡', '醇香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 16, volumeMl: 180, enabled: true },
+  { id: 'cocktail-elderflower-zero', name: '接骨木花零度特调', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 39, imageUrl: '', description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。', tags: ['无酒精', '花香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: false, abv: 0, volumeMl: 300, enabled: true },
 ];
 
 const MOCK_ORDER_STORAGE_KEY = 'worker-house-mock-shop-orders-v2';
+const REAL_PAYMENT_ONLY_MESSAGE = '当前仅支持在微信小程序中进行真实支付测试';
+const MOCK_PAYMENT_REJECTED_MESSAGE = '支付服务仍处于模拟模式，请先部署真实微信支付配置';
 
 function shopRequest<T>(options: RequestOptions) {
   return requestWithMode<T>(getPaymentApiMode(), options);
@@ -152,68 +155,17 @@ function getMockOrders(): ShopOrder[] {
   return Array.isArray(cached) ? cached.map(normalizeOrder) : [];
 }
 
-function saveMockOrders(orders: ShopOrder[]) {
-  Taro.setStorageSync(MOCK_ORDER_STORAGE_KEY, orders);
+function assertRealPaymentRuntime() {
+  if (getPaymentApiMode() === 'mock') {
+    throw new Error(REAL_PAYMENT_ONLY_MESSAGE);
+  }
 }
 
-function createMockPayment(input: StartShopPaymentInput): ShopPaymentSession {
-  const product = MOCK_PRODUCTS.find((item) => item.id === input.productId);
-  if (!product) {
-    throw new Error('商品不存在');
+function assertRealPaymentSession(session: ShopPaymentSession): ShopPaymentSession {
+  if (session.mock) {
+    throw new Error(MOCK_PAYMENT_REJECTED_MESSAGE);
   }
-
-  const quantity = Number(input.quantity);
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
-    throw new Error('购买数量有误');
-  }
-  const address = input.address ? normalizeAddress(input.address) : null;
-  if (product.fulfillmentType === 'delivery' && (!address?.name || !address.phone || !address.detail)) {
-    throw new Error('请先填写完整收货地址');
-  }
-
-  const orders = getMockOrders();
-  const existing = orders.find((item) => item.clientRequestId === input.clientRequestId);
-  if (existing) {
-    return {
-      outTradeNo: existing.id,
-      amount: existing.amount,
-      status: existing.status,
-      mock: true,
-    };
-  }
-
-  const timestamp = new Date().toISOString();
-  const outTradeNo = `MOCK${Date.now()}${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-  const order: ShopOrder = {
-    id: outTradeNo,
-    clientRequestId: input.clientRequestId,
-    productId: product.id,
-    productName: product.name,
-    productImageUrl: product.imageUrl,
-    unitPrice: Math.round(product.price * 100),
-    quantity,
-    amount: Math.round(product.price * 100) * quantity,
-    address: product.fulfillmentType === 'delivery' ? address : null,
-    fulfillmentType: product.fulfillmentType,
-    fulfillmentLabel: product.fulfillmentLabel,
-    unitLabel: product.unitLabel,
-    remark: input.remark?.trim() || '',
-    status: 'paid',
-    mock: true,
-    transactionId: `MOCK_TX_${Date.now()}`,
-    paidAt: timestamp,
-    expiresAt: timestamp,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-  saveMockOrders([order, ...orders]);
-
-  return {
-    outTradeNo,
-    amount: order.amount,
-    status: 'paid',
-    mock: true,
-  };
+  return session;
 }
 
 export function createShopClientRequestId(): string {
@@ -248,9 +200,7 @@ export async function fetchShopProduct(productId: string): Promise<ShopProduct> 
 }
 
 export async function startShopPayment(input: StartShopPaymentInput): Promise<ShopPaymentSession> {
-  if (getPaymentApiMode() === 'mock') {
-    return createMockPayment(input);
-  }
+  assertRealPaymentRuntime();
 
   const data = {
     productId: input.productId,
@@ -260,30 +210,27 @@ export async function startShopPayment(input: StartShopPaymentInput): Promise<Sh
     ...(input.address ? { address: normalizeAddress(input.address) } : {}),
   };
 
-  return shopRequest<ShopPaymentSession>({
+  const session = await shopRequest<ShopPaymentSession>({
     data,
     method: 'POST',
     path: '/api/shop/orders/pay',
   });
+  return assertRealPaymentSession(session);
 }
 
 export async function retryShopPayment(orderId: string): Promise<ShopPaymentSession> {
-  if (getPaymentApiMode() === 'mock') {
-    const order = getMockOrders().find((item) => item.id === orderId);
-    if (!order) {
-      throw new Error('订单不存在');
-    }
-    return { outTradeNo: order.id, amount: order.amount, status: order.status, mock: true };
-  }
+  assertRealPaymentRuntime();
 
-  return shopRequest<ShopPaymentSession>({
+  const session = await shopRequest<ShopPaymentSession>({
     method: 'POST',
     path: `/api/shop/orders/${encodeURIComponent(orderId)}/retry`,
   });
+  return assertRealPaymentSession(session);
 }
 
 export async function launchShopPayment(session: ShopPaymentSession): Promise<void> {
-  if (session.amount <= 0 || session.mock || session.status === 'paid') {
+  assertRealPaymentSession(session);
+  if (session.amount <= 0 || session.status === 'paid') {
     return;
   }
   if (!session.payment) {
