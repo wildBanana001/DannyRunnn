@@ -41,11 +41,11 @@ const statusOptions: Array<{ label: string; value: CardPackageStatus }> = [
 
 const buildFormState = (record?: CardPackage): CardPackageFormState => ({
   name: record?.name || '',
-  totalCount: String(record?.totalCount || 3),
-  price: String(record?.price || 399),
-  perUseMaxOffset: String(record?.perUseMaxOffset || 148),
-  validDays: String(record?.validDays || 180),
-  sortOrder: String(record?.sortOrder || 1),
+  totalCount: String(record?.totalCount ?? 3),
+  price: String(record?.price ?? 399),
+  perUseMaxOffset: String(record?.perUseMaxOffset ?? 148),
+  validDays: String(record?.validDays ?? 180),
+  sortOrder: String(record?.sortOrder ?? 1),
   status: record?.status || 'active',
 });
 
@@ -102,16 +102,41 @@ const AdminCardPackageEditPage: React.FC = () => {
       Toast.show(toastId, { content: '套餐名称不能为空', icon: 'warn' });
       return;
     }
+    const totalCount = Number(form.totalCount);
+    const price = Number(form.price);
+    const perUseMaxOffset = Number(form.perUseMaxOffset);
+    const validDays = Number(form.validDays);
+    const sortOrder = Number(form.sortOrder);
+    if (!Number.isInteger(totalCount) || totalCount <= 0) {
+      Toast.show(toastId, { content: '总次数必须是正整数', icon: 'warn' });
+      return;
+    }
+    if (!form.price.trim() || !Number.isFinite(price) || price < 0) {
+      Toast.show(toastId, { content: '售价必须是大于等于 0 的数字', icon: 'warn' });
+      return;
+    }
+    if (!Number.isFinite(perUseMaxOffset) || perUseMaxOffset < 0) {
+      Toast.show(toastId, { content: '单次抵扣必须是大于等于 0 的数字', icon: 'warn' });
+      return;
+    }
+    if (!Number.isInteger(validDays) || validDays <= 0) {
+      Toast.show(toastId, { content: '有效期必须是正整数天数', icon: 'warn' });
+      return;
+    }
+    if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+      Toast.show(toastId, { content: '排序必须是非负整数', icon: 'warn' });
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         name: form.name.trim(),
-        perUseMaxOffset: Number(form.perUseMaxOffset || 0),
-        price: Number(form.price || 0),
-        sortOrder: Number(form.sortOrder || 1),
+        perUseMaxOffset,
+        price,
+        sortOrder,
         status: form.status,
-        totalCount: Number(form.totalCount || 0),
-        validDays: Number(form.validDays || 0),
+        totalCount,
+        validDays,
       };
       const record = isEditMode
         ? await updateAdminCardPackage(packageId, payload)

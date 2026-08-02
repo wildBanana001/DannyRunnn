@@ -1,5 +1,6 @@
 export default definePageConfig({
   navigationBarTitleText: '社畜好物',
-  navigationBarBackgroundColor: '#FFFFFF',
-  backgroundColor: '#F7F6F2'
+  navigationStyle: 'custom',
+  navigationBarBackgroundColor: '#FAF9E7',
+  backgroundColor: '#FAF9E7'
 });

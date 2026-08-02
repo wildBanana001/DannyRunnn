@@ -28,7 +28,8 @@
 .title {
   display: block;
   margin-top: 16rpx;
-  font-size: 34rpx;
+  font-family: $font-family-hand;
+  font-size: 38rpx;
   line-height: 1.35;
   color: $color-text-primary;
   font-weight: $font-weight-bold;
@@ -50,7 +51,8 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   margin-bottom: 14rpx;
-  border-radius: 20rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
 }
 
 .tags {
@@ -62,8 +64,9 @@
 
 .tagChip {
   padding: 8rpx 18rpx;
-  border-radius: $radius-circle;
-  background: rgba(255, 255, 255, 0.76);
+  border-bottom: 2rpx solid $color-brand;
+  border-radius: 0;
+  background: transparent;
 }
 
 .tagText {
@@ -89,6 +92,11 @@
 .metaButton {
   display: flex;
   align-items: center;
+  gap: 6rpx;
+}
+
+.metaIcon {
+  color: $color-text-primary;
 }
 
 .commentSection {
@@ -137,16 +145,17 @@
   padding: 20rpx 32rpx calc(24rpx + constant(safe-area-inset-bottom));
   padding: 20rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.94);
-  border-top: 1rpx solid #F0F0F0;
+  background: $color-oat;
+  border-top: 2rpx solid $color-text-primary;
 }
 
 .input {
   flex: 1;
   height: 72rpx;
   padding: 0 20rpx;
-  border-radius: $radius-circle;
-  background: rgba(255, 255, 255, 0.88);
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-white;
 }
 
 .yellow { background: $color-note-yellow; }

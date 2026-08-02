@@ -27,7 +27,7 @@
 - `TARO_APP_API_MODE`：默认 `mock`；BFF 与持久化数据源就绪后改为 `cloudrun`。
 - `TARO_APP_PAYMENT_API_MODE`：商城与活动报名支付共用，默认 `mock`；支付配置与订单库就绪后可单独改为 `cloudrun`，不会影响其他模块。
 - `TARO_APP_SHOP_API_MODE`：旧版兼容变量；未设置 `TARO_APP_PAYMENT_API_MODE` 时仍会读取它。
-- `TARO_APP_CLOUDRUN_ENV`：默认 `prod-d9g991lo4dba5a4da`。
+- `TARO_APP_CLOUDRUN_ENV`：必须显式填写目标云环境 ID；`mock` 模式不会初始化或访问云环境。
 - `TARO_APP_CLOUDRUN_SERVICE`：默认 `worker-house-bff`。
 
 自动化只上传开发版本并生成预览码，不会自动提交审核、切换体验版或发布正式版。
@@ -61,20 +61,21 @@
 1. 点击开发者工具左上角的 **"云开发"** 按钮。
 2. 在打开的云开发控制台中，创建或选择一个现有的云开发环境。
 3. 复制 **环境 ID (Env ID)**。
-4. 在编辑器中打开 `worker_house/src/cloud/index.ts`（或者对应的环境配置文件），将 Env ID 填入。
+4. 通过本地 `.env` 或 CI Variable 配置 `TARO_APP_CLOUDRUN_ENV`，不要把生产环境 ID 写进源码。
 5. **再次运行** `npm run build:weapp` 以确保配置生效。
 
 ## 5. 部署云函数
 项目依赖云函数实现核心逻辑，需要依次部署：
 1. 在开发者工具左侧目录树中，展开 `cloudfunctions/` 目录。
-2. 依次右键点击以下 6 个云函数文件夹：
+2. 依次右键点击以下 5 个云函数文件夹：
    - `poster`
    - `activity`
    - `post`
    - `site_config`
    - `admin_auth`
-   - `_seed` (种子数据初始化工具)
 3. 选择 **"上传并部署：云端安装依赖"**。
+
+> `_seed` 会清空并重建业务集合，禁止作为常驻生产云函数部署。它默认不可执行，仅限首次开发环境初始化时临时配置 `ALLOW_SEED_RESET / SEED_ADMIN_TOKEN / SEED_ADMIN_OPENIDS` 后使用，并应在初始化完成后立即从云端删除。
 
 ## 6. 初始化数据库
 1. 进入 **云开发控制台** -> **数据库**。
@@ -85,10 +86,8 @@
    - `comments`
    - `site_config`
    - `admins`
-3. **初始化种子数据**：
-   - 在开发者工具中，找到云函数 `_seed`。
-   - 右键点击 `_seed` -> **"云端测试"**。
-   - 输入参数 `{}`，点击 **"运行"**。这将自动向数据库写入初始配置和示例数据。
+3. 如需初始化开发环境种子数据，先确认目标环境不是生产环境，再临时部署 `_seed` 并设置三项保护变量；执行时必须同时传入匹配的 `token` 与 `confirm=RESET_WORKER_HOUSE_DEMO_DATA`，完成后删除云端 `_seed`。
+   - 输入参数 `{"token":"<SEED_ADMIN_TOKEN>","confirm":"RESET_WORKER_HOUSE_DEMO_DATA"}`，点击 **"运行"**。只有环境开关、令牌和调用者 OpenID 三项都匹配时才会执行。
 
 ## 7. 预览与上传体验版
 1. **预览**：点击右上角 **"预览"** 按钮，扫码可在手机上实际操作。

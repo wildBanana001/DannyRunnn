@@ -6,21 +6,22 @@
   padding: 96rpx 48rpx;
 }
 
-.icon {
+.image {
   display: block;
-  font-size: 120rpx;
-  line-height: 1;
-  color: $color-text-secondary;
-  opacity: 0.6;
-  margin-bottom: 24rpx;
+  width: 156rpx;
+  height: 116rpx;
+  opacity: 0.84;
+  margin-bottom: 28rpx;
 }
 
 .title {
   display: block;
   margin-top: 8rpx;
-  font-size: 32rpx;
+  font-family: $font-family-hand;
+  font-size: 36rpx;
   color: $color-text-primary;
   font-weight: $font-weight-bold;
+  letter-spacing: 0.08em;
   text-align: center;
 }
 
@@ -30,6 +31,12 @@
   font-size: $font-size-sm;
   line-height: 1.8;
   color: $color-text-secondary;
+  letter-spacing: 0.03em;
   text-align: center;
   max-width: 480rpx;
+}
+
+.actions {
+  width: 280rpx;
+  margin-top: 28rpx;
 }

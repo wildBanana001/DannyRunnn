@@ -1,18 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Text, View } from '@tarojs/components';
+import { Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
+import { Minus, Plus } from '@nutui/icons-react-taro';
+import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
 import { fetchShopProduct, type ShopProduct } from '@/services/shop';
 import styles from './index.module.scss';
-
-const PRODUCT_EMOJI: Record<string, string> = {
-  'prod-coffee-box': '☕',
-  'prod-fish-tote': '👜',
-  'prod-stress-ball': '🫠',
-  'prod-thermos-cup': '🥤',
-  'prod-monday-stickers': '🏷️',
-  'prod-off-work-slippers': '🩴',
-};
 
 const ProductDetailPage: React.FC = () => {
   const router = useRouter();
@@ -77,11 +71,12 @@ const ProductDetailPage: React.FC = () => {
   return (
     <View className={styles.container}>
       <View className={styles.cover}>
-        {product.imageUrl ? (
-          <Image className={styles.coverImage} src={product.imageUrl} mode="aspectFill" />
-        ) : (
-          <Text className={styles.coverEmoji}>{PRODUCT_EMOJI[product.id] || '🎁'}</Text>
-        )}
+        <SafeImage
+          className={styles.coverImage}
+          src={resolveShopProductImage(product.id, product.imageUrl)}
+          fallbackSrc={shopProductImages['prod-coffee-box']}
+          mode="aspectFill"
+        />
         <Text className={styles.coverCaption}>WORKER HOUSE SELECT</Text>
       </View>
 
@@ -104,9 +99,9 @@ const ProductDetailPage: React.FC = () => {
             <Text className={styles.metaValue}>{product.stock > 0 ? `${product.stock} 件` : '已售罄'}</Text>
           </View>
           <View className={styles.quantityControl}>
-            <View className={styles.quantityButton} onClick={() => changeQuantity(-1)}><Text>−</Text></View>
+            <View className={styles.quantityButton} onClick={() => changeQuantity(-1)}><Minus size="16" /></View>
             <Text className={styles.quantityValue}>{quantity}</Text>
-            <View className={styles.quantityButton} onClick={() => changeQuantity(1)}><Text>＋</Text></View>
+            <View className={styles.quantityButton} onClick={() => changeQuantity(1)}><Plus size="16" /></View>
           </View>
         </View>
       </View>

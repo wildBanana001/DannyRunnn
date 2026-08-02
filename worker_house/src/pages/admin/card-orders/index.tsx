@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Picker, ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
@@ -45,11 +45,18 @@ const AdminCardOrdersPage: React.FC = () => {
   const [cardType, setCardType] = useState('');
   const [keyword, setKeyword] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
+  const requestIdRef = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   const statusIndex = Math.max(statusOptions.findIndex((item) => item.value === status), 0);
 
   const loadOrders = useCallback(async (nextPage = 1, append = false) => {
+    if (append && loadingMoreRef.current) {
+      return;
+    }
+    const requestId = ++requestIdRef.current;
     if (append) {
+      loadingMoreRef.current = true;
       setLoadingMore(true);
     } else {
       setLoading(true);
@@ -63,15 +70,29 @@ const AdminCardOrdersPage: React.FC = () => {
         status: status || undefined,
         userId: userId.trim() || undefined,
       });
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       setTotal(result.total);
       setPage(nextPage);
-      setRecords((current) => append ? [...current, ...result.list] : result.list);
+      setRecords((current) => {
+        if (!append) return result.list;
+        const deduplicated = new Map(current.map((item) => [item.id, item]));
+        result.list.forEach((item) => deduplicated.set(item.id, item));
+        return Array.from(deduplicated.values());
+      });
     } catch (error) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       const message = error instanceof Error ? error.message : '次卡订单加载失败';
       Toast.show(toastId, { content: message, icon: 'fail' });
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      loadingMoreRef.current = false;
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [cardType, keyword, status, userId]);
 
@@ -143,7 +164,7 @@ const AdminCardOrdersPage: React.FC = () => {
             ))}
             {hasMore ? (
               <View className={styles.actionRow}>
-                <Button loading={loadingMore} onClick={() => void loadOrders(page + 1, true)}>{loadingMore ? '加载中…' : '加载更多'}</Button>
+                <Button loading={loadingMore} disabled={loadingMore} onClick={() => void loadOrders(page + 1, true)}>{loadingMore ? '加载中…' : '加载更多'}</Button>
               </View>
             ) : null}
           </>

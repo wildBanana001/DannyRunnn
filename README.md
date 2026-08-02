@@ -35,7 +35,8 @@ npm run build && npm start
 
 ### 本地模拟凭据
 - `worker_house_bff/src/mock/seed.ts` 的 `admin / admin123` 只用于本地 `MODE=mock` 联调。
-- 云函数管理端不再内置默认账号；生产账号需在 `admins` 集合中配置 `username / passwordHash / passwordSalt / token`。
+- 云函数管理端不再内置默认账号或固定管理令牌；生产账号需在 `admins` 集合中配置 `username / passwordHash / passwordSalt / token`，BFF 与云函数之间另用未入库的 `CLOUD_ADMIN_SERVICE_TOKEN`。
+- `_seed` 默认不可执行且不得常驻生产环境，它会清空并重建业务集合。
 
 ### 主题 & 规范
 - 主色：`#E60000`

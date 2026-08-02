@@ -2,10 +2,18 @@
 @use './styles/global.scss';
 @use './styles/animation.scss';
 
+@font-face {
+  font-family: 'HongLei ZhuoShu';
+  src: url('./assets/fonts/honglei-zhuoshu.woff2') format('woff2');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 800;
+}
+
 page {
   background-color: $color-oat;
   font-family: $font-family-base;
-  font-weight: 500;
+  font-weight: 400;
   color: $color-text-primary;
   line-height: $line-height-normal;
 
@@ -31,4 +39,26 @@ textarea {
 .safe-area-bottom {
   padding-bottom: constant(safe-area-inset-bottom);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+// H5 预览在桌面端保持真实的小程序画布宽度，避免 rpx 被超宽视口放大。
+@media screen and (min-width: 768px) {
+  body {
+    background: $color-oat;
+  }
+
+  .taro-tabbar__container {
+    width: 390PX;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .taro-tabbar__panel {
+    position: relative;
+    z-index: 1;
+  }
+
+  .taro-tabbar__tabbar {
+    z-index: 0;
+  }
 }

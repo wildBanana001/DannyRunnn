@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Image, ScrollView, Text, View } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Button as TaroButton, ScrollView, Text, View } from '@tarojs/components';
+import Taro, { useDidShow } from '@tarojs/taro';
+import Button from '@/components/Button';
+import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
+import activityCoverFallback from '@/assets/home/hero-cover.jpg';
+import activityPosterFallback from '@/assets/home/hero-may.jpg';
 import { fetchActivities } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import type { Activity } from '@/types/activity';
@@ -12,31 +17,39 @@ const ActivityPage: React.FC = () => {
   const [ongoingList, setOngoingList] = useState<Activity[]>([]);
   const [endedList, setEndedList] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState<Record<'ongoing' | 'ended', boolean>>({
+    ongoing: false,
+    ended: false,
+  });
+  const requestIdRef = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadActivities = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    const [ongoingResult, endedResult] = await Promise.allSettled([
+      fetchActivities('ongoing'),
+      fetchActivities('ended'),
+    ]);
+    if (requestId !== requestIdRef.current) {
+      return;
+    }
 
-    Promise.all([fetchActivities('ongoing'), fetchActivities('ended')])
-      .then(([ongoing, ended]) => {
-        if (cancelled) return;
-        setOngoingList(ongoing);
-        setEndedList(ended);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setOngoingList([]);
-        setEndedList([]);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    if (ongoingResult.status === 'fulfilled') {
+      setOngoingList(ongoingResult.value);
+    }
+    if (endedResult.status === 'fulfilled') {
+      setEndedList(endedResult.value);
+    }
+    setErrors({
+      ongoing: ongoingResult.status === 'rejected',
+      ended: endedResult.status === 'rejected',
+    });
+    setLoading(false);
   }, []);
+
+  useDidShow(() => {
+    void loadActivities();
+  });
 
   const endedSections = useMemo(() => groupActivitiesByMonth(endedList), [endedList]);
   const { style: enterStyle } = useEnterAnimation();
@@ -47,14 +60,20 @@ const ActivityPage: React.FC = () => {
 
   return (
     <ScrollView className={styles.container} scrollY enableFlex>
+      <View className={styles.pageIntro}>
+        <Text className={styles.eyebrow}>WORKER HOUSE EVENTS</Text>
+        <Text className={styles.pageTitle}>社畜活动</Text>
+        <Text className={styles.pageSubtitle}>见面，比点赞更有意思。</Text>
+      </View>
       <View className={styles.segmentWrap}>
         <View className={styles.segmentBar}>
           <View
             className={styles.segmentIndicator}
             style={{ transform: activeTab === 'ongoing' ? 'translateX(0)' : 'translateX(100%)' }}
           />
-          <View
+          <TaroButton
             className={`${styles.segmentItem} ${activeTab === 'ongoing' ? styles.segmentItemActive : ''}`}
+            ariaLabel="查看进行中活动"
             onClick={() => setActiveTab('ongoing')}
           >
             <Text
@@ -64,9 +83,10 @@ const ActivityPage: React.FC = () => {
             >
               进行中
             </Text>
-          </View>
-          <View
+          </TaroButton>
+          <TaroButton
             className={`${styles.segmentItem} ${activeTab === 'ended' ? styles.segmentItemActive : ''}`}
+            ariaLabel="查看已结束活动"
             onClick={() => setActiveTab('ended')}
           >
             <Text
@@ -76,7 +96,7 @@ const ActivityPage: React.FC = () => {
             >
               已结束
             </Text>
-          </View>
+          </TaroButton>
         </View>
       </View>
 
@@ -84,9 +104,14 @@ const ActivityPage: React.FC = () => {
         <View className={styles.loadingWrap}>
           <Text className={styles.loadingText}>活动加载中...</Text>
         </View>
+      ) : errors[activeTab] ? (
+        <EmptyState title="活动加载失败" description="网络似乎开了小差，请稍后再试。">
+          <Button block type="outline" onClick={() => void loadActivities()}>重新加载</Button>
+        </EmptyState>
       ) : activeTab === 'ongoing' ? (
-        <View className={styles.ongoingList} style={enterStyle}>
-          {ongoingList.map((activity) => {
+        ongoingList.length > 0 ? (
+          <View className={styles.ongoingList} style={enterStyle}>
+            {ongoingList.map((activity, index) => {
             const progress = getProgressPercent(
               activity.currentParticipants,
               activity.maxParticipants,
@@ -98,10 +123,12 @@ const ActivityPage: React.FC = () => {
                 onClick={() => handleOpenDetail(activity)}
               >
                 <View className={styles.coverWrap}>
-                  <Image
+                  <SafeImage
                     className={styles.ongoingCover}
                     src={activity.coverImage}
+                    fallbackSrc={index % 2 === 0 ? activityCoverFallback : activityPosterFallback}
                     mode="aspectFill"
+                    fallbackDelayMs={2200}
                   />
                 </View>
                 <View className={styles.ongoingBody}>
@@ -121,11 +148,15 @@ const ActivityPage: React.FC = () => {
                 </View>
               </View>
             );
-          })}
-        </View>
+            })}
+          </View>
+        ) : (
+          <EmptyState title="近期活动筹备中" description="新活动正在路上，晚点再来看看吧。" />
+        )
       ) : (
-        <View className={styles.endedList}>
-          {endedSections.map((section) => (
+        endedSections.length > 0 ? (
+          <View className={styles.endedList}>
+            {endedSections.map((section) => (
             <View key={section.month} className={styles.sectionBlock}>
               <View className={styles.stickyHeader}>
                 <Text className={styles.stickyTitle}>
@@ -139,10 +170,12 @@ const ActivityPage: React.FC = () => {
                   onClick={() => handleOpenDetail(activity)}
                 >
                   <View className={styles.endedThumbWrap}>
-                    <Image
+                    <SafeImage
                       className={styles.endedThumb}
                       src={activity.coverImage}
+                      fallbackSrc={activityCoverFallback}
                       mode="aspectFill"
+                      fallbackDelayMs={2200}
                     />
                   </View>
                   <View className={styles.endedInfo}>
@@ -154,8 +187,11 @@ const ActivityPage: React.FC = () => {
                 </View>
               ))}
             </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <EmptyState title="还没有往期活动" description="第一段活动回忆，很快会在这里出现。" />
+        )
       )}
 
       <View className={styles.bottomSpacing} />

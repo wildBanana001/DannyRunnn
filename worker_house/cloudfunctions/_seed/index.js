@@ -3,6 +3,26 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
+const RESET_CONFIRMATION = 'RESET_WORKER_HOUSE_DEMO_DATA';
+
+function canReset(event) {
+  if (process.env.ALLOW_SEED_RESET !== 'true') {
+    return false;
+  }
+  const expectedToken = (process.env.SEED_ADMIN_TOKEN || '').trim();
+  const allowedOpenids = (process.env.SEED_ADMIN_OPENIDS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const openid = cloud.getWXContext().OPENID;
+  return Boolean(
+    expectedToken
+    && event.token === expectedToken
+    && event.confirm === RESET_CONFIRMATION
+    && openid
+    && allowedOpenids.includes(openid)
+  );
+}
 
 const posters = [
   { _id: 'poster-001', id: 'poster-001', title: '旧电视夜谈会', coverImage: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1200&q=80', detailImages: ['https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1200&q=80', 'https://images.unsplash.com/photo-1487215078519-e21cc028cb29?w=1200&q=80'], enabled: true, sort: 1, createdAt: '2026-04-20T10:00:00Z' },
@@ -44,7 +64,10 @@ async function resetCollection(name, data) {
   }
 }
 
-exports.main = async () => {
+exports.main = async (event = {}) => {
+  if (!canReset(event)) {
+    return { success: false, error: '种子重置功能未开启或无执行权限' };
+  }
   try {
     for (const [name, data] of collections) {
       await resetCollection(name, data);

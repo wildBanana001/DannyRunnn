@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
+import { Add, ArrowRight, Minus, Plus } from '@nutui/icons-react-taro';
+import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
+import SafeImage from '@/components/SafeImage';
 import { fetchAddresses, type Address } from '@/services/address';
 import {
   createShopClientRequestId,
@@ -46,13 +49,16 @@ const OrderConfirmPage: React.FC = () => {
       ]);
       setProduct(nextProduct);
       setQuantity((current) => Math.max(1, Math.min(nextProduct.stock, current)));
-      if (addresses.length > 0) {
-        setAddress((current) => (
+      setAddress((current) => (
+        isLoggedIn
+          ? (
           addresses.find((item) => item.id === current?.id)
           || addresses.find((item) => item.isDefault)
           || addresses[0]
-        ));
-      }
+          || null
+          )
+          : null
+      ));
     } catch (loadError) {
       console.warn('[shop] load order confirmation failed', loadError);
       Taro.showToast({ title: '订单信息加载失败', icon: 'none' });
@@ -74,6 +80,9 @@ const OrderConfirmPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setAddress(null);
+    }
     if (isLoggedIn && !wasLoggedInRef.current) {
       loadData();
     }
@@ -122,6 +131,11 @@ const OrderConfirmPage: React.FC = () => {
       outTradeNo = session.outTradeNo;
       Taro.hideLoading();
 
+      if (session.amount !== totalAmount) {
+        await loadData();
+        throw new Error('商品价格已更新，请核对后重新支付');
+      }
+
       await launchShopPayment(session);
 
       Taro.showLoading({ title: '正在确认支付…', mask: true });
@@ -164,7 +178,10 @@ const OrderConfirmPage: React.FC = () => {
       <View className={styles.section} onClick={chooseAddress}>
         <View className={styles.sectionHeader}>
           <Text className={styles.sectionTitle}>收货地址</Text>
-          <Text className={styles.changeText}>{address ? '更换' : '添加'} ›</Text>
+          <View className={styles.changeAction}>
+            <Text className={styles.changeText}>{address ? '更换' : '添加'}</Text>
+            <ArrowRight className={styles.changeIcon} size="13" />
+          </View>
         </View>
         {address ? (
           <View className={styles.addressCard}>
@@ -173,7 +190,7 @@ const OrderConfirmPage: React.FC = () => {
           </View>
         ) : (
           <View className={styles.emptyAddress}>
-            <Text className={styles.emptyAddressIcon}>＋</Text>
+            <Add className={styles.emptyAddressIcon} size="16" />
             <Text>{isLoggedIn ? '添加一个收货地址' : '登录后选择收货地址'}</Text>
           </View>
         )}
@@ -182,15 +199,20 @@ const OrderConfirmPage: React.FC = () => {
       <View className={styles.section}>
         <Text className={styles.sectionTitle}>商品清单</Text>
         <View className={styles.productRow}>
-          <View className={styles.productThumb}><Text>🎁</Text></View>
+          <SafeImage
+            className={styles.productThumb}
+            src={resolveShopProductImage(product.id, product.imageUrl)}
+            fallbackSrc={shopProductImages['prod-coffee-box']}
+            mode="aspectFill"
+          />
           <View className={styles.productInfo}>
             <Text className={styles.productName}>{product.name}</Text>
             <Text className={styles.productMeta}>¥{product.price.toFixed(2)} × {quantity}</Text>
           </View>
           <View className={styles.quantityControl}>
-            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.max(1, value - 1))}><Text>−</Text></View>
+            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.max(1, value - 1))}><Minus size="14" /></View>
             <Text className={styles.quantityValue}>{quantity}</Text>
-            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))}><Text>＋</Text></View>
+            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))}><Plus size="14" /></View>
           </View>
         </View>
         <View className={styles.remarkRow}>

@@ -2,10 +2,11 @@
 
 .card {
   position: relative;
-  padding: 30rpx 22rpx 22rpx;
+  padding: 34rpx 20rpx 22rpx;
   margin-bottom: 20rpx;
-  border-radius: $radius-card-lg;
-  box-shadow: $shadow-card;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 3rpx;
+  box-shadow: 5rpx 5rpx 0 rgba(23, 22, 19, 0.08);
 }
 
 .tape {
@@ -26,7 +27,8 @@
 .title {
   display: block;
   margin-top: 14rpx;
-  font-size: 30rpx;
+  font-family: $font-family-hand;
+  font-size: 31rpx;
   line-height: 1.4;
   color: $color-text-primary;
   font-weight: $font-weight-bold;
@@ -47,7 +49,8 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   margin-top: 16rpx;
-  border-radius: 16rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
 }
 
 .tags {
@@ -60,8 +63,9 @@
 
 .tagChip {
   padding: 8rpx 18rpx;
-  border-radius: $radius-circle;
-  background: $color-brand-soft;
+  border-bottom: 2rpx solid $color-brand;
+  border-radius: 0;
+  background: transparent;
 }
 
 .tagText,
@@ -81,6 +85,11 @@
 .action {
   display: flex;
   align-items: center;
+  gap: 6rpx;
+}
+
+.actionIcon {
+  color: $color-text-primary;
 }
 
 .actionText {

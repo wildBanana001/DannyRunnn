@@ -10,9 +10,15 @@ dotenv.config();
 export type CloudMode = 'mock' | 'wechat' | 'cloudrun';
 export type ShopOrderStorage = 'cloudbase' | 'file';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 function readCloudMode(value?: string): CloudMode {
   if (value === 'wechat' || value === 'cloudrun') {
     return value;
+  }
+
+  if (isProduction) {
+    throw new Error('生产环境必须显式配置 MODE=cloudrun 或 MODE=wechat，禁止回退到 mock');
   }
 
   return 'mock';
@@ -39,7 +45,6 @@ function readCollectionName(value?: string) {
 }
 
 const cloudMode = readCloudMode(process.env.MODE?.trim() || process.env.CLOUD_MODE?.trim());
-const isProduction = process.env.NODE_ENV === 'production';
 const enableShopValue = process.env.ENABLE_SHOP?.trim();
 
 export const config = {
@@ -47,6 +52,7 @@ export const config = {
   allowEphemeralCloudrunData: readBoolean(process.env.ALLOW_EPHEMERAL_CLOUDRUN_DATA),
   cloudAppId: process.env.CLOUD_APP_ID?.trim() || '',
   cloudAppSecret: process.env.CLOUD_APP_SECRET?.trim() || '',
+  cloudAdminServiceToken: process.env.CLOUD_ADMIN_SERVICE_TOKEN?.trim() || '',
   cloudEnvId: process.env.CLOUD_ENV_ID?.trim() || '',
   cloudMode,
   enableShop: enableShopValue ? readBoolean(enableShopValue) : cloudMode === 'mock',

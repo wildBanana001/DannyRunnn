@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Image, Input, ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
+import { Heart } from '@nutui/icons-react-taro';
 import Button from '@/components/Button';
 import BottomSheet from '@/components/BottomSheet';
 import type { Comment, Post } from '@/types/post';
@@ -107,7 +108,8 @@ const PostModal: React.FC<PostModalProps> = ({
           <Text className={styles.author}>{currentPost.isAnonymous ? '匿名留言' : `来自 ${currentPost.authorNickname}`}</Text>
           <View className={styles.metaBar}>
             <View className={styles.metaButton} onClick={() => onLike(currentPost)}>
-              <Text className={styles.metaText}>❤️ 收藏</Text>
+              <Heart className={styles.metaIcon} size="14" />
+              <Text className={styles.metaText}>收藏</Text>
             </View>
             <Text className={styles.metaText}>{getPostCommentCount(currentPost)} 条评论</Text>
           </View>

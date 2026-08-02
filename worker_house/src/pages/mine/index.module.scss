@@ -7,40 +7,45 @@
 
 .header {
   position: relative;
-  padding: 28rpx 24rpx 12rpx;
+  padding: calc(env(safe-area-inset-top) + 50rpx) 32rpx 20rpx;
 }
 
-.cloudLeft,
-.cloudRight {
-  position: absolute;
-  width: 120rpx;
-  opacity: 0.65;
+.eyebrow,
+.pageTitle {
+  display: block;
 }
 
-.cloudLeft {
-  top: 10rpx;
-  left: 16rpx;
+.eyebrow {
+  color: $color-brand;
+  font-size: 18rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0.18em;
 }
 
-.cloudRight {
-  top: 48rpx;
-  right: 24rpx;
+.pageTitle {
+  margin-top: 10rpx;
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 56rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0.08em;
 }
 
 .userCard {
-  @include paper-card($color-white);
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  padding: 28rpx;
-  margin-top: 52rpx;
+  padding: 32rpx 0 36rpx;
+  margin-top: 24rpx;
+  border-top: 2rpx solid $color-text-primary;
+  border-bottom: 2rpx solid $color-text-primary;
 }
 
 .avatarWrap {
   position: relative;
-  width: 140rpx;
-  height: 140rpx;
+  width: 152rpx;
+  height: 178rpx;
 }
 
 .avatarFrame,
@@ -52,10 +57,11 @@
 }
 
 .avatar {
-  inset: 18rpx;
-  width: calc(100% - 36rpx);
-  height: calc(100% - 36rpx);
+  inset: 16rpx;
+  width: calc(100% - 32rpx);
+  height: calc(100% - 32rpx);
   border-radius: 50%;
+  border: 2rpx solid $color-text-primary;
 }
 
 .userMeta {
@@ -65,7 +71,8 @@
 
 .nickname {
   display: block;
-  font-size: 36rpx;
+  font-family: $font-family-hand;
+  font-size: 40rpx;
   color: $color-text-primary;
   font-weight: $font-weight-heavy;
 }
@@ -79,16 +86,21 @@
 }
 
 .statsCard {
-  @include paper-card($color-white);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12rpx;
-  padding: 24rpx;
-  margin: 12rpx 24rpx 0;
+  padding: 24rpx 0;
+  margin: 8rpx 32rpx 0;
+  border-bottom: 2rpx solid $color-text-primary;
 }
 
 .statItem {
   text-align: center;
+  border-right: 2rpx solid $color-divider;
+}
+
+.statItem:last-child {
+  border-right: 0;
 }
 
 .statValue {
@@ -106,16 +118,17 @@
 }
 
 .menuList {
-  padding: 12rpx 24rpx 0;
+  padding: 30rpx 32rpx 0;
 }
 
 .menuItem {
-  @include paper-card($color-white);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
-  margin-bottom: 18rpx;
+  min-height: 118rpx;
+  padding: 18rpx 0;
+  margin-bottom: 0;
+  border-bottom: 2rpx solid $color-divider;
 }
 
 .menuMeta {
@@ -126,13 +139,14 @@
 .menuIcon {
   width: 56rpx;
   margin-right: 18rpx;
-  font-size: 34rpx;
+  color: $color-text-primary;
   text-align: center;
 }
 
 .menuTitle {
   display: block;
-  font-size: $font-size-lg;
+  font-family: $font-family-hand;
+  font-size: 32rpx;
   color: $color-text-primary;
   font-weight: $font-weight-bold;
 }
@@ -145,7 +159,6 @@
 }
 
 .menuArrow {
-  font-size: 44rpx;
   color: $color-text-secondary;
 }
 
@@ -158,8 +171,10 @@
   align-items: center;
   justify-content: center;
   min-height: 88rpx;
-  border-radius: $radius-button;
-  background: $color-accent;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-text-primary;
+  box-shadow: 4rpx 4rpx 0 rgba(23, 22, 19, 0.08);
 }
 
 .loginButtonText {

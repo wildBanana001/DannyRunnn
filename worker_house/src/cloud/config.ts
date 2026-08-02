@@ -6,8 +6,7 @@ const normalizeBaseUrl = (value?: string) => {
 };
 
 export const cloudEnvId = trimEnv(process.env.TARO_APP_CLOUD_ENV)
-  || trimEnv(process.env.TARO_APP_CLOUDRUN_ENV)
-  || 'prod-d9g991lo4dba5a4da';
+  || trimEnv(process.env.TARO_APP_CLOUDRUN_ENV);
 
 export const cloudrunService = trimEnv(process.env.TARO_APP_CLOUDRUN_SERVICE);
 

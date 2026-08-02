@@ -26,8 +26,7 @@ function isRuntimeReady() {
 function isRequestRuntimeReady(path, method) {
     if (isRuntimeReady())
         return true;
-    const paymentStorageReady = config.enableShop
-        && config.shopOrderStorage === 'cloudbase'
+    const paymentStorageReady = config.shopOrderStorage === 'cloudbase'
         && (path === '/shop' || path.startsWith('/shop/'));
     const paymentRegistrationAdminRead = config.enableShop
         && config.shopOrderStorage === 'cloudbase'
@@ -101,9 +100,9 @@ app.use('/api/admin-mini', adminMiniRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/posts', postRouter);
 app.use('/api/site', siteRouter);
-if (config.enableShop) {
-    app.use('/api/shop', shopRouter);
-}
+// Keep payment notifications and existing-order queries available even when
+// new sales are paused. The route-level gate only blocks pay/retry endpoints.
+app.use('/api/shop', shopRouter);
 app.use((error, _request, response, _next) => {
     console.error('[http] unhandled error', error instanceof Error ? error.message : error);
     response.status(500).json({ message: '服务内部错误' });

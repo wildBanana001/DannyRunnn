@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { siteConfig } from '@/data/site';
-import { useSiteConfig } from '@/shared/siteConfig';
+import { clearSiteConfigCache, useSiteConfig } from '@/shared/siteConfig';
 import { useUserStore } from '@/store/userStore';
 import styles from './index.module.scss';
 
@@ -12,7 +12,7 @@ const SettingsPage: React.FC = () => {
   const aboutUs = sharedSiteConfig?.aboutUs || siteConfig.spaceDescription;
 
   const handleClearCache = async () => {
-    await Taro.clearStorage();
+    clearSiteConfigCache();
     Taro.showToast({ title: '缓存已清理', icon: 'success' });
   };
 
@@ -36,7 +36,6 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
-    await Taro.clearStorage();
     logout();
     Taro.showToast({ title: '已退出登录', icon: 'success' });
     setTimeout(() => {

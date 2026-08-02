@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { fetchCommunitySiteConfig, defaultSiteConfigRecord, type SiteConfigRecord } from '@/services/siteConfig';
 import { fetchCardPackages } from '@/services/member';
@@ -6,24 +6,44 @@ import type { CardPackage } from '@/types';
 
 let siteConfigCache: SiteConfigRecord | null = null;
 let siteConfigCacheTime = 0;
+let siteConfigGeneration = 0;
+const siteConfigListeners = new Set<(config: SiteConfigRecord) => void>();
 const TTL = 15 * 60 * 1000;
+
+export function clearSiteConfigCache() {
+  siteConfigGeneration += 1;
+  siteConfigCache = null;
+  siteConfigCacheTime = 0;
+  Taro.removeStorageSync('worker-house-site-config');
+  siteConfigListeners.forEach((listener) => listener(defaultSiteConfigRecord));
+}
 
 export function useSiteConfig() {
   const [config, setConfig] = useState<SiteConfigRecord>(siteConfigCache || defaultSiteConfigRecord);
+
+  useEffect(() => {
+    siteConfigListeners.add(setConfig);
+    return () => {
+      siteConfigListeners.delete(setConfig);
+    };
+  }, []);
 
   const loadConfig = async () => {
     if (siteConfigCache && Date.now() - siteConfigCacheTime < TTL) {
       setConfig(siteConfigCache);
       return;
     }
+    const generation = siteConfigGeneration;
     try {
       const data = await fetchCommunitySiteConfig();
+      if (generation !== siteConfigGeneration) return;
       siteConfigCache = data;
       siteConfigCacheTime = Date.now();
       setConfig(data);
       Taro.setStorageSync('worker-house-site-config', data);
     } catch (err) {
       console.warn('[hooks] fetch site config failed', err);
+      if (generation !== siteConfigGeneration) return;
       const cached = Taro.getStorageSync('worker-house-site-config') as SiteConfigRecord | undefined;
       if (cached) {
         setConfig(cached);

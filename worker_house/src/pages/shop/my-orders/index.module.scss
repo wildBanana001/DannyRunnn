@@ -1,18 +1,18 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #d9483b;
+$shop-accent: $color-brand;
 
 .container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #f4efe5;
+  background: $color-oat;
 }
 
 .header {
-  padding: 40rpx 30rpx 28rpx;
-  background: #fffaf0;
-  border-bottom: 2rpx solid rgba(78, 54, 36, 0.08);
+  padding: 40rpx 32rpx 28rpx;
+  background: $color-oat;
+  border-bottom: 2rpx solid $color-text-primary;
 }
 
 .eyebrow,
@@ -29,20 +29,21 @@ $shop-accent: #d9483b;
   font-size: 18rpx;
   font-weight: $font-weight-bold;
   letter-spacing: 3rpx;
-  color: #9a7d61;
+  color: $color-brand;
 }
 
 .title {
   margin-top: 7rpx;
-  font-size: 48rpx;
+  font-family: $font-family-hand;
+  font-size: 50rpx;
   font-weight: $font-weight-heavy;
-  color: #33271f;
+  color: $color-text-primary;
 }
 
 .subtitle {
   margin-top: 8rpx;
   font-size: 23rpx;
-  color: #887668;
+  color: $color-text-secondary;
 }
 
 .scroll {
@@ -50,16 +51,15 @@ $shop-accent: #d9483b;
 }
 
 .list {
-  padding: 22rpx 24rpx 0;
+  padding: 22rpx 32rpx 0;
 }
 
 .card {
-  margin-bottom: 20rpx;
-  padding: 26rpx;
-  border: 2rpx solid rgba(78, 54, 36, 0.08);
-  border-radius: 24rpx;
-  background: #fffdf8;
-  box-shadow: 0 10rpx 24rpx rgba(68, 48, 34, 0.06);
+  margin-bottom: 0;
+  padding: 28rpx 0;
+  border-bottom: 2rpx solid $color-text-primary;
+  border-radius: 0;
+  background: transparent;
 }
 
 .cardHeader,
@@ -72,7 +72,7 @@ $shop-accent: #d9483b;
 
 .cardHeader {
   padding-bottom: 18rpx;
-  border-bottom: 2rpx dashed rgba(78, 54, 36, 0.14);
+  border-bottom: 2rpx solid $color-divider;
 }
 
 .orderDate {
@@ -92,25 +92,26 @@ $shop-accent: #d9483b;
 }
 
 .status {
-  padding: 7rpx 13rpx;
-  border-radius: 999rpx;
+  padding: 7rpx 0;
+  border-bottom: 2rpx solid currentColor;
+  border-radius: 0;
   font-size: 21rpx;
   font-weight: $font-weight-semibold;
 }
 
 .status_pending {
-  background: rgba(197, 138, 61, 0.12);
+  background: transparent;
   color: #a66c25;
 }
 
 .status_paid {
-  background: rgba(79, 132, 100, 0.12);
+  background: transparent;
   color: #3d7654;
 }
 
 .status_failed,
 .status_closed {
-  background: rgba(119, 104, 92, 0.1);
+  background: transparent;
   color: #76685e;
 }
 
@@ -126,9 +127,9 @@ $shop-accent: #d9483b;
   height: 112rpx;
   flex: 0 0 auto;
   overflow: hidden;
-  border-radius: 18rpx;
-  background: linear-gradient(145deg, #f4d0b5, #d9aa90);
-  font-size: 46rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
+  background: #EEE5D0;
 }
 
 .thumbImage {
@@ -146,7 +147,7 @@ $shop-accent: #d9483b;
   font-size: 26rpx;
   line-height: 1.4;
   font-weight: $font-weight-semibold;
-  color: #3d3027;
+  color: $color-text-primary;
 }
 
 .quantity {
@@ -166,7 +167,7 @@ $shop-accent: #d9483b;
   min-height: 64rpx;
   margin-top: 18rpx;
   padding-top: 16rpx;
-  border-top: 2rpx dashed rgba(78, 54, 36, 0.12);
+  border-top: 2rpx solid $color-divider;
 }
 
 .address {
@@ -176,9 +177,10 @@ $shop-accent: #d9483b;
 
 .payButton,
 .primaryButton {
-  border-radius: 999rpx;
-  background: $shop-accent;
-  color: #fff;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-text-primary;
+  color: $color-white;
   text-align: center;
 }
 

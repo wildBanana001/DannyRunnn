@@ -7,7 +7,7 @@ import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
 export const authWxRouter = Router();
 
 function resolveWxOpenid(request: Request) {
-  return request.wxUser?.openid?.trim() || request.header('x-wx-openid')?.trim() || '';
+  return request.wxUser?.openid?.trim() || '';
 }
 
 authWxRouter.use(wxCloudrunAuth);

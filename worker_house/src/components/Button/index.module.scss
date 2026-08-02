@@ -3,29 +3,32 @@
 .button {
   @include button-reset;
   font-size: $font-size-md;
-  font-weight: $font-weight-semibold;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0.08em;
   border-radius: $radius-button;
-  transition: transform $transition-fast, opacity $transition-fast;
+  transition: transform $transition-fast, opacity $transition-fast, box-shadow $transition-fast;
 
   &:active {
-    transform: scale(0.98);
+    transform: translate(3rpx, 3rpx);
+    box-shadow: none;
   }
 }
 
 .primary {
-  background: $color-accent;
+  @include ink-button;
   color: $color-white;
 }
 
 .secondary {
-  background: $color-earth-green;
-  color: $color-white;
+  border: 2rpx solid $color-text-primary;
+  background: transparent;
+  color: $color-text-primary;
 }
 
 .outline {
-  background: $color-white;
-  border: 2rpx solid $color-accent;
-  color: $color-accent;
+  background: transparent;
+  border: 2rpx solid $color-text-primary;
+  color: $color-text-primary;
 }
 
 .ghost {
@@ -55,7 +58,7 @@
 }
 
 .disabled {
-  opacity: 0.48;
+  opacity: 0.42;
 
   &:active {
     transform: none;

@@ -62,10 +62,10 @@ export default defineAppConfig({
     },
   ],
   tabBar: {
-    color: '#7D736A',
-    selectedColor: '#C9473B',
-    backgroundColor: '#FFFCF7',
-    borderStyle: 'white',
+    color: '#746D60',
+    selectedColor: '#15100B',
+    backgroundColor: '#FAF9E7',
+    borderStyle: 'black',
     list: [
       {
         pagePath: 'pages/home/index',
@@ -101,9 +101,9 @@ export default defineAppConfig({
   },
   window: {
     backgroundTextStyle: 'dark',
-    navigationBarBackgroundColor: '#F7F6F2',
+    navigationBarBackgroundColor: '#FAF9E7',
     navigationBarTitleText: 'worker_house',
     navigationBarTextStyle: 'black',
-    backgroundColor: '#F7F6F2'
+    backgroundColor: '#FAF9E7'
   }
 });

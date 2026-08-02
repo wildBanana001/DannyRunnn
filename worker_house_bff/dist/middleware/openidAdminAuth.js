@@ -1,6 +1,6 @@
 import { isOpenidAdmin } from '../config/adminWhitelist.js';
 export function resolveAdminOpenid(request) {
-    return request.header('x-wx-openid')?.trim() || '';
+    return request.wxUser?.openid?.trim() || '';
 }
 export function openidAdminAuth(request, response, next) {
     const openid = resolveAdminOpenid(request);

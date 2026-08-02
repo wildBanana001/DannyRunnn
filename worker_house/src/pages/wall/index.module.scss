@@ -2,7 +2,7 @@
 
 .container {
   min-height: 100vh;
-  padding: $spacing-page-top 24rpx 48rpx;
+  padding: calc(env(safe-area-inset-top) + 56rpx) 32rpx 64rpx;
   background: $color-oat;
   overflow-x: hidden;
 }
@@ -11,12 +11,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24rpx;
+  margin-bottom: 34rpx;
 }
 
 .title {
   display: block;
-  font-size: $font-size-section-title;
+  font-family: $font-family-hand;
+  font-size: 58rpx;
   line-height: $line-height-section-title;
   color: $color-text-primary;
   font-weight: $font-weight-heavy;
@@ -26,15 +27,23 @@
 .subtitle {
   display: block;
   margin-top: 8rpx;
-  font-size: $font-size-sm;
+  font-size: 24rpx;
   color: $color-text-secondary;
 }
 
 .publishButton {
-  padding: 18rpx 28rpx;
-  border-radius: $radius-circle;
-  background: $color-accent;
-  box-shadow: $shadow-card;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 16rpx 22rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-text-primary;
+  box-shadow: 4rpx 4rpx 0 rgba(23, 22, 19, 0.08);
+}
+
+.publishIcon {
+  color: $color-white;
 }
 
 .publishText {
@@ -47,16 +56,17 @@
   display: flex;
   align-items: center;
   gap: 12rpx;
-  padding: 0 24rpx;
+  padding: 0 4rpx;
   height: 84rpx;
-  margin-bottom: 18rpx;
-  border-radius: $radius-circle;
-  background: #efebe2;
+  margin-bottom: 26rpx;
+  border-top: 2rpx solid $color-text-primary;
+  border-bottom: 2rpx solid $color-text-primary;
+  border-radius: 0;
+  background: transparent;
 }
 
 .searchIcon {
-  color: rgba(62, 44, 28, 0.5);
-  font-size: 30rpx;
+  color: $color-text-secondary;
 }
 
 .searchInput {
@@ -75,7 +85,7 @@
 
 .columns {
   display: flex;
-  gap: 20rpx;
+  gap: 18rpx;
   align-items: flex-start;
 }
 

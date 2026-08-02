@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Image, Input, ScrollView, Text, View } from '@tarojs/components';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Input, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
+import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
+import avatarFallback from '@/assets/illustrations/avatar-frame.png';
 import { commentWallPost, fetchPostDetail } from '@/cloud/services';
 import type { Comment, Post } from '@/types/post';
 import { formatDateTime, getPostCommentCount, getRelativeTime } from '@/utils/helpers';
@@ -9,26 +12,42 @@ import styles from './index.module.scss';
 
 const PostDetailPage: React.FC = () => {
   const router = useRouter();
+  const postId = router.params.id?.trim() || '';
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    const { id } = router.params;
-    if (!id) {
+  const loadPost = useCallback(async () => {
+    if (!postId) {
+      setPost(null);
+      setErrorMessage('缺少帖子信息');
+      setLoading(false);
       return;
     }
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const result = await fetchPostDetail(postId);
+      if (result.post.id !== postId) {
+        throw new Error('帖子信息不匹配');
+      }
+      setPost(result.post);
+      setComments(result.comments);
+    } catch (error) {
+      setPost(null);
+      setComments([]);
+      setErrorMessage(error instanceof Error ? error.message : '帖子加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [postId]);
 
-    fetchPostDetail(id)
-      .then((result) => {
-        setPost(result.post);
-        setComments(result.comments);
-      })
-      .catch(() => {
-        Taro.showToast({ title: '帖子加载失败', icon: 'none' });
-      });
-  }, [router.params]);
+  useEffect(() => {
+    void loadPost();
+  }, [loadPost]);
 
   const handleLike = () => {
     Taro.showToast({ title: '已收藏', icon: 'none' });
@@ -40,22 +59,38 @@ const PostDetailPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const newComment = await commentWallPost(post.id, commentText.trim());
-    setComments((current) => [newComment, ...current]);
-    setPost({
-      ...post,
-      comments: post.comments + 1,
-      commentsCount: (post.commentsCount ?? post.comments) + 1
-    });
-    setCommentText('');
-    setIsSubmitting(false);
-    Taro.showToast({ title: '评论成功', icon: 'success' });
+    try {
+      const newComment = await commentWallPost(post.id, commentText.trim());
+      setComments((current) => [newComment, ...current]);
+      setPost((current) => current ? {
+        ...current,
+        comments: current.comments + 1,
+        commentsCount: (current.commentsCount ?? current.comments) + 1,
+      } : current);
+      setCommentText('');
+      Taro.showToast({ title: '评论成功', icon: 'success' });
+    } catch (error) {
+      console.warn('[post-detail] comment failed', error);
+      Taro.showToast({ title: '评论发送失败，请稍后再试', icon: 'none' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (!post) {
+  if (loading) {
     return (
       <View className={styles.container}>
         <Text className={styles.loadingText}>加载中...</Text>
+      </View>
+    );
+  }
+
+  if (!post || errorMessage) {
+    return (
+      <View className={styles.container}>
+        <EmptyState title="没有找到这条留言" description={errorMessage || '帖子可能已被删除。'}>
+          <Button block type="outline" onClick={() => void loadPost()}>重新加载</Button>
+        </EmptyState>
       </View>
     );
   }
@@ -70,7 +105,7 @@ const PostDetailPage: React.FC = () => {
                 <Text className={styles.anonymousText}>匿</Text>
               </View>
             ) : (
-              <Image className={styles.avatar} src={post.authorAvatar || 'https://picsum.photos/id/64/200/200'} mode="aspectFill" />
+              <SafeImage className={styles.avatar} src={post.authorAvatar} fallbackSrc={avatarFallback} mode="aspectFill" />
             )}
             <View className={styles.authorInfo}>
               <Text className={styles.nickname}>{post.isAnonymous ? '匿名留言' : post.authorNickname}</Text>
@@ -84,7 +119,7 @@ const PostDetailPage: React.FC = () => {
         {post.images.length > 0 && (
           <View className={styles.images}>
             {post.images.map((image) => (
-              <Image
+              <SafeImage
                 key={image}
                 className={styles.image}
                 src={image}
@@ -133,7 +168,7 @@ const PostDetailPage: React.FC = () => {
                       <Text className={styles.commentAnonymousText}>匿</Text>
                     </View>
                   ) : (
-                    <Image className={styles.commentAvatar} src={comment.authorAvatar || 'https://picsum.photos/id/64/200/200'} mode="aspectFill" />
+                    <SafeImage className={styles.commentAvatar} src={comment.authorAvatar} fallbackSrc={avatarFallback} mode="aspectFill" />
                   )}
                   <View className={styles.commentAuthorInfo}>
                     <Text className={styles.commentNickname}>{comment.authorNickname}</Text>

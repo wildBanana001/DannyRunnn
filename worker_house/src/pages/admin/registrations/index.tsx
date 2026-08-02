@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Picker, ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import Button from '@nutui/nutui-react-taro/dist/es/packages/button/index';
@@ -47,13 +47,20 @@ const AdminRegistrationsPage: React.FC = () => {
   const [status, setStatus] = useState<RegistrationStatus | ''>('');
   const [keyword, setKeyword] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
+  const requestIdRef = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   const activityOptions = useMemo(() => [{ label: '全部活动', value: '' }, ...activities.map((item) => ({ label: item.title, value: item.id }))], [activities]);
   const activityIndex = Math.max(activityOptions.findIndex((item) => item.value === activityId), 0);
   const statusIndex = Math.max(statusOptions.findIndex((item) => item.value === status), 0);
 
   const loadRegistrations = useCallback(async (nextPage = 1, append = false) => {
+    if (append && loadingMoreRef.current) {
+      return;
+    }
+    const requestId = ++requestIdRef.current;
     if (append) {
+      loadingMoreRef.current = true;
       setLoadingMore(true);
     } else {
       setLoading(true);
@@ -63,16 +70,30 @@ const AdminRegistrationsPage: React.FC = () => {
         fetchAdminActivities(1, 200),
         fetchAdminRegistrations({ activityId, keyword, page: nextPage, pageSize, status: status || undefined }),
       ]);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       setActivities(activityResult.list);
       setTotal(registrationResult.total);
       setPage(nextPage);
-      setRecords((current) => append ? [...current, ...registrationResult.list] : registrationResult.list);
+      setRecords((current) => {
+        if (!append) return registrationResult.list;
+        const deduplicated = new Map(current.map((item) => [item.id, item]));
+        registrationResult.list.forEach((item) => deduplicated.set(item.id, item));
+        return Array.from(deduplicated.values());
+      });
     } catch (error) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
       const message = error instanceof Error ? error.message : '报名列表加载失败';
       Toast.show(toastId, { content: message, icon: 'fail' });
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      loadingMoreRef.current = false;
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [activityId, keyword, status]);
 
@@ -141,7 +162,7 @@ const AdminRegistrationsPage: React.FC = () => {
             ))}
             {hasMore ? (
               <View className={styles.actionRow}>
-                <Button loading={loadingMore} onClick={() => void loadRegistrations(page + 1, true)}>{loadingMore ? '加载中…' : '加载更多'}</Button>
+                <Button loading={loadingMore} disabled={loadingMore} onClick={() => void loadRegistrations(page + 1, true)}>{loadingMore ? '加载中…' : '加载更多'}</Button>
               </View>
             ) : null}
           </>

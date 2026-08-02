@@ -53,6 +53,7 @@ const AdminRegistrationDetailPage: React.FC = () => {
   }, [loadDetail]);
 
   const activityTitle = useMemo(() => detail?.activitySnapshot?.title || detail?.activityTitle || '未命名活动', [detail]);
+  const isWechatPaymentRegistration = Boolean(detail?.paymentOrderStatus);
 
   const handleUpdateStatus = async (status: RegistrationStatus) => {
     if (!registrationId) {
@@ -85,6 +86,7 @@ const AdminRegistrationDetailPage: React.FC = () => {
           <View className={styles.detailCard}>
             <Text className={styles.sectionTitle}>{activityTitle}</Text>
             <Text className={styles.fieldText}>当前状态：{statusTextMap[detail.status] || detail.status}</Text>
+            {detail.paymentOrderStatus ? <Text className={styles.fieldText}>支付单状态：{detail.paymentOrderStatus}</Text> : null}
             <Text className={styles.fieldText}>报名时间：{(detail.createdAt || detail.registeredAt || '').replace('T', ' ').slice(0, 16)}</Text>
             <Text className={styles.fieldText}>次卡订单：{detail.cardOrderId || '未使用'}</Text>
             <Text className={styles.fieldText}>次卡流水：{detail.cardUsageLogId || '未使用'}</Text>
@@ -111,16 +113,23 @@ const AdminRegistrationDetailPage: React.FC = () => {
             <Text className={styles.fieldText}>自我介绍：{detail.profileSnapshot.introduction || '未填写'}</Text>
           </View>
 
-          <View className={styles.actionCard}>
-            <Text className={styles.sectionTitle}>切换状态</Text>
-            <View className={styles.actionRow}>
-              {statusButtonList.map((item) => (
-                <Button key={item.value} type={item.value === 'confirmed' ? 'primary' : 'default'} loading={updating === item.value} onClick={() => void handleUpdateStatus(item.value)}>
-                  {item.label}
-                </Button>
-              ))}
+          {isWechatPaymentRegistration ? (
+            <View className={styles.actionCard}>
+              <Text className={styles.sectionTitle}>微信支付报名</Text>
+              <Text className={styles.fieldText}>报名状态以微信支付结果为准。退款接口尚未接入，当前仅支持查看，不能手动改状态。</Text>
             </View>
-          </View>
+          ) : (
+            <View className={styles.actionCard}>
+              <Text className={styles.sectionTitle}>切换状态</Text>
+              <View className={styles.actionRow}>
+                {statusButtonList.map((item) => (
+                  <Button key={item.value} type={item.value === 'confirmed' ? 'primary' : 'default'} loading={updating === item.value} onClick={() => void handleUpdateStatus(item.value)}>
+                    {item.label}
+                  </Button>
+                ))}
+              </View>
+            </View>
+          )}
         </>
       )}
 

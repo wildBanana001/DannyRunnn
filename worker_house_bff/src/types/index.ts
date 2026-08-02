@@ -196,6 +196,8 @@ export interface Registration {
   profileSnapshot: ProfileSnapshot;
   cardOrderId?: string;
   cardUsageLogId?: string;
+  paymentOrderStatus?: 'pending' | 'paid' | 'failed' | 'closed';
+  paymentExpiresAt?: string;
 }
 
 export interface CardUsageLog {

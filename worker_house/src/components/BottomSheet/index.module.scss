@@ -12,7 +12,7 @@
 
 .overlayVisible,
 .overlayClosing {
-  background: rgba(0, 0, 0, 0.5);
+  background: $color-overlay;
 }
 
 .overlayHidden {
@@ -39,8 +39,9 @@
   width: 100vw;
   height: 100%;
   overflow: hidden;
-  background: $color-white;
-  border-radius: 32rpx 32rpx 0 0;
+  background: $color-oat;
+  border-radius: 18rpx 18rpx 0 0;
+  border-top: 2rpx solid $color-text-primary;
 }
 
 .dragArea {
@@ -52,10 +53,10 @@
 }
 
 .dragBar {
-  width: 80rpx;
-  height: 8rpx;
-  border-radius: 999rpx;
-  background: #D0D0D0;
+  width: 72rpx;
+  height: 6rpx;
+  border-radius: 2rpx;
+  background: $color-text-primary;
 }
 
 .body {
@@ -64,4 +65,16 @@
   flex-direction: column;
   min-height: 0;
   transform: translateZ(0);
+}
+
+@media screen and (min-width: 768px) {
+  .sheet {
+    right: auto;
+    left: calc(50% - 195PX);
+    width: 390PX;
+  }
+
+  .panel {
+    width: 100%;
+  }
 }

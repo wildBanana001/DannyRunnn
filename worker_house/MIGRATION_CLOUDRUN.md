@@ -23,7 +23,7 @@ flowchart LR
 ```mermaid
 flowchart LR
   A[worker_house 小程序]
-  A -->|TARO_APP_API_MODE=mock| D[本地 mock / 现有云函数 fallback]
+  A -->|TARO_APP_API_MODE=mock| D[纯本地 mock，不访问云端]
   A -->|TARO_APP_API_MODE=bff| B[公网 BFF]
   A -->|TARO_APP_API_MODE=cloudrun| C[wx.cloud.callContainer]
   C --> E[worker_house_bff 云托管服务]
@@ -89,7 +89,7 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 
 如果需要立即回到当前稳定链路，可直接调整小程序环境变量并重新构建：
 
-- 回滚到本地 / 现有链路：`TARO_APP_API_MODE=mock`
+- 回滚到纯本地数据：`TARO_APP_API_MODE=mock`
 - 回滚到公网 BFF：`TARO_APP_API_MODE=bff`
 
 对于 BFF 侧，如果不想走云托管，可继续使用：

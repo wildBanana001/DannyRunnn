@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, ScrollView, Text, View, type ITouchEvent } from '@tarojs/components';
+import { ScrollView, Text, View, type ITouchEvent } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
+import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
 import {
   confirmShopPayment,
   fetchMyShopOrders,
@@ -134,7 +136,12 @@ const MyOrdersPage: React.FC = () => {
                 </View>
                 <View className={styles.cardBody}>
                   <View className={styles.thumb}>
-                    {item.productImageUrl ? <Image className={styles.thumbImage} src={item.productImageUrl} mode="aspectFill" /> : <Text>🎁</Text>}
+                    <SafeImage
+                      className={styles.thumbImage}
+                      src={resolveShopProductImage(item.productId, item.productImageUrl)}
+                      fallbackSrc={shopProductImages['prod-coffee-box']}
+                      mode="aspectFill"
+                    />
                   </View>
                   <View className={styles.productInfo}>
                     <Text className={styles.cardTitle}>{item.productName}</Text>

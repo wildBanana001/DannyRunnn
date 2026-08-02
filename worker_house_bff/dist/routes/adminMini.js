@@ -12,7 +12,8 @@ import { openidAdminAuth, resolveAdminOpenid } from '../middleware/openidAdminAu
 import { buildCloudStoragePath, uploadToWechatCloudStorage } from '../wechatStorage.js';
 import { upload, toSingleUploadSource } from './upload.js';
 import { paginate, parsePage } from './utils.js';
-const adminCloudFunctionToken = 'worker-house-admin-token';
+import { wxPaymentAuth } from '../middlewares/wx-cloudrun-auth.js';
+const adminCloudFunctionToken = config.cloudAdminServiceToken;
 const registrationStatuses = new Set(['pending', 'confirmed', 'cancelled', 'completed', 'refunded']);
 const cardOrderStatuses = new Set(['active', 'exhausted', 'expired', 'refunded']);
 function sanitizeString(value) {
@@ -167,6 +168,8 @@ function buildPaymentRegistration(order) {
         payable,
         deductionAmount: 0,
         amountPaid: order.status === 'paid' ? payable : 0,
+        paymentOrderStatus: order.status,
+        paymentExpiresAt: order.expiresAt,
         status: order.status === 'paid' ? 'confirmed' : order.status === 'pending' ? 'pending' : 'cancelled',
         registeredAt: order.createdAt,
         createdAt: order.createdAt,
@@ -212,6 +215,7 @@ async function fetchAdminMiniPosterDetail(id) {
     };
 }
 export const adminMiniRouter = Router();
+adminMiniRouter.use(wxPaymentAuth);
 adminMiniRouter.post('/check', (request, response) => {
     const openid = resolveAdminOpenid(request);
     response.json({
@@ -220,6 +224,15 @@ adminMiniRouter.post('/check', (request, response) => {
     });
 });
 adminMiniRouter.use(openidAdminAuth);
+adminMiniRouter.use((request, response, next) => {
+    const mutatesCloudContent = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+        && (request.path.startsWith('/posts') || request.path.startsWith('/posters'));
+    if (mutatesCloudContent && !adminCloudFunctionToken) {
+        response.status(503).json({ message: 'CLOUD_ADMIN_SERVICE_TOKEN 未配置，云内容写操作已停用' });
+        return;
+    }
+    next();
+});
 adminMiniRouter.put('/site-config', (request, response) => {
     try {
         const body = (request.body ?? {});

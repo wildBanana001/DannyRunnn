@@ -1,18 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { Image, ScrollView, Text, View } from '@tarojs/components';
+import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
+import { ArrowRight, Order } from '@nutui/icons-react-taro';
 import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
+import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import { fetchShopProducts, type ShopProduct } from '@/services/shop';
 import styles from './index.module.scss';
-
-const PRODUCT_EMOJI: Record<string, string> = {
-  'prod-coffee-box': '☕',
-  'prod-fish-tote': '👜',
-  'prod-stress-ball': '🫠',
-  'prod-thermos-cup': '🥤',
-  'prod-monday-stickers': '🏷️',
-  'prod-off-work-slippers': '🩴',
-};
 
 function formatPrice(price: number) {
   return price.toFixed(2).replace(/\.00$/, '');
@@ -53,8 +47,9 @@ const ShopHomePage: React.FC = () => {
           <Text className={styles.subtitle}>认真生活，也认真奖励自己</Text>
         </View>
         <View className={styles.ordersEntry} onClick={() => Taro.navigateTo({ url: '/pages/shop/my-orders/index' })}>
-          <Text className={styles.ordersEntryIcon}>⌁</Text>
+          <Order className={styles.ordersEntryIcon} size="18" />
           <Text className={styles.ordersEntryText}>订单</Text>
+          <ArrowRight className={styles.ordersEntryArrow} size="13" />
         </View>
       </View>
 
@@ -84,11 +79,13 @@ const ShopHomePage: React.FC = () => {
             {products.map((item, index) => (
               <View key={item.id} className={styles.card} onClick={() => goDetail(item.id)}>
                 <View className={`${styles.cover} ${index % 2 === 0 ? styles.coverWarm : styles.coverCool}`}>
-                  {item.imageUrl ? (
-                    <Image className={styles.coverImage} src={item.imageUrl} mode="aspectFill" lazyLoad />
-                  ) : (
-                    <Text className={styles.coverEmoji}>{PRODUCT_EMOJI[item.id] || '🎁'}</Text>
-                  )}
+                  <SafeImage
+                    className={styles.coverImage}
+                    src={resolveShopProductImage(item.id, item.imageUrl)}
+                    fallbackSrc={shopProductImages['prod-coffee-box']}
+                    mode="aspectFill"
+                    lazyLoad
+                  />
                   {item.tags[0] ? <Text className={styles.tag}>{item.tags[0]}</Text> : null}
                 </View>
                 <Text className={styles.cardTitle}>{item.name}</Text>

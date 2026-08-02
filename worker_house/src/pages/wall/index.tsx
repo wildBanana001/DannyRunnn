@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
+import { Edit, Search } from '@nutui/icons-react-taro';
 import { commentWallPost, fetchPostDetail, fetchPostList } from '@/cloud/services';
 import Pressable from '@/components/Pressable';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
@@ -136,12 +137,13 @@ const WallPage: React.FC = () => {
           <Text className={styles.subtitle}>把今天想说的话贴在这里，慢慢被看见。</Text>
         </View>
         <Pressable className={styles.publishButton} onClick={() => Taro.navigateTo({ url: '/pages/content/wall-publish/index' })}>
+          <Edit className={styles.publishIcon} size="16" />
           <Text className={styles.publishText}>发布</Text>
         </Pressable>
       </View>
 
       <View className={styles.searchBar}>
-        <Text className={styles.searchIcon}>⌕</Text>
+        <Search className={styles.searchIcon} size="18" />
         <Input
           className={styles.searchInput}
           placeholder="搜索留言..."

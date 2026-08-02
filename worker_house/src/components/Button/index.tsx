@@ -39,7 +39,7 @@ const Button: React.FC<ButtonProps> = ({
         isInactive && styles.disabled,
         className
       )}
-      disabled={isInactive}
+      disabled={isInactive || undefined}
       onClick={onClick}
     >
       {loading ? <Text className={styles.loading}>加载中...</Text> : children}

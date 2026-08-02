@@ -1,21 +1,21 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #d9483b;
+$shop-accent: $color-brand;
 
 .container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #f4efe5;
+  background: $color-oat;
 }
 
 .header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 42rpx 30rpx 30rpx;
-  background: #fffaf0;
-  border-bottom: 2rpx solid rgba(78, 54, 36, 0.08);
+  padding: calc(env(safe-area-inset-top) + 50rpx) 32rpx 34rpx;
+  background: $color-oat;
+  border-bottom: 2rpx solid $color-text-primary;
 }
 
 .eyebrow,
@@ -28,31 +28,33 @@ $shop-accent: #d9483b;
   font-size: 18rpx;
   font-weight: $font-weight-bold;
   letter-spacing: 3rpx;
-  color: #a17d52;
+  color: $color-brand;
 }
 
 .title {
   margin-top: 8rpx;
-  font-size: 52rpx;
+  font-family: $font-family-hand;
+  font-size: 58rpx;
   line-height: 1.15;
   font-weight: $font-weight-heavy;
-  color: #30261e;
+  color: $color-text-primary;
+  letter-spacing: 0.08em;
 }
 
 .subtitle {
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: #806d5c;
+  color: $color-text-secondary;
 }
 
 .ordersEntry {
   display: flex;
   align-items: center;
   gap: 8rpx;
-  padding: 12rpx 20rpx;
-  border: 2rpx solid rgba(217, 72, 59, 0.22);
-  border-radius: 999rpx;
-  background: rgba(217, 72, 59, 0.06);
+  margin-top: 8rpx;
+  padding: 12rpx 0 8rpx 16rpx;
+  border-bottom: 2rpx solid $color-text-primary;
+  background: transparent;
 }
 
 .ordersEntryIcon,
@@ -65,16 +67,20 @@ $shop-accent: #d9483b;
   font-weight: $font-weight-semibold;
 }
 
+.ordersEntryArrow {
+  color: $color-text-primary;
+}
+
 .scroll {
   flex: 1;
 }
 
 .notice {
-  margin: 24rpx 24rpx 4rpx;
-  padding: 24rpx 28rpx;
-  border-radius: 22rpx;
-  background: #3e352d;
-  box-shadow: 0 12rpx 30rpx rgba(62, 53, 45, 0.14);
+  margin: 28rpx 32rpx 6rpx;
+  padding: 22rpx 24rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
+  background: $color-text-primary;
 }
 
 .noticeTitle,
@@ -83,7 +89,8 @@ $shop-accent: #d9483b;
 }
 
 .noticeTitle {
-  font-size: 30rpx;
+  font-family: $font-family-hand;
+  font-size: 32rpx;
   font-weight: $font-weight-bold;
   color: #fff8e9;
 }
@@ -97,17 +104,16 @@ $shop-accent: #d9483b;
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20rpx;
-  padding: 24rpx;
+  gap: 52rpx 24rpx;
+  padding: 34rpx 32rpx;
 }
 
 .card {
   min-width: 0;
-  padding: 14rpx 14rpx 20rpx;
-  border: 2rpx solid rgba(78, 54, 36, 0.08);
-  border-radius: 24rpx;
-  background: #fffdf8;
-  box-shadow: 0 10rpx 24rpx rgba(68, 48, 34, 0.07);
+  padding: 0 0 18rpx;
+  border-bottom: 2rpx solid $color-text-primary;
+  border-radius: 0;
+  background: transparent;
 }
 
 .cover {
@@ -116,17 +122,18 @@ $shop-accent: #d9483b;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 280rpx;
+  height: 300rpx;
   overflow: hidden;
-  border-radius: 18rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
 }
 
 .coverWarm {
-  background: linear-gradient(145deg, #f5d4bb, #e9a990);
+  background: #EEE5D0;
 }
 
 .coverCool {
-  background: linear-gradient(145deg, #d9e3d3, #a7c0a4);
+  background: #E3E6D5;
 }
 
 .coverImage {
@@ -134,18 +141,14 @@ $shop-accent: #d9483b;
   height: 100%;
 }
 
-.coverEmoji {
-  font-size: 92rpx;
-  filter: drop-shadow(0 8rpx 8rpx rgba(54, 37, 25, 0.12));
-}
-
 .tag {
   position: absolute;
-  top: 12rpx;
-  left: 12rpx;
-  padding: 6rpx 12rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 253, 248, 0.86);
+  top: 14rpx;
+  left: 14rpx;
+  padding: 5rpx 10rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
+  background: $color-accent-secondary;
   font-size: 18rpx;
   font-weight: $font-weight-semibold;
   color: #5d4938;
@@ -156,10 +159,11 @@ $shop-accent: #d9483b;
   min-height: 72rpx;
   margin-top: 16rpx;
   overflow: hidden;
-  font-size: 27rpx;
+  font-family: $font-family-hand;
+  font-size: 29rpx;
   line-height: 1.35;
   font-weight: $font-weight-semibold;
-  color: #33271f;
+  color: $color-text-primary;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -179,7 +183,7 @@ $shop-accent: #d9483b;
 
 .originalPrice {
   font-size: 20rpx;
-  color: #a69a8d;
+  color: $color-text-secondary;
   text-decoration: line-through;
 }
 
@@ -187,7 +191,7 @@ $shop-accent: #d9483b;
   display: block;
   margin-top: 8rpx;
   font-size: 20rpx;
-  color: #928273;
+  color: $color-text-secondary;
 }
 
 .state,
@@ -201,9 +205,10 @@ $shop-accent: #d9483b;
   width: 220rpx;
   margin: 24rpx auto 0;
   padding: 18rpx 0;
-  border-radius: 999rpx;
-  background: #3e352d;
-  color: #fffaf0;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-text-primary;
+  color: $color-white;
 }
 
 .bottomSpacing {

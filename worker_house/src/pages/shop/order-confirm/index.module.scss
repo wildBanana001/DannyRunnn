@@ -1,16 +1,16 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #d9483b;
+$shop-accent: $color-brand;
 
 .container,
 .state {
   min-height: 100vh;
-  background: #f4efe5;
+  background: $color-oat;
 }
 
 .container {
   box-sizing: border-box;
-  padding: 24rpx 24rpx 170rpx;
+  padding: 24rpx 32rpx 170rpx;
 }
 
 .state {
@@ -21,12 +21,11 @@ $shop-accent: #d9483b;
 }
 
 .section {
-  margin-bottom: 20rpx;
-  padding: 28rpx;
-  border: 2rpx solid rgba(78, 54, 36, 0.08);
-  border-radius: 24rpx;
-  background: #fffdf8;
-  box-shadow: 0 10rpx 24rpx rgba(68, 48, 34, 0.06);
+  margin-bottom: 0;
+  padding: 30rpx 0;
+  border-bottom: 2rpx solid $color-text-primary;
+  border-radius: 0;
+  background: transparent;
 }
 
 .sectionHeader {
@@ -37,9 +36,16 @@ $shop-accent: #d9483b;
 
 .sectionTitle {
   display: block;
-  font-size: 29rpx;
+  font-family: $font-family-hand;
+  font-size: 34rpx;
   font-weight: $font-weight-bold;
-  color: #3d3027;
+  color: $color-text-primary;
+}
+
+.changeAction {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
 }
 
 .changeText {
@@ -47,11 +53,15 @@ $shop-accent: #d9483b;
   color: $shop-accent;
 }
 
+.changeIcon {
+  color: $shop-accent;
+}
+
 .addressCard,
 .emptyAddress {
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 2rpx dashed rgba(78, 54, 36, 0.14);
+  border-top: 2rpx solid $color-divider;
 }
 
 .addressName,
@@ -86,8 +96,9 @@ $shop-accent: #d9483b;
   justify-content: center;
   width: 46rpx;
   height: 46rpx;
-  border-radius: 50%;
-  background: rgba(217, 72, 59, 0.1);
+  border: 2rpx solid $shop-accent;
+  border-radius: 2rpx;
+  background: transparent;
   color: $shop-accent;
 }
 
@@ -104,9 +115,9 @@ $shop-accent: #d9483b;
   width: 108rpx;
   height: 108rpx;
   flex: 0 0 auto;
-  border-radius: 18rpx;
-  background: linear-gradient(145deg, #f4d0b5, #d9aa90);
-  font-size: 46rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
+  background: #EEE5D0;
 }
 
 .productInfo {
@@ -138,8 +149,8 @@ $shop-accent: #d9483b;
   align-items: center;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 2rpx solid rgba(78, 54, 36, 0.14);
-  border-radius: 999rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
 }
 
 .quantityButton {
@@ -164,7 +175,7 @@ $shop-accent: #d9483b;
   gap: 18rpx;
   margin-top: 24rpx;
   padding-top: 22rpx;
-  border-top: 2rpx dashed rgba(78, 54, 36, 0.14);
+  border-top: 2rpx solid $color-divider;
 }
 
 .remarkLabel {
@@ -181,9 +192,11 @@ $shop-accent: #d9483b;
 }
 
 .paymentNotice {
+  margin-top: 30rpx;
   padding: 24rpx 28rpx;
-  border-radius: 20rpx;
-  background: #3e352d;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
+  background: $color-text-primary;
 }
 
 .paymentNoticeTitle,
@@ -214,8 +227,17 @@ $shop-accent: #d9483b;
   align-items: center;
   justify-content: space-between;
   padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 253, 248, 0.97);
-  box-shadow: 0 -8rpx 24rpx rgba(62, 44, 28, 0.08);
+  background: rgba(250, 249, 231, 0.97);
+  border-top: 2rpx solid $color-text-primary;
+  box-shadow: none;
+}
+
+@media screen and (min-width: 768px) {
+  .footer {
+    right: auto;
+    left: calc(50% - 195PX);
+    width: 390PX;
+  }
 }
 
 .total {
@@ -241,9 +263,10 @@ $shop-accent: #d9483b;
   justify-content: center;
   width: 270rpx;
   height: 88rpx;
-  border-radius: 999rpx;
-  background: $shop-accent;
-  box-shadow: 0 10rpx 22rpx rgba(217, 72, 59, 0.22);
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-text-primary;
+  box-shadow: 4rpx 4rpx 0 rgba(21, 16, 11, 0.08);
 }
 
 .payBtnDisabled {

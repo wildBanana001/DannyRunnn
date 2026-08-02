@@ -13,10 +13,10 @@ $spacing-xl: 32rpx;
 $spacing-2xl: 40rpx;
 
 $radius-xs: 12rpx;
-$radius-card-sm: 16rpx;
-$radius-card-md: 20rpx;
-$radius-card-lg: 24rpx;
-$radius-button: 48rpx;
+$radius-card-sm: 6rpx;
+$radius-card-md: 8rpx;
+$radius-card-lg: 10rpx;
+$radius-button: 8rpx;
 $radius-circle: 999rpx;
 
 $button-height-sm: 64rpx;
@@ -67,14 +67,29 @@ $transition-bounce: 0.32s cubic-bezier(0.2, 0.9, 0.2, 1);
 @mixin paper-card($background: $color-white) {
   background: $background;
   border-radius: $radius-card-lg;
+  border: 2rpx solid $color-border;
   box-shadow: $shadow-card;
 }
 
 @mixin vintage-title {
-  font-family: $font-family-base;
-  font-weight: $font-weight-heavy;
-  letter-spacing: 0.06em;
+  font-family: $font-family-hand;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0.08em;
   color: $color-text-primary;
+}
+
+@mixin ink-rule {
+  border-color: $color-text-primary;
+  border-style: solid;
+  border-width: 2rpx 0 0;
+}
+
+@mixin ink-button {
+  border: 2rpx solid $color-text-primary;
+  border-radius: $radius-button;
+  background: $color-text-primary;
+  color: $color-white;
+  box-shadow: 4rpx 4rpx 0 rgba(23, 22, 19, 0.08);
 }
 
 @mixin button-reset {

@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
+import { ArrowRight, Articles, Coupon, Edit, Location, Order, Setting } from '@nutui/icons-react-taro';
 import WxLoginModal from '@/components/WxLoginModal';
+import SafeImage from '@/components/SafeImage';
 import { siteConfig } from '@/data/site';
 import { checkMiniAdmin } from '@/services/admin';
 import { fetchMemberOverview, type MemberOverview } from '@/services/member';
+import { getApiMode } from '@/services/request';
 import { useUserStore } from '@/store/userStore';
 import avatarFrame from '@/assets/illustrations/avatar-frame.png';
-import cloudImage from '@/assets/illustrations/cloud.png';
+import defaultAvatar from '@/assets/home/hero-cover.jpg';
 import styles from './index.module.scss';
 
 const menuItems = [
-  { key: 'registrations', icon: '📅', title: '我的报名', description: '查看报名与支付快照', url: '/pages/content/my-registrations/index' },
-  { key: 'profiles', icon: '🧾', title: '我的档案', description: '新建、编辑、设默认社畜档案', url: '/pages/my-profiles/index' },
-  { key: 'cards', icon: '🎟️', title: '社畜次卡', description: '看余量、买次卡、查使用记录', url: '/pages/my-cards/index' },
-  { key: 'posts', icon: '📝', title: '我的帖子', description: '回看留在墙上的便利贴', url: '/pages/content/my-posts/index' },
-  { key: 'addresses', icon: '📍', title: '地址管理', description: '管理收件地址和默认信息', url: '/pages/my-addresses/index' },
-  { key: 'settings', icon: '⚙️', title: '设置', description: '清缓存、关于我们、退出登录', url: '/pages/settings/index' }
+  { key: 'registrations', icon: Order, title: '我的报名', description: '查看报名与支付快照', url: '/pages/content/my-registrations/index' },
+  { key: 'profiles', icon: Articles, title: '我的档案', description: '新建、编辑、设默认社畜档案', url: '/pages/my-profiles/index' },
+  { key: 'cards', icon: Coupon, title: '社畜次卡', description: '看余量、买次卡、查使用记录', url: '/pages/my-cards/index' },
+  { key: 'posts', icon: Edit, title: '我的帖子', description: '回看留在墙上的便利贴', url: '/pages/content/my-posts/index' },
+  { key: 'addresses', icon: Location, title: '地址管理', description: '管理收件地址和默认信息', url: '/pages/my-addresses/index' },
+  { key: 'settings', icon: Setting, title: '设置', description: '清缓存、关于我们、退出登录', url: '/pages/settings/index' }
 ] as const;
 
 const defaultOverview: MemberOverview = {
@@ -42,12 +45,16 @@ const MinePage: React.FC = () => {
 
     // 管理员身份校验：只有命中 BFF 白名单（ADMIN_OPENID_WHITELIST）的 openid
     // 才会把"管理员入口"渲染出来；未命中 / 未登录 / 接口失败都视为非管理员。
-    checkMiniAdmin()
-      .then((result) => setIsAdmin(Boolean(result?.isAdmin)))
-      .catch((error) => {
-        console.warn('[mine] admin check failed', error);
-        setIsAdmin(false);
-      });
+    if (getApiMode() === 'mock') {
+      setIsAdmin(false);
+    } else {
+      checkMiniAdmin()
+        .then((result) => setIsAdmin(Boolean(result?.isAdmin)))
+        .catch((error) => {
+          console.warn('[mine] admin check failed', error);
+          setIsAdmin(false);
+        });
+    }
 
     // 登录态下进入页面时刷新一次后端用户信息（非阻塞）
     refreshWxMe();
@@ -74,12 +81,18 @@ const MinePage: React.FC = () => {
   return (
     <ScrollView className={styles.container} scrollY enableFlex>
       <View className={styles.header}>
-        <Image className={styles.cloudLeft} src={cloudImage} mode="widthFix" />
-        <Image className={styles.cloudRight} src={cloudImage} mode="widthFix" />
+        <Text className={styles.eyebrow}>MY WORKER HOUSE</Text>
+        <Text className={styles.pageTitle}>我的社畜角落</Text>
         <View className={styles.userCard}>
           <View className={styles.avatarWrap}>
             <Image className={styles.avatarFrame} src={avatarFrame} mode="aspectFit" />
-            <Image className={styles.avatar} src={user?.avatar || siteConfig.ownerAvatar} mode="aspectFill" />
+            <SafeImage
+              className={styles.avatar}
+              src={user?.avatar || siteConfig.ownerAvatar || defaultAvatar}
+              fallbackSrc={defaultAvatar}
+              fallbackDelayMs={1800}
+              mode="aspectFill"
+            />
           </View>
           <View className={styles.userMeta}>
             <Text className={styles.nickname}>{user?.nickname || '未登录用户'}</Text>
@@ -116,18 +129,21 @@ const MinePage: React.FC = () => {
       </View>
 
       <View className={styles.menuList}>
-        {menuItems.map((item) => (
-          <View key={item.key} className={styles.menuItem} onClick={() => handleMenuClick(item.url)}>
-            <View className={styles.menuMeta}>
-              <Text className={styles.menuIcon}>{item.icon}</Text>
-              <View>
-                <Text className={styles.menuTitle}>{item.title}</Text>
-                <Text className={styles.menuDescription}>{item.description}</Text>
+        {menuItems.map((item) => {
+          const MenuIcon = item.icon;
+          return (
+            <View key={item.key} className={styles.menuItem} onClick={() => handleMenuClick(item.url)}>
+              <View className={styles.menuMeta}>
+                <MenuIcon className={styles.menuIcon} size="21" />
+                <View>
+                  <Text className={styles.menuTitle}>{item.title}</Text>
+                  <Text className={styles.menuDescription}>{item.description}</Text>
+                </View>
               </View>
+              <ArrowRight className={styles.menuArrow} size="17" />
             </View>
-            <Text className={styles.menuArrow}>›</Text>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       {isAdmin ? (

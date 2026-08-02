@@ -7,6 +7,20 @@
   background: $color-oat;
 }
 
+.statePage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32rpx;
+  background: $color-oat;
+}
+
+.stateText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
 .scrollView {
   flex: 1;
 }

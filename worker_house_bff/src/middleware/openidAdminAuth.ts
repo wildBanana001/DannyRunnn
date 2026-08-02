@@ -8,7 +8,7 @@ declare module 'express-serve-static-core' {
 }
 
 export function resolveAdminOpenid(request: Request) {
-  return request.header('x-wx-openid')?.trim() || '';
+  return request.wxUser?.openid?.trim() || '';
 }
 
 export function openidAdminAuth(request: Request, response: Response, next: NextFunction) {

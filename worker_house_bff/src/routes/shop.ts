@@ -17,7 +17,7 @@ import {
   type OrderAddressSnapshot,
   type OrderRecord,
 } from '../data/orders.js';
-import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
+import { wxPaymentAuth } from '../middlewares/wx-cloudrun-auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 import {
   buildJsapiPayParams,
@@ -61,6 +61,14 @@ function asyncHandler(handler: RequestHandler): RequestHandler {
     Promise.resolve(handler(request, response, next)).catch(next);
   };
 }
+
+const requireShopEnabled: RequestHandler = (_request, response, next) => {
+  if (!config.enableShop) {
+    response.status(503).json({ message: '商城与活动支付暂时停止接收新订单' });
+    return;
+  }
+  next();
+};
 
 function sanitizeString(value: unknown, maxLength = 200) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
@@ -136,23 +144,42 @@ function wait(milliseconds: number) {
 
 function matchesPaymentRequest(
   order: OrderRecord,
-  input: { clientRequestId: string; productId: string; quantity: number; amount: number },
+  input: {
+    clientRequestId: string;
+    productId: string;
+    quantity: number;
+    amount: number;
+    address: OrderAddressSnapshot;
+    remark: string;
+  },
 ) {
   return order.kind === 'shop'
     && order.clientRequestId === input.clientRequestId
     && order.productId === input.productId
     && order.quantity === input.quantity
-    && order.amount === input.amount;
+    && order.amount === input.amount
+    && order.remark === input.remark
+    && JSON.stringify(order.address) === JSON.stringify(input.address);
 }
 
 function matchesActivityPaymentRequest(
   order: OrderRecord,
-  input: { clientRequestId: string; activityId: string; profileId: string; amount: number },
+  input: {
+    clientRequestId: string;
+    activityId: string;
+    profile: ActivityRegistrationSnapshot;
+    amount: number;
+  },
 ) {
+  const storedProfile = order.activityRegistration;
   return order.kind === 'activity'
     && order.clientRequestId === input.clientRequestId
     && order.productId === input.activityId
-    && order.activityRegistration?.profileId === input.profileId
+    && storedProfile?.profileId === input.profile.profileId
+    && storedProfile.participantNickname === input.profile.participantNickname
+    && storedProfile.wechatName === input.profile.wechatName
+    && storedProfile.phone === input.profile.phone
+    && JSON.stringify(storedProfile.profileSnapshot) === JSON.stringify(input.profile.profileSnapshot)
     && order.amount === input.amount;
 }
 
@@ -399,7 +426,7 @@ shopRouter.post('/readiness/verify', authMiddleware, asyncHandler(async (_reques
   response.json({ ready: true, verified: ['merchant_signature', 'wechatpay_response_signature'] });
 }));
 
-shopRouter.get('/orders/mine', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.get('/orders/mine', wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
 
@@ -412,7 +439,7 @@ shopRouter.get('/orders/mine', wxCloudrunAuth, asyncHandler(async (request, resp
   response.json({ list: refreshedOrders.map(toPublicOrder), total: refreshedOrders.length });
 }));
 
-shopRouter.get('/orders/:id', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.get('/orders/:id', wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
   const order = await getOrderById(String(request.params.id));
@@ -424,7 +451,7 @@ shopRouter.get('/orders/:id', wxCloudrunAuth, asyncHandler(async (request, respo
   response.json(toPublicOrder(await refreshWechatOrder(order)));
 }));
 
-shopRouter.post('/orders/pay', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
 
@@ -458,7 +485,7 @@ shopRouter.post('/orders/pay', wxCloudrunAuth, asyncHandler(async (request, resp
     }
 
     const outTradeNo = createOutTradeNo(openid, clientRequestId);
-    const paymentRequest = { clientRequestId, productId, quantity, amount };
+    const paymentRequest = { clientRequestId, productId, quantity, amount, address, remark };
     const existing = await getOrderById(outTradeNo);
     if (existing) {
       if (!matchesPaymentRequest(existing, paymentRequest)) {
@@ -526,7 +553,7 @@ shopRouter.post('/orders/pay', wxCloudrunAuth, asyncHandler(async (request, resp
   }
 }));
 
-shopRouter.post('/orders/:id/retry', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.post('/orders/:id/retry', requireShopEnabled, wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
   const order = await getOrderById(String(request.params.id));
@@ -567,7 +594,7 @@ shopRouter.post('/orders/:id/retry', wxCloudrunAuth, asyncHandler(async (request
   }
 }));
 
-shopRouter.get('/activity-registrations/mine', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.get('/activity-registrations/mine', wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
 
@@ -583,7 +610,7 @@ shopRouter.get('/activity-registrations/mine', wxCloudrunAuth, asyncHandler(asyn
   });
 }));
 
-shopRouter.get('/activity-registrations/:id', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.get('/activity-registrations/:id', wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
   const order = await getOrderById(String(request.params.id));
@@ -595,7 +622,7 @@ shopRouter.get('/activity-registrations/:id', wxCloudrunAuth, asyncHandler(async
   response.json(toActivityRegistration(await refreshWechatOrder(order)));
 }));
 
-shopRouter.post('/activity-registrations/pay', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
 
@@ -617,6 +644,10 @@ shopRouter.post('/activity-registrations/pay', wxCloudrunAuth, asyncHandler(asyn
       response.status(404).json({ message: '活动不存在或已下架' });
       return;
     }
+    if (activity.status === 'ended') {
+      response.status(409).json({ message: '活动已结束，无法继续报名' });
+      return;
+    }
 
     const amount = Math.round(activity.price * 100);
     if (!Number.isSafeInteger(amount) || amount < 0) {
@@ -625,7 +656,7 @@ shopRouter.post('/activity-registrations/pay', wxCloudrunAuth, asyncHandler(asyn
     }
 
     const outTradeNo = createOutTradeNo(openid, clientRequestId, 'WA');
-    const paymentRequest = { clientRequestId, activityId, profileId: profile.profileId, amount };
+    const paymentRequest = { clientRequestId, activityId, profile, amount };
     const existing = await getOrderById(outTradeNo);
     if (existing) {
       if (!matchesActivityPaymentRequest(existing, paymentRequest)) {
@@ -728,7 +759,7 @@ shopRouter.post('/activity-registrations/pay', wxCloudrunAuth, asyncHandler(asyn
   }
 }));
 
-shopRouter.post('/activity-registrations/:id/retry', wxCloudrunAuth, asyncHandler(async (request, response) => {
+shopRouter.post('/activity-registrations/:id/retry', requireShopEnabled, wxPaymentAuth, asyncHandler(async (request, response) => {
   const openid = requireWxOpenid(request, response);
   if (!openid) return;
   const order = await getOrderById(String(request.params.id));

@@ -14,7 +14,7 @@ export function paginate<T>(list: T[], page: number, pageSize: number) {
 }
 
 export function resolveWxOpenid(request: Request) {
-  return request.wxUser?.openid?.trim() || request.header('x-wx-openid')?.trim() || '';
+  return request.wxUser?.openid?.trim() || '';
 }
 
 export function requireWxOpenid(request: Request, response: Response) {

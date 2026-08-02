@@ -94,6 +94,7 @@ type CloudDatabaseWithTransactions = CloudDatabase & {
 
 let cloudDatabase: CloudDatabase | null = null;
 let cloudCollectionReady: Promise<void> | null = null;
+const CLOUD_QUERY_PAGE_SIZE = 100;
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -169,6 +170,27 @@ async function getCloudOrderById(orderId: string): Promise<OrderRecord | null> {
     .get();
   const item = response.data?.[0] as Partial<OrderRecord> | undefined;
   return item ? normalizeOrder(item) : null;
+}
+
+async function getAllCloudOrders(match: Record<string, unknown>): Promise<OrderRecord[]> {
+  await ensureCloudCollection();
+  const collection = getCloudDatabase().collection(config.shopOrderCollection);
+  const orders: OrderRecord[] = [];
+  let offset = 0;
+
+  while (true) {
+    const response = await collection
+      .where(match)
+      .skip(offset)
+      .limit(CLOUD_QUERY_PAGE_SIZE)
+      .get();
+    const page = (response.data || []).map((item) => normalizeOrder(item as Partial<OrderRecord>));
+    orders.push(...page);
+    if (page.length < CLOUD_QUERY_PAGE_SIZE) break;
+    offset += page.length;
+  }
+
+  return orders;
 }
 
 function sanitizeString(value: unknown, fallback = ''): string {
@@ -368,14 +390,7 @@ export async function getOrdersByOpenid(openid: string, kind?: OrderKind): Promi
   if (!normalizedOpenid) return [];
 
   if (usesCloudbaseStorage()) {
-    await ensureCloudCollection();
-    const response = await getCloudDatabase()
-      .collection(config.shopOrderCollection)
-      .where({ openid: normalizedOpenid })
-      .limit(100)
-      .get();
-    const orders = (response.data || [])
-      .map((item) => normalizeOrder(item as Partial<OrderRecord>))
+    const orders = (await getAllCloudOrders({ openid: normalizedOpenid }))
       .filter((item) => !kind || item.kind === kind);
     return clone(orders.sort((first, second) => (
       new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
@@ -395,14 +410,7 @@ export async function getOrdersByProductId(productId: string, kind?: OrderKind):
   if (!normalizedProductId) return [];
 
   if (usesCloudbaseStorage()) {
-    await ensureCloudCollection();
-    const response = await getCloudDatabase()
-      .collection(config.shopOrderCollection)
-      .where({ productId: normalizedProductId })
-      .limit(100)
-      .get();
-    const orders = (response.data || [])
-      .map((item) => normalizeOrder(item as Partial<OrderRecord>))
+    const orders = (await getAllCloudOrders({ productId: normalizedProductId }))
       .filter((item) => !kind || item.kind === kind);
     return clone(orders);
   }
@@ -415,14 +423,7 @@ export async function getOrdersByProductId(productId: string, kind?: OrderKind):
 
 export async function getOrdersByKind(kind: OrderKind): Promise<OrderRecord[]> {
   if (usesCloudbaseStorage()) {
-    await ensureCloudCollection();
-    const response = await getCloudDatabase()
-      .collection(config.shopOrderCollection)
-      .where({ kind })
-      .limit(100)
-      .get();
-    return clone((response.data || [])
-      .map((item) => normalizeOrder(item as Partial<OrderRecord>))
+    return clone((await getAllCloudOrders({ kind }))
       .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()));
   }
 

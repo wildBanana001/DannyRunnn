@@ -7,13 +7,16 @@ const _ = db.command;
 const POST_COLLECTION = 'posts';
 const COMMENT_COLLECTION = 'comments';
 const ADMIN_COLLECTION = 'admins';
-const DEFAULT_ADMIN_TOKEN = 'worker-house-admin-token';
+const SERVICE_ADMIN_TOKEN = (process.env.CLOUD_ADMIN_SERVICE_TOKEN || '').trim();
 
 const success = (data) => ({ success: true, data });
 const fail = (error) => ({ success: false, error });
 
 async function checkAdmin(token) {
-  if (token === DEFAULT_ADMIN_TOKEN) {
+  if (!token) {
+    return false;
+  }
+  if (SERVICE_ADMIN_TOKEN && token === SERVICE_ADMIN_TOKEN) {
     return true;
   }
   const result = await db.collection(ADMIN_COLLECTION).where({ token }).limit(1).get();

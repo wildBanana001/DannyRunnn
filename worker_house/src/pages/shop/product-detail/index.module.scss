@@ -1,11 +1,11 @@
 @use '@/styles/variables.scss' as *;
 
-$shop-accent: #d9483b;
+$shop-accent: $color-brand;
 
 .container,
 .state {
   min-height: 100vh;
-  background: #f4efe5;
+  background: $color-oat;
 }
 
 .container {
@@ -27,7 +27,8 @@ $shop-accent: #d9483b;
   width: 100%;
   height: 620rpx;
   overflow: hidden;
-  background: linear-gradient(145deg, #f4d0b5, #d89175);
+  background: #EEE5D0;
+  border-bottom: 2rpx solid $color-text-primary;
 }
 
 .coverImage {
@@ -35,32 +36,27 @@ $shop-accent: #d9483b;
   height: 100%;
 }
 
-.coverEmoji {
-  font-size: 190rpx;
-  filter: drop-shadow(0 16rpx 18rpx rgba(68, 42, 26, 0.16));
-}
-
 .coverCaption {
   position: absolute;
   left: 28rpx;
   bottom: 24rpx;
   padding: 8rpx 14rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 250, 240, 0.8);
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
+  background: $color-text-primary;
   font-size: 18rpx;
   font-weight: $font-weight-bold;
   letter-spacing: 2rpx;
-  color: #6d5140;
+  color: $color-white;
 }
 
 .info,
 .promiseCard {
-  margin: 22rpx 24rpx 0;
-  padding: 30rpx;
-  border: 2rpx solid rgba(78, 54, 36, 0.08);
-  border-radius: 24rpx;
-  background: #fffdf8;
-  box-shadow: 0 10rpx 24rpx rgba(68, 48, 34, 0.06);
+  margin: 0 32rpx;
+  padding: 34rpx 0;
+  border-bottom: 2rpx solid $color-text-primary;
+  border-radius: 0;
+  background: transparent;
 }
 
 .tags {
@@ -70,9 +66,10 @@ $shop-accent: #d9483b;
 }
 
 .tag {
-  padding: 7rpx 13rpx;
-  border-radius: 999rpx;
-  background: rgba(217, 72, 59, 0.08);
+  padding: 5rpx 0;
+  border-bottom: 2rpx solid $shop-accent;
+  border-radius: 0;
+  background: transparent;
   font-size: 20rpx;
   color: $shop-accent;
 }
@@ -80,10 +77,11 @@ $shop-accent: #d9483b;
 .title {
   display: block;
   margin-top: 18rpx;
-  font-size: 40rpx;
+  font-family: $font-family-hand;
+  font-size: 44rpx;
   line-height: 1.3;
   font-weight: $font-weight-heavy;
-  color: #31261e;
+  color: $color-text-primary;
 }
 
 .priceRow {
@@ -101,7 +99,7 @@ $shop-accent: #d9483b;
 
 .originalPrice {
   font-size: 24rpx;
-  color: #a69a8d;
+  color: $color-text-secondary;
   text-decoration: line-through;
 }
 
@@ -110,7 +108,7 @@ $shop-accent: #d9483b;
   margin-top: 22rpx;
   font-size: 28rpx;
   line-height: 1.75;
-  color: #746356;
+  color: $color-text-secondary;
 }
 
 .metaRow {
@@ -119,7 +117,7 @@ $shop-accent: #d9483b;
   justify-content: space-between;
   margin-top: 28rpx;
   padding-top: 24rpx;
-  border-top: 2rpx dashed rgba(78, 54, 36, 0.14);
+  border-top: 2rpx solid $color-divider;
 }
 
 .metaLabel,
@@ -129,22 +127,22 @@ $shop-accent: #d9483b;
 
 .metaLabel {
   font-size: 21rpx;
-  color: #9a8a7c;
+  color: $color-text-secondary;
 }
 
 .metaValue {
   margin-top: 4rpx;
   font-size: 27rpx;
   font-weight: $font-weight-semibold;
-  color: #45372d;
+  color: $color-text-primary;
 }
 
 .quantityControl {
   display: flex;
   align-items: center;
   overflow: hidden;
-  border: 2rpx solid rgba(78, 54, 36, 0.14);
-  border-radius: 999rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 2rpx;
 }
 
 .quantityButton {
@@ -171,23 +169,26 @@ $shop-accent: #d9483b;
 .promiseTitle {
   font-size: 27rpx;
   font-weight: $font-weight-bold;
-  color: #44362b;
+  font-family: $font-family-hand;
+  font-size: 31rpx;
+  color: $color-text-primary;
 }
 
 .promiseText {
   margin-top: 10rpx;
   font-size: 23rpx;
   line-height: 1.6;
-  color: #877668;
+  color: $color-text-secondary;
 }
 
 .retryButton {
   width: 220rpx;
   margin: 24rpx auto 0;
   padding: 18rpx 0;
-  border-radius: 999rpx;
-  background: #3e352d;
-  color: #fffaf0;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-text-primary;
+  color: $color-white;
 }
 
 .footer {
@@ -197,8 +198,9 @@ $shop-accent: #d9483b;
   right: 0;
   bottom: 0;
   padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 253, 248, 0.96);
-  box-shadow: 0 -8rpx 24rpx rgba(62, 44, 28, 0.08);
+  background: rgba(250, 249, 231, 0.96);
+  border-top: 2rpx solid $color-text-primary;
+  box-shadow: none;
 }
 
 .buyBtn {
@@ -206,13 +208,14 @@ $shop-accent: #d9483b;
   align-items: center;
   justify-content: center;
   height: 90rpx;
-  border-radius: 999rpx;
-  background: $shop-accent;
-  box-shadow: 0 10rpx 22rpx rgba(217, 72, 59, 0.24);
+  border: 2rpx solid $color-text-primary;
+  border-radius: 4rpx;
+  background: $color-text-primary;
+  box-shadow: 4rpx 4rpx 0 rgba(21, 16, 11, 0.08);
 }
 
 .buyBtnDisabled {
-  background: #bdb3a9;
+  background: $color-text-secondary;
   box-shadow: none;
 }
 
@@ -220,4 +223,12 @@ $shop-accent: #d9483b;
   font-size: 30rpx;
   font-weight: $font-weight-bold;
   color: #fff;
+}
+
+@media screen and (min-width: 768px) {
+  .footer {
+    right: auto;
+    left: calc(50% - 195PX);
+    width: 390PX;
+  }
 }

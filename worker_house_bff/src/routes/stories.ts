@@ -3,6 +3,7 @@ import { openidAdminAuth } from '../middleware/openidAdminAuth.js';
 import { deleteStory, getStoryById, listStories, upsertStory } from '../data/stories.js';
 import type { StoryRecord } from '../types/index.js';
 import { paginate, parsePage } from './utils.js';
+import { wxPaymentAuth } from '../middlewares/wx-cloudrun-auth.js';
 
 function normalizeStoryRecord(record: StoryRecord) {
   return {
@@ -35,7 +36,7 @@ storiesRouter.get('/:id', (request, response) => {
   response.json(normalizeStoryRecord(story));
 });
 
-adminMiniStoriesRouter.use(openidAdminAuth);
+adminMiniStoriesRouter.use(wxPaymentAuth, openidAdminAuth);
 
 adminMiniStoriesRouter.get('/', (request, response) => {
   const page = parsePage(request.query.page, 1);

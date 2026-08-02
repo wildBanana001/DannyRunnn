@@ -49,9 +49,10 @@ ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
 ENABLE_SHOP=false
 SHOP_ORDER_STORAGE=cloudbase
 SHOP_ORDER_COLLECTION=shop_orders
+CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 ```
 
-支付、管理员与数据源相关密钥必须继续放在云托管环境变量中，不得写入 Git。商城与活动报名支付配置完成后再将 `ENABLE_SHOP` 改为 `true`；两类支付单会写入 CloudBase，其他文件型业务 API 仍由安全门禁拦截。
+支付、管理员与数据源相关密钥必须继续放在云托管环境变量中，不得写入 Git。除完成支付密钥外，还必须先把商城库存、活动名额和同用户去重改为 CloudBase 事务预占，并将活动/商品价格统一到 CloudBase 权威数据源，之后才能把 `ENABLE_SHOP` 改为 `true`。开关关闭期间支付回调与已有订单查询仍保持可用。
 
 ## 验证
 

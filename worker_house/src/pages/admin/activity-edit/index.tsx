@@ -71,8 +71,8 @@ const AdminActivityEditPage: React.FC = () => {
           description: cached.description || cached.fullDescription || '',
           endDate: cached.endDate || cached.startDate || '',
           endTime: cached.endTime || cached.startTime || '',
-          maxParticipants: String(cached.maxParticipants || 11),
-          price: String(cached.price || 148),
+          maxParticipants: String(cached.maxParticipants ?? 11),
+          price: String(cached.price ?? 148),
           startDate: cached.startDate || '',
           startTime: cached.startTime || '',
           title: cached.title || '',
@@ -92,8 +92,8 @@ const AdminActivityEditPage: React.FC = () => {
           description: current.description || current.fullDescription || '',
           endDate: current.endDate || current.startDate || '',
           endTime: current.endTime || current.startTime || '',
-          maxParticipants: String(current.maxParticipants || 11),
-          price: String(current.price || 148),
+          maxParticipants: String(current.maxParticipants ?? 11),
+          price: String(current.price ?? 148),
           startDate: current.startDate || '',
           startTime: current.startTime || '',
           title: current.title || '',
@@ -138,6 +138,25 @@ const AdminActivityEditPage: React.FC = () => {
       return;
     }
 
+    const price = Number(form.price);
+    const maxParticipants = Number(form.maxParticipants);
+    if (!form.price.trim() || !Number.isFinite(price) || price < 0) {
+      Toast.show(toastId, { content: '价格必须是大于等于 0 的数字', icon: 'warn' });
+      return;
+    }
+    if (!Number.isInteger(maxParticipants) || maxParticipants <= 0) {
+      Toast.show(toastId, { content: '人数上限必须是正整数', icon: 'warn' });
+      return;
+    }
+    if (form.startDate && form.endDate) {
+      const startAt = Date.parse(`${form.startDate}T${form.startTime || '00:00'}:00`);
+      const endAt = Date.parse(`${form.endDate}T${form.endTime || '23:59'}:00`);
+      if (Number.isFinite(startAt) && Number.isFinite(endAt) && endAt < startAt) {
+        Toast.show(toastId, { content: '结束时间不能早于开始时间', icon: 'warn' });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -145,8 +164,8 @@ const AdminActivityEditPage: React.FC = () => {
         description: form.description,
         endDate: form.endDate,
         endTime: form.endTime,
-        maxParticipants: Number(form.maxParticipants || 11),
-        price: Number(form.price || 0),
+        maxParticipants,
+        price,
         startDate: form.startDate,
         startTime: form.startTime,
         title: form.title,

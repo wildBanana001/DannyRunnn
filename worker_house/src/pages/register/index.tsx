@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, ScrollView, Text, View } from '@tarojs/components';
+import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
+import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
 import { fetchActivityDetail } from '@/cloud/services';
 import { calculateCardDeduction } from '@/data/mock-member';
-import { featuredActivity } from '@/data/activities';
 import {
   confirmActivityPayment,
   createActivityPaymentClientRequestId,
@@ -45,9 +46,12 @@ const buildProfileFormValue = (profile?: Profile, nextIsDefault = false): Profil
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
-  const activityId = router.params.activityId || router.params.id || featuredActivity.id;
+  const activityId = router.params.activityId?.trim() || router.params.id?.trim() || '';
   const [step, setStep] = useState<RegisterStep>(1);
-  const [activity, setActivity] = useState<Activity>(featuredActivity);
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState('');
+  const [memberError, setMemberError] = useState('');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentCard, setCurrentCard] = useState<CardOrder | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState('');
@@ -61,9 +65,19 @@ const RegisterPage: React.FC = () => {
   const directPaymentEnabled = isDirectActivityPaymentEnabled();
 
   const refreshMemberData = useCallback(async () => {
-    const [profileList, cardOrder] = await Promise.all([fetchProfiles(), fetchCurrentCardOrder()]);
+    const [profileResult, cardResult] = await Promise.allSettled([fetchProfiles(), fetchCurrentCardOrder()]);
+    if (cardResult.status === 'fulfilled') {
+      setCurrentCard(cardResult.value);
+    } else {
+      setCurrentCard(null);
+      console.warn('[register] load card failed', cardResult.reason);
+    }
+    if (profileResult.status === 'rejected') {
+      throw new Error('报名档案加载失败，请重试');
+    }
+
+    const profileList = profileResult.value;
     setProfiles(profileList);
-    setCurrentCard(cardOrder);
 
     setSelectedProfileId((prevSelectedId) => {
       const preferredProfile = profileList.find((item) => item.id === prevSelectedId) || profileList.find((item) => item.isDefault) || profileList[0];
@@ -78,15 +92,26 @@ const RegisterPage: React.FC = () => {
   }, []);
 
   const loadPage = useCallback(async () => {
-    try {
-      const detail = await fetchActivityDetail(activityId);
-      setActivity(detail);
-      await refreshMemberData();
-    } catch (error) {
-      console.warn('[register] load page failed', error);
-      setActivity(featuredActivity);
-      await refreshMemberData();
+    setActivityLoading(true);
+    setActivityError('');
+    setMemberError('');
+    const [activityResult, memberResult] = await Promise.allSettled([
+      activityId ? fetchActivityDetail(activityId) : Promise.reject(new Error('缺少活动信息')),
+      refreshMemberData(),
+    ]);
+
+    if (activityResult.status === 'fulfilled' && activityResult.value.id === activityId) {
+      setActivity(activityResult.value);
+    } else {
+      const reason = activityResult.status === 'rejected' ? activityResult.reason : new Error('活动信息不匹配');
+      setActivity(null);
+      setActivityError(reason instanceof Error ? reason.message : '活动加载失败');
     }
+    if (memberResult.status === 'rejected') {
+      console.warn('[register] load member data failed', memberResult.reason);
+      setMemberError(memberResult.reason instanceof Error ? memberResult.reason.message : '报名档案加载失败');
+    }
+    setActivityLoading(false);
   }, [activityId, refreshMemberData]);
 
   useDidShow(() => {
@@ -99,8 +124,8 @@ const RegisterPage: React.FC = () => {
       return;
     }
     const remainingCount = currentCard?.remainingCount || 0;
-    setUseCard(Boolean(activity.cardEligible && remainingCount > 0));
-  }, [activity.cardEligible, currentCard?.remainingCount, directPaymentEnabled]);
+    setUseCard(Boolean(activity?.cardEligible && remainingCount > 0));
+  }, [activity?.cardEligible, currentCard?.remainingCount, directPaymentEnabled]);
 
   const selectedProfile = useMemo(
     () => profiles.find((item) => item.id === selectedProfileId) || profiles[0],
@@ -108,6 +133,9 @@ const RegisterPage: React.FC = () => {
   );
 
   const paymentSummary = useMemo(() => {
+    if (!activity) {
+      return { deductionAmount: 0, payableAmount: 0 };
+    }
     const remainingCount = currentCard?.remainingCount || 0;
     const deductionAmount = calculateCardDeduction(
       activity.price,
@@ -119,7 +147,7 @@ const RegisterPage: React.FC = () => {
       deductionAmount,
       payableAmount: Math.max(0, activity.price - deductionAmount),
     };
-  }, [activity.cardEligible, activity.price, currentCard?.remainingCount, directPaymentEnabled, useCard]);
+  }, [activity, currentCard?.remainingCount, directPaymentEnabled, useCard]);
 
   const handleCreateProfile = () => {
     setEditingProfileId(undefined);
@@ -166,6 +194,10 @@ const RegisterPage: React.FC = () => {
   };
 
   const handleSubmitOrder = async () => {
+    if (!activity || activity.id !== activityId) {
+      Taro.showToast({ title: '活动信息尚未加载，请重试', icon: 'none' });
+      return;
+    }
     if (!selectedProfile) {
       Taro.showToast({ title: '请先选择一个档案', icon: 'none' });
       setStep(1);
@@ -223,6 +255,30 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  if (activityLoading) {
+    return <View className={styles.statePage}><Text className={styles.stateText}>正在核对活动信息...</Text></View>;
+  }
+
+  if (!activity || activityError) {
+    return (
+      <View className={styles.statePage}>
+        <EmptyState title="暂时无法报名" description={activityError || '活动可能已结束或下架。'}>
+          <Button block type="outline" onClick={() => void loadPage()}>重新加载</Button>
+        </EmptyState>
+      </View>
+    );
+  }
+
+  if (memberError) {
+    return (
+      <View className={styles.statePage}>
+        <EmptyState title="报名资料加载失败" description={memberError}>
+          <Button block type="outline" onClick={() => void loadPage()}>重新加载</Button>
+        </EmptyState>
+      </View>
+    );
+  }
+
   return (
     <View className={styles.container}>
       <ScrollView className={styles.scrollView} scrollY enableFlex>
@@ -238,7 +294,7 @@ const RegisterPage: React.FC = () => {
         </View>
 
         <View className={styles.activityCard}>
-          <Image className={styles.activityCover} src={activity.cover || activity.coverImage} mode="aspectFill" />
+          <SafeImage className={styles.activityCover} src={activity.cover || activity.coverImage} mode="aspectFill" fallbackDelayMs={2200} />
           <View className={styles.activityInfo}>
             <Text className={styles.activityTitle}>{activity.title}</Text>
             <Text className={styles.activityMeta}>{formatDate(activity.startDate)} · {activity.startTime}-{activity.endTime}</Text>

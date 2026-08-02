@@ -10,7 +10,7 @@ export function paginate(list, page, pageSize) {
     };
 }
 export function resolveWxOpenid(request) {
-    return request.wxUser?.openid?.trim() || request.header('x-wx-openid')?.trim() || '';
+    return request.wxUser?.openid?.trim() || '';
 }
 export function requireWxOpenid(request, response) {
     const openid = resolveWxOpenid(request);

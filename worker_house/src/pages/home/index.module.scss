@@ -2,16 +2,16 @@
 
 .page {
   min-height: 100vh;
-  background: #f8f4ec;
+  background: $color-oat;
 }
 
 .scrollView {
   height: 100vh;
-  background: #f8f4ec;
+  background: $color-oat;
 }
 
 .pageShell {
-  padding: calc(env(safe-area-inset-top) + 42rpx) 0 calc(env(safe-area-inset-bottom) + 120rpx);
+  padding: calc(env(safe-area-inset-top) + 34rpx) 0 calc(env(safe-area-inset-bottom) + 170rpx);
 }
 
 .heroSection,
@@ -36,28 +36,29 @@
 }
 
 .heroTitleImage {
-  width: 540rpx;
-  max-width: 76%;
+  width: 650rpx;
+  height: 184rpx;
+  max-width: 95%;
 }
 
 .heroSpark {
   position: absolute;
   top: 6rpx;
   right: 22rpx;
-  font-size: 40rpx;
-  line-height: 1;
+  width: 40rpx;
+  height: 40rpx;
   transform: rotate(8deg);
 }
 
 .heroCard {
-  width: 100%;
-  margin-top: 36rpx;
+  width: 84%;
+  height: 752rpx;
+  margin-top: 26rpx;
 }
 
 .heroSwiper {
   width: 100%;
-  /* 海报为竖向 3:4 比例，按页内可用宽度 686rpx 计算需 ≈915rpx 才能完整展示 */
-  height: 920rpx;
+  height: 752rpx;
 }
 
 .heroSwiperItem {
@@ -73,6 +74,7 @@
   display: block;
   width: 100%;
   height: 100%;
+  background: transparent;
 }
 
 .dotRow {
@@ -98,13 +100,14 @@
 .actionRow {
   display: flex;
   justify-content: center;
-  gap: 40rpx;
+  gap: 60rpx;
   width: 100%;
-  margin-top: 32rpx;
+  margin-top: 24rpx;
 }
 
 .actionImageButton {
-  width: 276rpx;
+  width: 299rpx;
+  height: 153rpx;
   display: block;
 }
 
@@ -119,45 +122,70 @@
   width: 100%;
 }
 
+.actionImage {
+  height: 153rpx;
+}
+
 .section {
-  margin-top: 80rpx;
+  margin-top: 104rpx;
 }
 
 .moreSection {
-  margin-top: 64rpx;
+  margin-top: 76rpx;
+}
+
+.moreTitleBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 67rpx;
+  margin: 0 -32rpx;
+  overflow: hidden;
+  background: transparent;
+}
+
+.moreDividerImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .moreTitleImage {
+  position: relative;
+  z-index: 1;
   display: block;
-  width: 320rpx;
-  max-width: 56%;
-  margin-left: 0;
+  width: 170rpx;
+  height: 67rpx;
+  margin-left: 20rpx;
 }
 
 .moreInner {
-  margin-top: 24rpx;
+  margin-top: 34rpx;
 }
 
 .activityList {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
-  margin-top: 32rpx;
+  gap: 0;
+  margin-top: 0;
 }
 
 .activityCard {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 20rpx;
-  padding-right: 72rpx;
+  gap: 22rpx;
+  min-height: 148rpx;
+  padding: 16rpx 64rpx 16rpx 0;
+  border-bottom: 2rpx solid $color-divider;
 }
 
 .activityThumb {
   flex-shrink: 0;
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 8rpx;
+  width: 116rpx;
+  height: 116rpx;
+  border-radius: 2rpx;
 }
 
 .activityContent {
@@ -167,7 +195,7 @@
 
 .activityStatus {
   display: block;
-  color: #e63946;
+  color: $color-brand;
   font-size: 22rpx;
   line-height: 1.4;
   font-weight: 700;
@@ -176,8 +204,8 @@
 .activityTitle {
   display: block;
   margin-top: 6rpx;
-  color: #111;
-  font-size: 30rpx;
+  color: $color-text-primary;
+  font-size: 28rpx;
   font-weight: 700;
   line-height: 1.3;
   @include text-ellipsis-multi(2);
@@ -186,19 +214,17 @@
 .activityArrow {
   position: absolute;
   top: 50%;
-  right: 12rpx;
-  transform: translateY(-50%) rotate(8deg);
-  color: #5a8ed8;
-  font-size: 38rpx;
-  font-weight: 700;
-  line-height: 1;
+  right: 6rpx;
+  transform: translateY(-50%) rotate(-18deg);
+  color: $color-brand;
 }
 
 .emptyPanel {
   margin-top: 36rpx;
   padding: 32rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.72);
+  border-top: 2rpx solid $color-text-primary;
+  border-bottom: 2rpx solid $color-text-primary;
+  background: transparent;
 }
 
 .emptyText {
@@ -211,25 +237,33 @@
   position: relative;
 }
 
+.aprilHeading {
+  padding: 0 12rpx;
+}
+
 .aprilCollageStage {
   position: relative;
-  margin-top: 34rpx;
+  width: 478rpx;
+  max-width: 72%;
+  margin: 34rpx 0 0 auto;
 }
 
 .aprilCollage {
   display: block;
   width: 100%;
+  height: 717rpx;
 }
 
 .copyBlock {
-  margin-top: 44rpx;
-  padding: 0 8rpx;
+  margin-top: 52rpx;
+  padding: 0 12rpx;
 }
 
 .newLifeStyleImage {
-  width: 320rpx;
-  max-width: 56%;
-  margin-bottom: 18rpx;
+  width: 410rpx;
+  height: 170rpx;
+  max-width: 62%;
+  margin-bottom: 0;
 }
 
 .copyLead,
@@ -237,7 +271,7 @@
 .communityText,
 .communityNote,
 .ownerDescription {
-  color: #2f2923;
+  color: $color-text-primary;
 }
 
 .copyLead,
@@ -245,8 +279,8 @@
 .communityText,
 .ownerDescription {
   display: block;
-  font-size: 28rpx;
-  line-height: 1.9;
+  font-size: 24rpx;
+  line-height: 1.75;
 }
 
 .copyLead {
@@ -256,11 +290,16 @@
 .sectionFooter {
   display: flex;
   justify-content: flex-end;
-  margin-top: 34rpx;
+  margin-top: 42rpx;
 }
 
 .sectionImageButton {
   width: 286rpx;
+  height: 165rpx;
+}
+
+.sectionButtonImage {
+  height: 165rpx;
 }
 
 .spaceSection {
@@ -269,12 +308,13 @@
 
 .spaceVisual {
   position: relative;
+  height: 970rpx;
   margin: 0 -32rpx;
 }
 
 .spaceSwiper {
   width: 100%;
-  height: 480rpx;
+  height: 970rpx;
 }
 
 .spaceImage {
@@ -296,12 +336,13 @@
 }
 
 .spaceIntroRow {
-  margin-top: 34rpx;
+  margin-top: 40rpx;
 }
 
 .spaceTitleImage {
   display: block;
-  width: 280rpx;
+  width: 250rpx;
+  height: 95rpx;
   max-width: 60%;
   margin-bottom: 24rpx;
 }
@@ -317,49 +358,55 @@
 
 .storySection,
 .ownersSection {
-  margin-top: 98rpx;
+  margin-top: 118rpx;
 }
 
 .sectionTitleImage {
   display: block;
   width: 408rpx;
+  height: 148rpx;
   max-width: 88%;
 }
 
 .storyList {
   display: flex;
   flex-direction: column;
-  gap: 28rpx;
-  margin-top: 40rpx;
+  gap: 18rpx;
+  width: 645rpx;
+  max-width: 94%;
+  margin-top: 34rpx;
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .storyCard {
   position: relative;
   overflow: hidden;
-  background: #e8e0d5;
+  background: transparent;
+  border-bottom: 2rpx solid $color-text-primary;
 }
 
 .storyImage {
   display: block;
   width: 100%;
-  height: 396rpx;
+  height: 326rpx;
 }
 
 .storyOverlay {
   position: absolute;
-  left: 24rpx;
-  bottom: 24rpx;
-  padding: 12rpx 22rpx;
-  background: #ffe600;
-  border: 2rpx solid #111;
-  border-radius: 8rpx;
-  transform: rotate(-3deg);
-  box-shadow: 4rpx 4rpx 0 rgba(17, 17, 17, 0.2);
+  left: 0;
+  bottom: 0;
+  max-width: 70%;
+  padding: 10rpx 18rpx;
+  background: rgba(250, 249, 231, 0.88);
+  border-top: 2rpx solid $color-text-primary;
+  border-right: 2rpx solid $color-text-primary;
 }
 
 .storyOverlayText {
-  color: #111;
-  font-size: 28rpx;
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 27rpx;
   line-height: 1.3;
   font-weight: 700;
 }
@@ -370,18 +417,20 @@
 
 .moreFunImage {
   width: 280rpx;
+  height: 120rpx;
 }
 
 .ownerTitleImage {
-  width: 220rpx;
-  max-width: 50%;
+  width: 313rpx;
+  height: 125rpx;
+  max-width: 58%;
 }
 
 .ownerList {
   display: flex;
   flex-direction: column;
-  gap: 86rpx;
-  margin-top: 42rpx;
+  gap: 110rpx;
+  margin-top: 54rpx;
 }
 
 .ownerCard {
@@ -398,12 +447,14 @@
   position: relative;
   @include flex-center;
   flex-shrink: 0;
-  width: 220rpx;
-  height: 280rpx;
-  border-radius: 24rpx;
+  width: 296rpx;
+  height: 408rpx;
+  padding: 8rpx;
+  border: 2rpx solid $color-text-primary;
+  border-radius: 50%;
   overflow: hidden;
-  background: #efe7d8;
-  box-shadow: 0 12rpx 26rpx rgba(17, 17, 17, 0.1);
+  background: $color-oat;
+  box-shadow: none;
 }
 
 .ownerAvatarOrange,
@@ -442,15 +493,22 @@
 
 .ownerLabelOrange {
   width: 138rpx;
+  height: 86rpx;
 }
 
 .ownerLabelXiaohei {
   width: 136rpx;
+  height: 78rpx;
+}
+
+.ownerLabelImage {
+  display: block;
 }
 
 .ownerLabelText {
   display: block;
-  font-size: 38rpx;
+  font-family: $font-family-hand;
+  font-size: 40rpx;
   font-weight: 700;
   line-height: 1.2;
   color: #111;
@@ -473,14 +531,15 @@
 .badgeSection {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  margin-top: 96rpx;
-  padding-left: 56rpx;
+  align-items: center;
+  margin-top: 124rpx;
+  padding-left: 32rpx;
 }
 
 .badgeImage {
-  width: 200rpx;
-  transform: rotate(-13deg);
+  width: 247rpx;
+  height: 184rpx;
+  transform: none;
 }
 
 .communitySheet {
@@ -488,14 +547,15 @@
   flex: 1;
   flex-direction: column;
   align-items: center;
-  padding: 0 48rpx 48rpx;
+  padding: 0 48rpx 52rpx;
   box-sizing: border-box;
   text-align: center;
 }
 
 .communityTitle {
-  color: #111;
-  font-size: 40rpx;
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 44rpx;
   font-weight: 700;
   line-height: 1.24;
 }
@@ -508,8 +568,8 @@
   width: 320rpx;
   height: 320rpx;
   margin-top: 28rpx;
-  border-radius: 24rpx;
-  border: 3rpx solid #111;
+  border-radius: 4rpx;
+  border: 3rpx solid $color-text-primary;
   background: #fff;
 }
 

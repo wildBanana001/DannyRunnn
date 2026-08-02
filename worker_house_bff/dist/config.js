@@ -4,9 +4,13 @@ if (existsSync('.env.local')) {
     dotenv.config({ path: '.env.local' });
 }
 dotenv.config();
+const isProduction = process.env.NODE_ENV === 'production';
 function readCloudMode(value) {
     if (value === 'wechat' || value === 'cloudrun') {
         return value;
+    }
+    if (isProduction) {
+        throw new Error('生产环境必须显式配置 MODE=cloudrun 或 MODE=wechat，禁止回退到 mock');
     }
     return 'mock';
 }
@@ -29,13 +33,13 @@ function readCollectionName(value) {
     return /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name) ? name : 'shop_orders';
 }
 const cloudMode = readCloudMode(process.env.MODE?.trim() || process.env.CLOUD_MODE?.trim());
-const isProduction = process.env.NODE_ENV === 'production';
 const enableShopValue = process.env.ENABLE_SHOP?.trim();
 export const config = {
     adminToken: process.env.ADMIN_TOKEN?.trim() || (!isProduction && cloudMode === 'mock' ? 'mock-admin-token' : ''),
     allowEphemeralCloudrunData: readBoolean(process.env.ALLOW_EPHEMERAL_CLOUDRUN_DATA),
     cloudAppId: process.env.CLOUD_APP_ID?.trim() || '',
     cloudAppSecret: process.env.CLOUD_APP_SECRET?.trim() || '',
+    cloudAdminServiceToken: process.env.CLOUD_ADMIN_SERVICE_TOKEN?.trim() || '',
     cloudEnvId: process.env.CLOUD_ENV_ID?.trim() || '',
     cloudMode,
     enableShop: enableShopValue ? readBoolean(enableShopValue) : cloudMode === 'mock',

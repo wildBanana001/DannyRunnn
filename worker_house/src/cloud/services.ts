@@ -1,14 +1,13 @@
 import { currentUser } from '@/data/users';
-import { featuredActivity, ongoingActivities } from '@/data/activities';
+import { ongoingActivities } from '@/data/activities';
 import { comments as mockComments, posts as mockPosts } from '@/data/posts';
 import { posters as mockPosters } from '@/data/posters';
 import { siteConfig as mockSiteConfig } from '@/data/site';
 import { request as apiRequest, getApiMode } from '@/services/request';
 import type { Activity } from '@/types';
 import type { Comment, Post, PostCreateParams } from '@/types/post';
-import type { CloudResponse, Poster, SiteConfig } from '@/types/site';
+import type { Poster, SiteConfig } from '@/types/site';
 import { buildPostTitle } from '@/utils/helpers';
-import { callFn } from './index';
 
 interface RegistrationPayload {
   activityId: string;
@@ -68,36 +67,20 @@ const isMockMode = () => getApiMode() === 'mock';
 
 const safeCall = async <T>(
   name: string,
-  data: Record<string, unknown>,
+  _data: Record<string, unknown>,
   fallback: () => T | Promise<T>,
   remote?: () => Promise<T>
 ): Promise<T> => {
   const mockMode = isMockMode();
-  try {
-    if (mockMode) {
-      if (process.env.TARO_ENV !== 'weapp') {
-        return fallback();
-      }
-      const response = await callFn<CloudResponse<T>>(name, data);
-      if (response?.success) {
-        return response.data as T;
-      }
-      throw new Error((response as any)?.error || '云函数调用失败');
-    }
-
-    if (!remote) {
-      throw new Error('当前请求未配置远端实现');
-    }
-
-    return remote();
-  } catch (error) {
-    if (!mockMode) {
-      throw error;
-    }
-    console.warn(`[cloud] ${name} 调用失败，使用本地 fallback`, error);
+  if (mockMode) {
+    return fallback();
   }
 
-  return fallback();
+  if (!remote) {
+    throw new Error(`请求 ${name} 未配置远端实现`);
+  }
+
+  return remote();
 };
 
 export async function fetchPosterList(): Promise<Poster[]> {
@@ -153,7 +136,8 @@ export async function fetchActivity(
   const { fallbackToMock = true } = options;
 
   if (isMockMode()) {
-    return normalizeActivity(ongoingActivities.find((activity) => activity.id === id) ?? featuredActivity);
+    const matchedActivity = ongoingActivities.find((activity) => activity.id === id);
+    return matchedActivity ? normalizeActivity(matchedActivity) : null;
   }
 
   if (!fallbackToMock) {
@@ -169,15 +153,18 @@ export async function fetchActivity(
   const activity = await safeCall(
     'activity',
     { action: 'get', id },
-    async () => ongoingActivities.find((activity) => activity.id === id) ?? featuredActivity,
+    async () => ongoingActivities.find((activity) => activity.id === id) ?? null,
     async () => apiRequest<Activity>({ path: `/api/activities/${encodeURIComponent(id)}` })
   );
-  return normalizeActivity(activity);
+  return activity ? normalizeActivity(activity) : null;
 }
 
 export async function fetchActivityDetail(id: string): Promise<Activity> {
   const activity = await fetchActivity(id);
-  return activity ?? normalizeActivity(featuredActivity);
+  if (!activity || activity.id !== id) {
+    throw new Error('活动不存在或已下架');
+  }
+  return activity;
 }
 
 export async function submitActivitySignup(payload: RegistrationPayload): Promise<{ success: boolean }> {
@@ -218,7 +205,10 @@ export async function fetchPostDetail(id: string): Promise<PostDetailResult> {
     'post',
     { action: 'get', id },
     async () => {
-      const post = localPosts.find((item) => item.id === id) ?? normalizePost(localPosts[0]);
+      const post = localPosts.find((item) => item.id === id);
+      if (!post) {
+        throw new Error('帖子不存在或已删除');
+      }
       const commentList = sortByCreatedDesc(localComments.filter((item) => item.postId === id));
       return {
         post: normalizePost(post),

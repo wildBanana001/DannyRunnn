@@ -4,7 +4,7 @@ import { getUserByOpenid, upsertUser } from '../data/users.js';
 import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
 export const authWxRouter = Router();
 function resolveWxOpenid(request) {
-    return request.wxUser?.openid?.trim() || request.header('x-wx-openid')?.trim() || '';
+    return request.wxUser?.openid?.trim() || '';
 }
 authWxRouter.use(wxCloudrunAuth);
 authWxRouter.post('/wx-login', (request, response) => {

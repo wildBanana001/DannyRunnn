@@ -137,6 +137,9 @@ const WallPublishPage: React.FC = () => {
       setTimeout(() => {
         Taro.navigateBack();
       }, 400);
+    } catch (error) {
+      console.warn('[wall-publish] create post failed', error);
+      Taro.showToast({ title: '发布失败，请稍后再试', icon: 'none' });
     } finally {
       setIsSubmitting(false);
     }
