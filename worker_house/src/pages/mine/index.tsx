@@ -9,6 +9,7 @@ import { checkMiniAdmin } from '@/services/admin';
 import { fetchMemberOverview, type MemberOverview } from '@/services/member';
 import { getApiMode } from '@/services/request';
 import { useUserStore } from '@/store/userStore';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import avatarFrame from '@/assets/illustrations/avatar-frame.png';
 import defaultAvatar from '@/assets/home/hero-cover.jpg';
 import styles from './index.module.scss';
@@ -34,6 +35,7 @@ const MinePage: React.FC = () => {
   const [overview, setOverview] = useState<MemberOverview>(defaultOverview);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 50, reserveH5TabBar: true });
 
   useDidShow(() => {
     const loggedIn = useUserStore.getState().isLoggedIn;
@@ -79,7 +81,7 @@ const MinePage: React.FC = () => {
   };
 
   return (
-    <ScrollView className={styles.container} scrollY enableFlex>
+    <ScrollView className={styles.container} style={viewportStyle} scrollY enableFlex>
       <View className={styles.header}>
         <Text className={styles.eyebrow}>MY WORKER HOUSE</Text>
         <Text className={styles.pageTitle}>我的社畜角落</Text>

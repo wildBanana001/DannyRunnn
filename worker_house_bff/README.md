@@ -59,7 +59,6 @@ ADMIN_TOKEN=mock-admin-token
 ADMIN_OPENID_WHITELIST=
 CLOUD_ADMIN_SERVICE_TOKEN=
 ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
-ENABLE_SHOP=false
 SHOP_ORDER_STORAGE=cloudbase
 SHOP_ORDER_COLLECTION=shop_orders
 PORT=4000
@@ -72,7 +71,7 @@ PORT=4000
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
 - `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用管理云函数的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
-- `ENABLE_SHOP`：商城和活动报名的新建/重试支付开关；关闭时支付通知与已有订单查询仍保持可用。生产环境完成事务库存、权威价格数据源和支付配置后才能设置为 `true`
+- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单和示例部署变量不声明该变量，避免自动部署覆盖控制台设置。当前鸡尾酒为不限库存、现点现做；有限名额的活动会在 CloudBase 事务内原子占位，若未来新增限量商品，再为商品补充对应的事务预占。
 - `SHOP_ORDER_STORAGE`：云托管默认 `cloudbase`；`file` 只用于本地或临时联调
 - `SHOP_ORDER_COLLECTION`：支付订单集合，默认 `shop_orders`，同时保存商城订单和活动报名支付单，缺失时由服务创建
 - `PORT`：本地运行端口，默认 `4000`
@@ -106,7 +105,8 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 - 非 `mock` 模式缺少任一支付配置时，收费订单返回 `503`；价格为 0 的活动仍可直接完成报名。
 - 前端支付成功只代表收银台返回成功；订单必须以后端主动查单或验签后的支付通知为准。
 - 回调会校验签名时间、微信支付公钥 ID、AppID、商户号、订单号、金额和币种，并按通知 ID 幂等处理。
-- 当前生产清单保持 `ENABLE_SHOP=false`：活动名额与商城库存完成 CloudBase 事务预占、且活动/商品价格统一到 CloudBase 权威数据源前，不开放真实新单。
+- `ENABLE_SHOP` 由云托管控制台管理。支付配置与 `/api/shop/readiness` 验证通过后可设置为 `true`；自动部署不会覆盖该值。
+- 首次开启该变量前，先等待新 BFF 版本切换到 100% 流量，避免新旧实例并存期间接收支付订单。
 - 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=cloudbase`；商城还需按照交易类小程序规范接入发货管理。
 
 ## 本地启动

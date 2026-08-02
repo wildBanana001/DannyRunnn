@@ -8,6 +8,7 @@ import SafeImage from '@/components/SafeImage';
 import communityQrFallback from '@/assets/home/community-qr.jpg';
 import { fetchActivities, fetchPosterList } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { ongoingActivities as activityFallback } from '@/data/activities';
 import { homeLandingConfig } from '@/data/site';
 import { useSiteConfig } from '@/shared/siteConfig';
@@ -109,6 +110,7 @@ const HomePage: React.FC = () => {
   const [communityState, setCommunityState] = useState<'opening' | 'closing'>('opening');
   const sharedSiteConfig = useSiteConfig();
   const { style: enterStyle } = useEnterAnimation();
+  const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 34, reserveH5TabBar: true });
 
   const loadHomeData = useCallback(async () => {
     const posterRequest = getApiMode() === 'mock' ? Promise.resolve([]) : fetchPosterList().catch(() => []);
@@ -205,7 +207,7 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <View className={styles.page}>
+    <View className={styles.page} style={viewportStyle}>
       <ScrollView className={styles.scrollView} scrollY enableFlex showScrollbar={false}>
         <View className={styles.pageShell} style={enterStyle}>
           <View className={styles.heroSection}>

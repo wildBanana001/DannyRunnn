@@ -5,6 +5,7 @@ import { Minus, Plus } from '@nutui/icons-react-taro';
 import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchShopProduct, type ShopProduct } from '@/services/shop';
 import styles from './index.module.scss';
 
@@ -15,6 +16,7 @@ const ProductDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const viewportStyle = useViewportLayout();
 
   const loadProduct = useCallback(async () => {
     if (!productId) {
@@ -42,12 +44,12 @@ const ProductDetailPage: React.FC = () => {
 
   const changeQuantity = (delta: number) => {
     if (!product) return;
-    setQuantity((current) => Math.max(1, Math.min(product.stock, current + delta)));
+    setQuantity((current) => Math.max(1, Math.min(99, current + delta)));
   };
 
   const handleBuy = () => {
-    if (!product || product.stock <= 0) {
-      Taro.showToast({ title: '商品暂时售罄', icon: 'none' });
+    if (!product || !product.enabled) {
+      Taro.showToast({ title: '该商品已下架', icon: 'none' });
       return;
     }
     Taro.navigateTo({
@@ -56,28 +58,28 @@ const ProductDetailPage: React.FC = () => {
   };
 
   if (loading && !product) {
-    return <View className={styles.state}><Text>正在打开商品…</Text></View>;
+    return <View className={styles.state} style={viewportStyle}><Text>正在翻开今晚的酒单…</Text></View>;
   }
 
   if (error || !product) {
     return (
-      <View className={styles.state}>
-        <EmptyState title="商品走丢了" description="可能已下架，也可能是网络开了个小差。" />
+      <View className={styles.state} style={viewportStyle}>
+        <EmptyState title="这杯暂时不在酒单上" description="可能已经下架，也可能是网络开了个小差。" />
         <View className={styles.retryButton} onClick={loadProduct}><Text>重新加载</Text></View>
       </View>
     );
   }
 
   return (
-    <View className={styles.container}>
+    <View className={styles.container} style={viewportStyle}>
       <View className={styles.cover}>
         <SafeImage
           className={styles.coverImage}
           src={resolveShopProductImage(product.id, product.imageUrl)}
-          fallbackSrc={shopProductImages['prod-coffee-box']}
+          fallbackSrc={shopProductImages['cocktail-afterwork-sour']}
           mode="aspectFill"
         />
-        <Text className={styles.coverCaption}>WORKER HOUSE SELECT</Text>
+        <Text className={styles.coverCaption}>WORKER HOUSE COCKTAILS</Text>
       </View>
 
       <View className={styles.info}>
@@ -93,10 +95,25 @@ const ProductDetailPage: React.FC = () => {
         </View>
         <Text className={styles.desc}>{product.description}</Text>
 
+        <View className={styles.drinkMeta}>
+          <View className={styles.drinkMetaItem}>
+            <Text className={styles.metaLabel}>酒精度</Text>
+            <Text className={styles.metaValue}>{product.alcoholic ? `${product.abv}%` : '无酒精'}</Text>
+          </View>
+          <View className={styles.drinkMetaItem}>
+            <Text className={styles.metaLabel}>容量</Text>
+            <Text className={styles.metaValue}>{product.volumeMl} ml</Text>
+          </View>
+          <View className={styles.drinkMetaItem}>
+            <Text className={styles.metaLabel}>享用方式</Text>
+            <Text className={styles.metaValue}>{product.fulfillmentLabel}</Text>
+          </View>
+        </View>
+
         <View className={styles.metaRow}>
           <View>
-            <Text className={styles.metaLabel}>库存</Text>
-            <Text className={styles.metaValue}>{product.stock > 0 ? `${product.stock} 件` : '已售罄'}</Text>
+            <Text className={styles.metaLabel}>出品方式</Text>
+            <Text className={styles.metaValue}>现点现做</Text>
           </View>
           <View className={styles.quantityControl}>
             <View className={styles.quantityButton} onClick={() => changeQuantity(-1)}><Minus size="16" /></View>
@@ -107,13 +124,17 @@ const ProductDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.promiseCard}>
-        <Text className={styles.promiseTitle}>小卖部承诺</Text>
-        <Text className={styles.promiseText}>付款结果以微信支付服务端通知为准 · 有问题随时联系我们</Text>
+        <Text className={styles.promiseTitle}>今晚这杯，认真对待</Text>
+        <Text className={styles.promiseText}>
+          {product.alcoholic
+            ? '现点现做 · 到店后出示订单 · 请勿饮酒后驾车'
+            : '现点现做 · 到店后出示订单 · 无酒精也有完整风味'}
+        </Text>
       </View>
 
       <View className={styles.footer}>
-        <View className={`${styles.buyBtn} ${product.stock <= 0 ? styles.buyBtnDisabled : ''}`} onClick={handleBuy}>
-          <Text className={styles.buyBtnText}>{product.stock > 0 ? '立即购买' : '暂时售罄'}</Text>
+        <View className={`${styles.buyBtn} ${!product.enabled ? styles.buyBtnDisabled : ''}`} onClick={handleBuy}>
+          <Text className={styles.buyBtnText}>{product.enabled ? '选这杯' : '已下架'}</Text>
         </View>
       </View>
     </View>

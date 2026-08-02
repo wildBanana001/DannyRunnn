@@ -5,6 +5,7 @@ import { Add, ArrowRight, Minus, Plus } from '@nutui/icons-react-taro';
 import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchAddresses, type Address } from '@/services/address';
 import {
   createShopClientRequestId,
@@ -34,6 +35,7 @@ const OrderConfirmPage: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const clientRequestIdRef = useRef(createShopClientRequestId());
   const wasLoggedInRef = useRef(isLoggedIn);
+  const viewportStyle = useViewportLayout();
 
   const loadData = useCallback(async () => {
     if (!productId) {
@@ -43,14 +45,14 @@ const OrderConfirmPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const [nextProduct, addresses] = await Promise.all([
-        fetchShopProduct(productId),
-        isLoggedIn ? fetchAddresses() : Promise.resolve([]),
-      ]);
+      const nextProduct = await fetchShopProduct(productId);
+      const addresses = nextProduct.fulfillmentType === 'delivery' && isLoggedIn
+        ? await fetchAddresses()
+        : [];
       setProduct(nextProduct);
-      setQuantity((current) => Math.max(1, Math.min(nextProduct.stock, current)));
+      setQuantity((current) => Math.max(1, Math.min(99, current)));
       setAddress((current) => (
-        isLoggedIn
+        nextProduct.fulfillmentType === 'delivery' && isLoggedIn
           ? (
           addresses.find((item) => item.id === current?.id)
           || addresses.find((item) => item.isDefault)
@@ -93,8 +95,11 @@ const OrderConfirmPage: React.FC = () => {
     if (!product) return 0;
     return Math.round(product.price * 100) * quantity;
   }, [product, quantity]);
+  const requiresAddress = product?.fulfillmentType === 'delivery';
+  const isFree = totalAmount === 0;
 
   const chooseAddress = () => {
+    if (!requiresAddress) return;
     if (!isLoggedIn) {
       setShowLogin(true);
       return;
@@ -108,25 +113,25 @@ const OrderConfirmPage: React.FC = () => {
       setShowLogin(true);
       return;
     }
-    if (!address) {
+    if (requiresAddress && !address) {
       Taro.showToast({ title: '请先添加收货地址', icon: 'none' });
       return;
     }
-    if (product.stock <= 0 || quantity > product.stock) {
-      Taro.showToast({ title: '商品库存不足', icon: 'none' });
+    if (!product.enabled) {
+      Taro.showToast({ title: '商品已下架', icon: 'none' });
       return;
     }
 
     let outTradeNo = '';
     setPaying(true);
     try {
-      Taro.showLoading({ title: '正在创建订单…', mask: true });
+      Taro.showLoading({ title: isFree ? '正在领取…' : '正在创建订单…', mask: true });
       const session = await startShopPayment({
-        address,
         clientRequestId: clientRequestIdRef.current,
         productId: product.id,
         quantity,
         remark,
+        ...(requiresAddress && address ? { address } : {}),
       });
       outTradeNo = session.outTradeNo;
       Taro.hideLoading();
@@ -136,9 +141,11 @@ const OrderConfirmPage: React.FC = () => {
         throw new Error('商品价格已更新，请核对后重新支付');
       }
 
-      await launchShopPayment(session);
+      if (session.amount > 0) {
+        await launchShopPayment(session);
+      }
 
-      Taro.showLoading({ title: '正在确认支付…', mask: true });
+      Taro.showLoading({ title: isFree ? '正在确认领取…' : '正在确认支付…', mask: true });
       const order = await confirmShopPayment(session.outTradeNo);
       const status = order.status === 'paid' ? 'success' : 'pending';
       Taro.hideLoading();
@@ -166,35 +173,48 @@ const OrderConfirmPage: React.FC = () => {
   };
 
   if (loading && !product) {
-    return <View className={styles.state}><Text>正在核对订单…</Text></View>;
+    return <View className={styles.state} style={viewportStyle}><Text>正在核对订单…</Text></View>;
   }
 
   if (!product) {
-    return <View className={styles.state}><Text>商品信息不存在，请返回商城重新选择。</Text></View>;
+    return <View className={styles.state} style={viewportStyle}><Text>商品信息不存在，请返回商城重新选择。</Text></View>;
   }
 
   return (
-    <View className={styles.container}>
-      <View className={styles.section} onClick={chooseAddress}>
-        <View className={styles.sectionHeader}>
-          <Text className={styles.sectionTitle}>收货地址</Text>
-          <View className={styles.changeAction}>
-            <Text className={styles.changeText}>{address ? '更换' : '添加'}</Text>
-            <ArrowRight className={styles.changeIcon} size="13" />
+    <View className={styles.container} style={viewportStyle}>
+      {requiresAddress ? (
+        <View className={styles.section} onClick={chooseAddress}>
+          <View className={styles.sectionHeader}>
+            <Text className={styles.sectionTitle}>收货地址</Text>
+            <View className={styles.changeAction}>
+              <Text className={styles.changeText}>{address ? '更换' : '添加'}</Text>
+              <ArrowRight className={styles.changeIcon} size="13" />
+            </View>
+          </View>
+          {address ? (
+            <View className={styles.addressCard}>
+              <Text className={styles.addressName}>{address.name} · {address.phone}</Text>
+              <Text className={styles.addressText}>{address.province} {address.city} {address.district} {address.detail}</Text>
+            </View>
+          ) : (
+            <View className={styles.emptyAddress}>
+              <Add className={styles.emptyAddressIcon} size="16" />
+              <Text>{isLoggedIn ? '添加一个收货地址' : '登录后选择收货地址'}</Text>
+            </View>
+          )}
+        </View>
+      ) : (
+        <View className={styles.section}>
+          <Text className={styles.sectionTitle}>享用方式</Text>
+          <View className={styles.fulfillmentCard}>
+            <View className={styles.fulfillmentBadge}><Text>店</Text></View>
+            <View className={styles.fulfillmentContent}>
+              <Text className={styles.fulfillmentTitle}>{product.fulfillmentLabel || '到店享用'}</Text>
+              <Text className={styles.fulfillmentText}>无需填写收货地址，{isFree ? '领取' : '支付'}成功后到店出示订单</Text>
+            </View>
           </View>
         </View>
-        {address ? (
-          <View className={styles.addressCard}>
-            <Text className={styles.addressName}>{address.name} · {address.phone}</Text>
-            <Text className={styles.addressText}>{address.province} {address.city} {address.district} {address.detail}</Text>
-          </View>
-        ) : (
-          <View className={styles.emptyAddress}>
-            <Add className={styles.emptyAddressIcon} size="16" />
-            <Text>{isLoggedIn ? '添加一个收货地址' : '登录后选择收货地址'}</Text>
-          </View>
-        )}
-      </View>
+      )}
 
       <View className={styles.section}>
         <Text className={styles.sectionTitle}>商品清单</Text>
@@ -207,12 +227,12 @@ const OrderConfirmPage: React.FC = () => {
           />
           <View className={styles.productInfo}>
             <Text className={styles.productName}>{product.name}</Text>
-            <Text className={styles.productMeta}>¥{product.price.toFixed(2)} × {quantity}</Text>
+            <Text className={styles.productMeta}>¥{product.price.toFixed(2)} × {quantity} {product.unitLabel}</Text>
           </View>
           <View className={styles.quantityControl}>
             <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.max(1, value - 1))}><Minus size="14" /></View>
             <Text className={styles.quantityValue}>{quantity}</Text>
-            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))}><Plus size="14" /></View>
+            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.min(99, value + 1))}><Plus size="14" /></View>
           </View>
         </View>
         <View className={styles.remarkRow}>
@@ -228,17 +248,21 @@ const OrderConfirmPage: React.FC = () => {
       </View>
 
       <View className={styles.paymentNotice}>
-        <Text className={styles.paymentNoticeTitle}>微信支付安全确认</Text>
-        <Text className={styles.paymentNoticeText}>支付成功以后，系统还会向微信支付服务端确认订单状态，不会只凭页面提示发货。</Text>
+        <Text className={styles.paymentNoticeTitle}>{isFree ? '免费领取确认' : '微信支付安全确认'}</Text>
+        <Text className={styles.paymentNoticeText}>
+          {requiresAddress
+            ? `${isFree ? '领取' : '支付'}成功后，系统会确认订单状态并按所选地址安排配送。`
+            : `${isFree ? '领取' : '支付'}成功后，系统会确认订单状态；本订单仅用于到店享用，不会安排配送。`}
+        </Text>
       </View>
 
       <View className={styles.footer}>
         <View className={styles.total}>
           <Text className={styles.totalLabel}>合计</Text>
-          <Text className={styles.totalValue}>¥{(totalAmount / 100).toFixed(2)}</Text>
+          <Text className={styles.totalValue}>{isFree ? '免费' : `¥${(totalAmount / 100).toFixed(2)}`}</Text>
         </View>
         <View className={`${styles.payBtn} ${paying ? styles.payBtnDisabled : ''}`} onClick={handlePay}>
-          <Text className={styles.payBtnText}>{paying ? '处理中…' : '微信支付'}</Text>
+          <Text className={styles.payBtnText}>{paying ? (isFree ? '领取中…' : '处理中…') : (isFree ? '免费领取' : '微信支付')}</Text>
         </View>
       </View>
 

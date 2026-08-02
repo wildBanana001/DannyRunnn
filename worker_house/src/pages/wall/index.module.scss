@@ -1,8 +1,8 @@
 @use '@/styles/variables.scss' as *;
 
 .container {
-  min-height: 100vh;
-  padding: calc(env(safe-area-inset-top) + 56rpx) 32rpx 64rpx;
+  min-height: var(--app-window-height, 100vh);
+  padding: var(--app-header-top, calc(env(safe-area-inset-top) + 56rpx)) 32rpx calc(var(--app-safe-bottom, env(safe-area-inset-bottom)) + 64rpx);
   background: $color-oat;
   overflow-x: hidden;
 }
@@ -12,6 +12,11 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 34rpx;
+}
+
+.headerCopy {
+  flex: 1;
+  min-width: 0;
 }
 
 .title {
@@ -40,6 +45,8 @@
   border-radius: 4rpx;
   background: $color-text-primary;
   box-shadow: 4rpx 4rpx 0 rgba(23, 22, 19, 0.08);
+  flex-shrink: 0;
+  margin-left: 18rpx;
 }
 
 .publishIcon {

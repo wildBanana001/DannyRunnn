@@ -4,6 +4,7 @@ import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
 import avatarFallback from '@/assets/illustrations/avatar-frame.png';
 import type { Activity } from '@/types';
@@ -16,6 +17,7 @@ const ActivityDetailPage: React.FC = () => {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const viewportStyle = useViewportLayout();
 
   const loadActivity = useCallback(async () => {
     if (!activityId) {
@@ -75,12 +77,12 @@ const ActivityDetailPage: React.FC = () => {
   }, [activity]);
 
   if (loading) {
-    return <View className={styles.statePage}><Text className={styles.stateText}>活动加载中...</Text></View>;
+    return <View className={styles.statePage} style={viewportStyle}><Text className={styles.stateText}>活动加载中...</Text></View>;
   }
 
   if (!activity || errorMessage) {
     return (
-      <View className={styles.statePage}>
+      <View className={styles.statePage} style={viewportStyle}>
         <EmptyState title="没有找到这场活动" description={errorMessage || '活动可能已下架。'}>
           <Button block type="outline" onClick={() => void loadActivity()}>重新加载</Button>
         </EmptyState>
@@ -109,7 +111,7 @@ const ActivityDetailPage: React.FC = () => {
   };
 
   return (
-    <View className={styles.container}>
+    <View className={styles.container} style={viewportStyle}>
       <ScrollView className={styles.scrollView} scrollY enableFlex>
         <View className={styles.heroSection}>
           {heroImages.length > 1 ? (

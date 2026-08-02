@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+export type ShopFulfillmentType = 'delivery' | 'onsite' | 'pickup';
+
 export interface ShopProduct {
   id: string;
   name: string;
@@ -9,77 +11,126 @@ export interface ShopProduct {
   originalPrice: number; // 原价，单位：元
   imageUrl: string;
   description: string;
-  stock: number;
   tags: string[];
+  category: string;
+  fulfillmentType: ShopFulfillmentType;
+  fulfillmentLabel: string;
+  unitLabel: string;
+  alcoholic: boolean;
+  abv: number;
+  volumeMl: number;
+  enabled: boolean;
 }
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const storageFilePath = path.join(currentDir, 'shop.store.json');
 
 /**
- * 内置的 6 条社畜主题商品种子数据。
+ * 内置的 6 款到店鸡尾酒种子数据。
  * 图片托管在 public/images/shop/ 下，通过 /static 路由对外访问。
  */
 const DEFAULT_PRODUCTS: ShopProduct[] = [
   {
-    id: 'prod-coffee-box',
-    name: '社畜续命挂耳咖啡礼盒',
-    price: 59.9,
-    originalPrice: 89,
-    imageUrl: '/static/images/shop/product-1.png',
-    description: '打工人早八续命必备，10 包精品挂耳，一口回魂，续航一整天。',
-    stock: 200,
-    tags: ['续命', '咖啡', '热销'],
+    id: 'cocktail-afterwork-sour',
+    name: '下班快乐威士忌酸',
+    price: 39.9,
+    originalPrice: 49,
+    imageUrl: '/static/images/shop/cocktail-afterwork-sour.jpg',
+    description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。',
+    tags: ['威士忌', '酸甜', '到店享用'],
+    category: 'cocktail',
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    alcoholic: true,
+    abv: 14,
+    volumeMl: 180,
+    enabled: true,
   },
   {
-    id: 'prod-fish-tote',
-    name: '摸鱼快乐屋帆布袋',
-    price: 39,
-    originalPrice: 59,
-    imageUrl: '/static/images/shop/product-2.png',
-    description: '加厚帆布，容量超大，装下电脑也装得下摸鱼的心，通勤上班一包搞定。',
-    stock: 150,
-    tags: ['帆布袋', '通勤', '摸鱼'],
+    id: 'cocktail-mint-mojito',
+    name: '薄荷青柠莫吉托',
+    price: 36,
+    originalPrice: 45,
+    imageUrl: '/static/images/shop/cocktail-mint-mojito.jpg',
+    description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。',
+    tags: ['朗姆酒', '清爽', '到店享用'],
+    category: 'cocktail',
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    alcoholic: true,
+    abv: 10,
+    volumeMl: 300,
+    enabled: true,
   },
   {
-    id: 'prod-stress-ball',
-    name: '打工人解压捏捏乐',
-    price: 19.9,
-    originalPrice: 29.9,
-    imageUrl: '/static/images/shop/product-3.png',
-    description: '开会想爆炸？捏它。需求又改了？捏它。软糯回弹，解压第一名。',
-    stock: 300,
-    tags: ['解压', '捏捏乐', '办公桌面'],
+    id: 'cocktail-berry-fizz',
+    name: '莓果微醺气泡',
+    price: 42,
+    originalPrice: 52,
+    imageUrl: '/static/images/shop/cocktail-berry-fizz.jpg',
+    description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。',
+    tags: ['莓果', '气泡', '到店享用'],
+    category: 'cocktail',
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    alcoholic: true,
+    abv: 8,
+    volumeMl: 300,
+    enabled: true,
   },
   {
-    id: 'prod-thermos-cup',
-    name: '早八人保命保温杯',
-    price: 69,
-    originalPrice: 99,
-    imageUrl: '/static/images/shop/product-4.png',
-    description: '316 不锈钢内胆，12 小时长效保温，养生朋克的枸杞就靠它了。',
-    stock: 120,
-    tags: ['保温杯', '养生', '早八'],
+    id: 'cocktail-sunset-highball',
+    name: '落日柑橘嗨棒',
+    price: 38,
+    originalPrice: 48,
+    imageUrl: '/static/images/shop/cocktail-sunset-highball.jpg',
+    description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。',
+    tags: ['嗨棒', '柑橘', '到店享用'],
+    category: 'cocktail',
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    alcoholic: true,
+    abv: 9,
+    volumeMl: 320,
+    enabled: true,
   },
   {
-    id: 'prod-monday-stickers',
-    name: '周一不上班主题贴纸包',
-    price: 12.9,
-    originalPrice: 19.9,
-    imageUrl: '/static/images/shop/product-5.png',
-    description: '30 张防水贴纸，贴电脑贴水杯贴工牌，把不想上班写在脸上。',
-    stock: 500,
-    tags: ['贴纸', '周边', '低价'],
+    id: 'cocktail-espresso-martini',
+    name: '浓缩咖啡马天尼',
+    price: 46,
+    originalPrice: 56,
+    imageUrl: '/static/images/shop/cocktail-espresso-martini.jpg',
+    description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。',
+    tags: ['咖啡', '醇香', '到店享用'],
+    category: 'cocktail',
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    alcoholic: true,
+    abv: 16,
+    volumeMl: 180,
+    enabled: true,
   },
   {
-    id: 'prod-off-work-slippers',
-    name: '社畜下班快乐拖鞋',
-    price: 45,
-    originalPrice: 69,
-    imageUrl: '/static/images/shop/product-6.png',
-    description: '踩屎感 EVA 鞋底，回家第一件事就是换上它，宣告今天的班上完了。',
-    stock: 180,
-    tags: ['拖鞋', '居家', '解放双脚'],
+    id: 'cocktail-elderflower-zero',
+    name: '接骨木花零度特调',
+    price: 32,
+    originalPrice: 39,
+    imageUrl: '/static/images/shop/cocktail-elderflower-zero.jpg',
+    description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。',
+    tags: ['无酒精', '花香', '到店享用'],
+    category: 'cocktail',
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    alcoholic: false,
+    abv: 0,
+    volumeMl: 300,
+    enabled: true,
   },
 ];
 
@@ -104,7 +155,18 @@ function sanitizeNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function normalizeProduct(item: Partial<ShopProduct>): ShopProduct {
+function sanitizeFulfillmentType(value: unknown): ShopFulfillmentType {
+  return value === 'onsite' || value === 'pickup' ? value : 'delivery';
+}
+
+function getDefaultFulfillmentLabel(type: ShopFulfillmentType) {
+  if (type === 'onsite') return '到店享用';
+  if (type === 'pickup') return '到店自提';
+  return '快递配送';
+}
+
+export function normalizeShopProduct(item: Partial<ShopProduct>): ShopProduct {
+  const fulfillmentType = sanitizeFulfillmentType(item.fulfillmentType);
   return {
     id: sanitizeString(item.id),
     name: sanitizeString(item.name),
@@ -112,8 +174,15 @@ function normalizeProduct(item: Partial<ShopProduct>): ShopProduct {
     originalPrice: sanitizeNumber(item.originalPrice),
     imageUrl: sanitizeString(item.imageUrl),
     description: sanitizeString(item.description),
-    stock: sanitizeNumber(item.stock),
     tags: Array.isArray(item.tags) ? item.tags.map((tag) => sanitizeString(tag)).filter(Boolean) : [],
+    category: sanitizeString(item.category) || '周边',
+    fulfillmentType,
+    fulfillmentLabel: sanitizeString(item.fulfillmentLabel) || getDefaultFulfillmentLabel(fulfillmentType),
+    unitLabel: sanitizeString(item.unitLabel) || '件',
+    alcoholic: typeof item.alcoholic === 'boolean' ? item.alcoholic : false,
+    abv: Math.max(0, sanitizeNumber(item.abv)),
+    volumeMl: Math.max(0, sanitizeNumber(item.volumeMl)),
+    enabled: typeof item.enabled === 'boolean' ? item.enabled : true,
   };
 }
 
@@ -138,7 +207,7 @@ function loadProducts() {
     const rawContent = readFileSync(storageFilePath, 'utf-8');
     const parsed = JSON.parse(rawContent) as ShopProduct[];
     if (Array.isArray(parsed) && parsed.length > 0) {
-      store.products = parsed.map((item) => normalizeProduct(item));
+      store.products = parsed.map((item) => normalizeShopProduct(item));
     } else {
       store.products = clone(DEFAULT_PRODUCTS);
       persistProducts();
@@ -152,7 +221,7 @@ function loadProducts() {
 
 export function listProducts(): ShopProduct[] {
   loadProducts();
-  return clone(store.products);
+  return clone(store.products.filter((item) => item.enabled));
 }
 
 export function getProductById(productId: string): ShopProduct | null {

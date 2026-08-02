@@ -5,7 +5,9 @@ $shop-accent: $color-brand;
 .container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: var(--app-window-height, 100vh);
+  min-height: var(--app-window-height, 100vh);
+  overflow-x: hidden;
   background: $color-oat;
 }
 
@@ -13,7 +15,7 @@ $shop-accent: $color-brand;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: calc(env(safe-area-inset-top) + 50rpx) 32rpx 34rpx;
+  padding: var(--app-header-top, calc(env(safe-area-inset-top) + 50rpx)) 32rpx 34rpx;
   background: $color-oat;
   border-bottom: 2rpx solid $color-text-primary;
 }
@@ -73,6 +75,7 @@ $shop-accent: $color-brand;
 
 .scroll {
   flex: 1;
+  min-height: 0;
 }
 
 .notice {
@@ -187,7 +190,7 @@ $shop-accent: $color-brand;
   text-decoration: line-through;
 }
 
-.stock {
+.fulfillmentNote {
   display: block;
   margin-top: 8rpx;
   font-size: 20rpx;
@@ -212,5 +215,5 @@ $shop-accent: $color-brand;
 }
 
 .bottomSpacing {
-  height: 44rpx;
+  height: calc(var(--app-safe-bottom, env(safe-area-inset-bottom)) + 44rpx);
 }

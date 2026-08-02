@@ -4,6 +4,7 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
 import { calculateCardDeduction } from '@/data/mock-member';
 import {
@@ -45,6 +46,7 @@ const buildProfileFormValue = (profile?: Profile, nextIsDefault = false): Profil
 });
 
 const RegisterPage: React.FC = () => {
+  const viewportStyle = useViewportLayout();
   const router = useRouter();
   const activityId = router.params.activityId?.trim() || router.params.id?.trim() || '';
   const [step, setStep] = useState<RegisterStep>(1);
@@ -256,12 +258,12 @@ const RegisterPage: React.FC = () => {
   };
 
   if (activityLoading) {
-    return <View className={styles.statePage}><Text className={styles.stateText}>正在核对活动信息...</Text></View>;
+    return <View className={styles.statePage} style={viewportStyle}><Text className={styles.stateText}>正在核对活动信息...</Text></View>;
   }
 
   if (!activity || activityError) {
     return (
-      <View className={styles.statePage}>
+      <View className={styles.statePage} style={viewportStyle}>
         <EmptyState title="暂时无法报名" description={activityError || '活动可能已结束或下架。'}>
           <Button block type="outline" onClick={() => void loadPage()}>重新加载</Button>
         </EmptyState>
@@ -271,7 +273,7 @@ const RegisterPage: React.FC = () => {
 
   if (memberError) {
     return (
-      <View className={styles.statePage}>
+      <View className={styles.statePage} style={viewportStyle}>
         <EmptyState title="报名资料加载失败" description={memberError}>
           <Button block type="outline" onClick={() => void loadPage()}>重新加载</Button>
         </EmptyState>
@@ -280,7 +282,7 @@ const RegisterPage: React.FC = () => {
   }
 
   return (
-    <View className={styles.container}>
+    <View className={styles.container} style={viewportStyle}>
       <ScrollView className={styles.scrollView} scrollY enableFlex>
         <View className={styles.progressWrap}>
           {[1, 2, 3].map((item) => (
@@ -380,7 +382,7 @@ const RegisterPage: React.FC = () => {
         {step === 1 ? (
           <>
             <Button type="ghost" size="medium" className={styles.footerGhost} onClick={() => Taro.navigateBack()}>先不报了</Button>
-            <Button type="primary" size="large" block disabled={!selectedProfile} onClick={() => setStep(3)}>
+            <Button type="primary" size="large" block className={styles.footerPrimary} disabled={!selectedProfile} onClick={() => setStep(3)}>
               继续确认订单
             </Button>
           </>
@@ -393,7 +395,7 @@ const RegisterPage: React.FC = () => {
         {step === 3 ? (
           <>
             <Button type="outline" size="medium" className={styles.footerGhost} onClick={() => setStep(1)}>切换档案</Button>
-            <Button type="primary" size="large" block loading={isSubmitting} disabled={isSubmitting} onClick={handleSubmitOrder}>
+            <Button type="primary" size="large" block className={styles.footerPrimary} loading={isSubmitting} disabled={isSubmitting} onClick={handleSubmitOrder}>
               {paymentSummary.payableAmount > 0 ? `微信支付 ${formatPrice(paymentSummary.payableAmount)}` : '确认免费报名'}
             </Button>
           </>

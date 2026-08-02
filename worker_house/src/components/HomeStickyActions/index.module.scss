@@ -10,7 +10,7 @@
   justify-content: center;
   gap: 20rpx;
   padding: 0 24rpx calc(32rpx + constant(safe-area-inset-bottom));
-  padding: 0 24rpx calc(32rpx + env(safe-area-inset-bottom));
+  padding: 0 24rpx calc(32rpx + var(--app-safe-bottom, env(safe-area-inset-bottom)));
   box-sizing: border-box;
   transition: opacity 300ms ease, transform 300ms ease;
 }

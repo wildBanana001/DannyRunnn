@@ -31,6 +31,13 @@ function formatDate(value: string) {
   return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function getFulfillmentText(order: ShopOrder) {
+  if (order.fulfillmentType !== 'delivery') {
+    return order.fulfillmentLabel || (order.fulfillmentType === 'pickup' ? '到店自取' : '到店享用');
+  }
+  return order.address?.name ? `收件人：${order.address.name}` : '收货信息待补充';
+}
+
 const MyOrdersPage: React.FC = () => {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const [orders, setOrders] = useState<ShopOrder[]>([]);
@@ -118,15 +125,21 @@ const MyOrdersPage: React.FC = () => {
 
         {isLoggedIn && !loading && !error && orders.length === 0 ? (
           <View className={styles.state}>
-            <EmptyState title="还没有商城订单" description="逛逛小卖部，挑一件奖励自己的好物。" />
-            <View className={styles.primaryButton} onClick={() => Taro.switchTab({ url: '/pages/shop-home/index' })}><Text>去商城看看</Text></View>
+            <EmptyState title="还没有酒单订单" description="看看今晚的特调，选一杯到店慢慢喝。" />
+            <View className={styles.primaryButton} onClick={() => Taro.switchTab({ url: '/pages/shop-home/index' })}><Text>去看看酒单</Text></View>
           </View>
         ) : null}
 
         {orders.length > 0 ? (
           <View className={styles.list}>
             {orders.map((item) => (
-              <View key={item.id} className={styles.card} onClick={() => Taro.navigateTo({ url: `/pages/shop/product-detail/index?id=${encodeURIComponent(item.productId)}` })}>
+              <View
+                key={item.id}
+                className={styles.card}
+                onClick={item.fulfillmentType === 'onsite'
+                  ? () => Taro.navigateTo({ url: `/pages/shop/product-detail/index?id=${encodeURIComponent(item.productId)}` })
+                  : undefined}
+              >
                 <View className={styles.cardHeader}>
                   <View>
                     <Text className={styles.orderDate}>{formatDate(item.createdAt)}</Text>
@@ -145,15 +158,15 @@ const MyOrdersPage: React.FC = () => {
                   </View>
                   <View className={styles.productInfo}>
                     <Text className={styles.cardTitle}>{item.productName}</Text>
-                    <Text className={styles.quantity}>数量 × {item.quantity}</Text>
+                    <Text className={styles.quantity}>× {item.quantity} {item.unitLabel}</Text>
                   </View>
-                  <Text className={styles.amount}>¥{(item.amount / 100).toFixed(2)}</Text>
+                  <Text className={styles.amount}>{item.amount <= 0 ? '免费' : `¥${(item.amount / 100).toFixed(2)}`}</Text>
                 </View>
                 <View className={styles.cardFooter}>
-                  <Text className={styles.address}>{item.address?.name ? `收件人：${item.address.name}` : '收货信息待补充'}</Text>
+                  <Text className={styles.address}>{getFulfillmentText(item)}</Text>
                   {item.status === 'pending' ? (
                     <View className={styles.payButton} onClick={(event) => handleRetry(event, item.id)}>
-                      <Text>{payingOrderId === item.id ? '处理中…' : '继续支付'}</Text>
+                      <Text>{payingOrderId === item.id ? '处理中…' : (item.amount <= 0 ? '继续领取' : '继续支付')}</Text>
                     </View>
                   ) : null}
                 </View>

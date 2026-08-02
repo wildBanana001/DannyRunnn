@@ -8,6 +8,7 @@ import activityCoverFallback from '@/assets/home/hero-cover.jpg';
 import activityPosterFallback from '@/assets/home/hero-may.jpg';
 import { fetchActivities } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import type { Activity } from '@/types/activity';
 import { formatDate, formatMonthTitle, getProgressPercent, groupActivitiesByMonth } from '@/utils/helpers';
 import styles from './index.module.scss';
@@ -53,13 +54,14 @@ const ActivityPage: React.FC = () => {
 
   const endedSections = useMemo(() => groupActivitiesByMonth(endedList), [endedList]);
   const { style: enterStyle } = useEnterAnimation();
+  const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 50, reserveH5TabBar: true });
 
   const handleOpenDetail = (activity: Activity) => {
     Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${activity.id}` });
   };
 
   return (
-    <ScrollView className={styles.container} scrollY enableFlex>
+    <ScrollView className={styles.container} style={viewportStyle} scrollY enableFlex>
       <View className={styles.pageIntro}>
         <Text className={styles.eyebrow}>WORKER HOUSE EVENTS</Text>
         <Text className={styles.pageTitle}>社畜活动</Text>

@@ -46,13 +46,16 @@ GitHub Actions 配置位于 `.github/workflows/bff-ci.yml`。CD 使用微信云�
 NODE_ENV=production
 MODE=cloudrun
 ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
-ENABLE_SHOP=false
 SHOP_ORDER_STORAGE=cloudbase
 SHOP_ORDER_COLLECTION=shop_orders
 CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 ```
 
-支付、管理员与数据源相关密钥必须继续放在云托管环境变量中，不得写入 Git。除完成支付密钥外，还必须先把商城库存、活动名额和同用户去重改为 CloudBase 事务预占，并将活动/商品价格统一到 CloudBase 权威数据源，之后才能把 `ENABLE_SHOP` 改为 `true`。开关关闭期间支付回调与已有订单查询仍保持可用。
+`ENABLE_SHOP` 不属于上面的部署清单；请在云托管服务变量中单独维护。支付、管理员与数据源相关密钥必须继续放在云托管环境变量中，不得写入 Git。支付配置及订单存储 readiness 验证通过后，才在服务变量中把 `ENABLE_SHOP` 设置为 `true`；开关关闭期间支付回调与已有订单查询仍保持可用。有限名额的活动会在 CloudBase 事务内原子占位。
+
+首次启用时必须等新版本完成部署并切换到 100% 流量，再设置 `ENABLE_SHOP=true`；不要在新旧实例并存的滚动阶段提前开单。当前线上 `main` 旧版尚未写入 CloudBase 支付订单；若曾手工部署其他版本并产生历史 `shop_orders` 数据，应先完成数据核对或迁移。
+
+本项目的 `container.config.json` 不声明 `ENABLE_SHOP`，该开关由云托管服务变量管理，自动部署不会覆盖控制台设置。当前鸡尾酒按不限库存处理；如果后续新增限量商品，应先为商品补充独立的事务预占。
 
 ## 验证
 

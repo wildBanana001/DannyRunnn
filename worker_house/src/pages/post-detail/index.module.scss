@@ -3,7 +3,8 @@
 .container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--app-window-height, 100vh);
+  overflow-x: hidden;
   background: $color-oat;
 }
 
@@ -16,6 +17,7 @@
 
 .scrollView {
   flex: 1;
+  min-height: 0;
 }
 
 .postCard,
@@ -241,7 +243,7 @@
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  padding: 20rpx 24rpx calc(20rpx + var(--app-safe-bottom, env(safe-area-inset-bottom)));
   background: rgba(255, 255, 255, 0.96);
   border-top: 1rpx solid $color-divider;
 }
@@ -254,4 +256,12 @@
   background: #efebe2;
   font-size: $font-size-md;
   color: $color-text-primary;
+}
+
+@media screen and (min-width: 768px) {
+  .commentBar {
+    right: auto;
+    left: calc(50% - #{$device-content-max * 0.5});
+    width: $device-content-max;
+  }
 }

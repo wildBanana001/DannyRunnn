@@ -1,5 +1,5 @@
 export default definePageConfig({
-  navigationBarTitleText: '商品详情',
-  navigationBarBackgroundColor: '#FFFFFF',
-  backgroundColor: '#F7F6F2'
+  navigationBarTitleText: '今晚喝一杯',
+  navigationBarBackgroundColor: '#FAF9E7',
+  backgroundColor: '#FAF9E7'
 });

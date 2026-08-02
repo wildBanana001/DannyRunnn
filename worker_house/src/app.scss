@@ -11,6 +11,9 @@
 }
 
 page {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
   background-color: $color-oat;
   font-family: $font-family-base;
   font-weight: 400;
@@ -30,6 +33,12 @@ textarea {
   box-sizing: border-box;
 }
 
+image,
+swiper,
+scroll-view {
+  max-width: 100%;
+}
+
 ::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -44,11 +53,13 @@ textarea {
 // H5 预览在桌面端保持真实的小程序画布宽度，避免 rpx 被超宽视口放大。
 @media screen and (min-width: 768px) {
   body {
+    min-width: 0;
+    overflow-x: hidden;
     background: $color-oat;
   }
 
   .taro-tabbar__container {
-    width: 390PX;
+    width: $device-content-max;
     max-width: 100%;
     margin: 0 auto;
   }

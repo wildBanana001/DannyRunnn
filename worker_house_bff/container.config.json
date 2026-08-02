@@ -12,7 +12,6 @@
     "CLOUD_ENV_ID": "prod-d9g991lo4dba5a4da",
     "WECHAT_APP_ID": "wx06f0bff0bed0dc80",
     "ALLOW_EPHEMERAL_CLOUDRUN_DATA": "false",
-    "ENABLE_SHOP": "false",
     "SHOP_ORDER_STORAGE": "cloudbase",
     "SHOP_ORDER_COLLECTION": "shop_orders"
   },

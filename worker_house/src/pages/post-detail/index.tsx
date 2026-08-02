@@ -4,6 +4,7 @@ import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import avatarFallback from '@/assets/illustrations/avatar-frame.png';
 import { commentWallPost, fetchPostDetail } from '@/cloud/services';
 import type { Comment, Post } from '@/types/post';
@@ -19,6 +20,7 @@ const PostDetailPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const viewportStyle = useViewportLayout();
 
   const loadPost = useCallback(async () => {
     if (!postId) {
@@ -79,7 +81,7 @@ const PostDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <View className={styles.container}>
+      <View className={styles.container} style={viewportStyle}>
         <Text className={styles.loadingText}>加载中...</Text>
       </View>
     );
@@ -87,7 +89,7 @@ const PostDetailPage: React.FC = () => {
 
   if (!post || errorMessage) {
     return (
-      <View className={styles.container}>
+      <View className={styles.container} style={viewportStyle}>
         <EmptyState title="没有找到这条留言" description={errorMessage || '帖子可能已被删除。'}>
           <Button block type="outline" onClick={() => void loadPost()}>重新加载</Button>
         </EmptyState>
@@ -96,7 +98,7 @@ const PostDetailPage: React.FC = () => {
   }
 
   return (
-    <View className={styles.container}>
+    <View className={styles.container} style={viewportStyle}>
       <ScrollView className={styles.scrollView} scrollY enableFlex>
         <View className={styles.postCard}>
           <View className={styles.header}>

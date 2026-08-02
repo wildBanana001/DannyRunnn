@@ -14,7 +14,7 @@ import styles from './index.module.scss';
 type ResultStatus = 'success' | 'pending' | 'fail';
 
 const COPY: Record<ResultStatus, { icon: string; title: string; subtitle: string }> = {
-  success: { icon: '✓', title: '支付成功', subtitle: '订单已经确认，我们会尽快安排后续处理。' },
+  success: { icon: '✓', title: '支付成功', subtitle: '订单已经确认，到店后出示订单即可。' },
   pending: { icon: '…', title: '等待支付确认', subtitle: '取消支付或回调延迟都不会丢单，可以继续支付或稍后查看。' },
   fail: { icon: '!', title: '支付未完成', subtitle: '订单没有完成支付，请稍后重试。' },
 };
@@ -34,6 +34,7 @@ const PaymentResultPage: React.FC = () => {
       ? 'pending'
       : 'fail';
   const [status, setStatus] = useState<ResultStatus>(initialStatus);
+  const [isFree, setIsFree] = useState(false);
   const [checking, setChecking] = useState(Boolean(orderId));
   const [retrying, setRetrying] = useState(false);
 
@@ -43,6 +44,7 @@ const PaymentResultPage: React.FC = () => {
       setChecking(true);
       const order = await fetchShopOrder(orderId);
       setStatus(mapOrderStatus(order.status));
+      setIsFree(order.amount <= 0);
     } catch (error) {
       console.warn('[shop] refresh payment status failed', error);
     } finally {
@@ -62,6 +64,7 @@ const PaymentResultPage: React.FC = () => {
       await launchShopPayment(session);
       const order = await confirmShopPayment(orderId);
       setStatus(mapOrderStatus(order.status));
+      setIsFree(order.amount <= 0);
     } catch (error) {
       if (!isPaymentCancelled(error)) {
         const message = error instanceof Error ? error.message : '支付重试失败';
@@ -72,7 +75,13 @@ const PaymentResultPage: React.FC = () => {
     }
   };
 
-  const copy = COPY[status];
+  const copy = isFree
+    ? status === 'success'
+      ? { icon: '✓', title: '领取成功', subtitle: '订单已经确认，到店后出示订单即可。' }
+      : status === 'pending'
+        ? { icon: '…', title: '等待领取确认', subtitle: '订单仍在确认中，可以继续领取或稍后查看。' }
+        : { icon: '!', title: '领取未完成', subtitle: '订单没有完成确认，请稍后重试。' }
+    : COPY[status];
 
   return (
     <View className={styles.container}>
@@ -87,7 +96,7 @@ const PaymentResultPage: React.FC = () => {
       <View className={styles.actions}>
         {status === 'pending' && !checking ? (
           <View className={styles.primaryBtn} onClick={handleRetry}>
-            <Text className={styles.primaryBtnText}>{retrying ? '正在拉起支付…' : '继续支付'}</Text>
+            <Text className={styles.primaryBtnText}>{retrying ? '正在处理…' : (isFree ? '继续领取' : '继续支付')}</Text>
           </View>
         ) : null}
         <View className={status === 'pending' ? styles.ghostBtn : styles.primaryBtn} onClick={() => Taro.redirectTo({ url: '/pages/shop/my-orders/index' })}>

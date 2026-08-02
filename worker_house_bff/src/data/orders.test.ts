@@ -3,13 +3,20 @@ import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test, { after } from 'node:test';
 import {
+  ActivityCapacityExceededError,
   claimOrderPaymentPreparation,
+  createActivityOrderWithCapacity,
   createOrder,
   finishOrderPaymentPreparation,
   getOrderById,
   getOrdersByOpenid,
   getOrdersByProductId,
+  settleFreeOrder,
+  unwrapCloudTransactionDocuments,
+  updateOrderStatus,
 } from './orders.js';
+import { getProductById, listProducts, normalizeShopProduct } from './shop.js';
+import { resolveShopOrderAddress } from '../routes/shop.js';
 
 const storageFilePath = fileURLToPath(new URL('./orders.store.json', import.meta.url));
 rmSync(storageFilePath, { force: true });
@@ -33,12 +40,48 @@ function createPendingOrder(amount = 5_990) {
       district: '南山区',
       detail: '测试地址',
     },
+    fulfillmentType: 'delivery',
+    fulfillmentLabel: '快递配送',
+    unitLabel: '件',
     openid: 'openid-test',
     status: 'pending',
     mock: false,
     expiresAt: new Date(Date.now() + 15 * 60 * 1_000).toISOString(),
   });
 }
+
+function buildCapacityActivityOrder(id: string, activityId: string, openid: string) {
+  return {
+    id,
+    kind: 'activity' as const,
+    clientRequestId: `request-${id}`,
+    productId: activityId,
+    productName: '并发名额测试活动',
+    productImageUrl: '',
+    unitPrice: 9_900,
+    quantity: 1,
+    amount: 9_900,
+    address: null,
+    fulfillmentType: 'onsite' as const,
+    fulfillmentLabel: '现场参与',
+    unitLabel: '位',
+    openid,
+    status: 'pending' as const,
+    mock: false,
+    expiresAt: new Date(Date.now() + 15 * 60 * 1_000).toISOString(),
+  };
+}
+
+test('unwraps CloudBase Gateway transaction document responses', () => {
+  const order = { id: 'WA_GATEWAY_WRAPPER', kind: 'activity' };
+  assert.deepEqual(unwrapCloudTransactionDocuments(order), [order]);
+  assert.deepEqual(unwrapCloudTransactionDocuments([order]), [order]);
+  assert.deepEqual(unwrapCloudTransactionDocuments({ list: [order] }), [order]);
+  assert.deepEqual(unwrapCloudTransactionDocuments([{ list: [order] }]), [order]);
+  assert.deepEqual(unwrapCloudTransactionDocuments({ data: { list: [order] } }), [order]);
+  assert.deepEqual(unwrapCloudTransactionDocuments({ list: [null] }), []);
+  assert.deepEqual(unwrapCloudTransactionDocuments(null), []);
+});
 
 test('keeps order creation idempotent and serializes prepay_id preparation', async () => {
   const created = await createPendingOrder();
@@ -82,7 +125,10 @@ test('stores activity registrations separately from shop orders', async () => {
     unitPrice: 12_800,
     quantity: 1,
     amount: 12_800,
-    address: { name: '', phone: '', province: '', city: '', district: '', detail: '' },
+    address: null,
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '现场参与',
+    unitLabel: '位',
     openid: 'openid-test',
     status: 'pending',
     mock: false,
@@ -109,8 +155,197 @@ test('stores activity registrations separately from shop orders', async () => {
   });
 
   assert.equal(activityOrder.kind, 'activity');
+  assert.equal(activityOrder.address, null);
+  assert.equal(activityOrder.fulfillmentType, 'onsite');
+  assert.equal(activityOrder.fulfillmentLabel, '现场参与');
+  assert.equal(activityOrder.unitLabel, '位');
   assert.equal(activityOrder.activityRegistration?.profileId, 'profile-001');
   assert.deepEqual((await getOrdersByOpenid('openid-test', 'activity')).map((item) => item.id), [activityOrder.id]);
   assert.deepEqual((await getOrdersByProductId('act-001', 'activity')).map((item) => item.id), [activityOrder.id]);
   assert.equal((await getOrderById(activityOrder.id))?.activityRegistration?.participantNickname, '测试用户');
+});
+
+test('normalizes legacy shop products and only lists enabled products', () => {
+  const legacyProduct = normalizeShopProduct({
+    id: 'legacy-product',
+    name: '历史商品',
+  });
+  assert.equal(legacyProduct.fulfillmentType, 'delivery');
+  assert.equal(legacyProduct.fulfillmentLabel, '快递配送');
+  assert.equal(legacyProduct.unitLabel, '件');
+  assert.equal(legacyProduct.alcoholic, false);
+  assert.equal(legacyProduct.abv, 0);
+  assert.equal(legacyProduct.volumeMl, 0);
+  assert.equal(legacyProduct.enabled, true);
+  assert.equal('stock' in legacyProduct, false);
+
+  const disabledProduct = normalizeShopProduct({
+    id: 'disabled-product',
+    enabled: false,
+    fulfillmentType: 'pickup',
+  });
+  assert.equal(disabledProduct.enabled, false);
+  assert.equal(disabledProduct.fulfillmentType, 'pickup');
+  assert.equal(disabledProduct.fulfillmentLabel, '到店自提');
+
+  const listedProducts = listProducts();
+  assert.equal(listedProducts.length, 6);
+  assert.ok(listedProducts.every((item) => item.enabled));
+  assert.ok(listedProducts.every((item) => item.category === 'cocktail'));
+  assert.ok(listedProducts.every((item) => item.fulfillmentType === 'onsite'));
+  assert.equal(listedProducts.some((item) => item.id === 'prod-coffee-box'), false);
+  assert.equal(getProductById('prod-coffee-box')?.enabled, false);
+  assert.equal(getProductById(listedProducts[0].id)?.id, listedProducts[0].id);
+});
+
+test('requires addresses only for delivery fulfillment', () => {
+  const address = {
+    name: '测试用户',
+    phone: '13800138000',
+    province: '广东省',
+    city: '深圳市',
+    district: '南山区',
+    detail: '测试地址',
+  };
+  assert.deepEqual(resolveShopOrderAddress('delivery', address), address);
+  assert.equal(resolveShopOrderAddress('delivery', null), null);
+  assert.equal(resolveShopOrderAddress('onsite', address), null);
+  assert.equal(resolveShopOrderAddress('pickup', address), null);
+});
+
+test('settles free onsite shop orders without preparing WeChat payment', async () => {
+  const timestamp = new Date().toISOString();
+  const pendingOrder = await createOrder({
+    id: 'WHFREE0123456789ABCDEF0123456789',
+    clientRequestId: 'shop-free-onsite-test',
+    productId: 'prod-free-onsite',
+    productName: '免费到店兑换',
+    productImageUrl: '',
+    unitPrice: 0,
+    quantity: 1,
+    amount: 0,
+    address: null,
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '现场享用',
+    unitLabel: '杯',
+    openid: 'openid-free-test',
+    status: 'pending',
+    mock: false,
+    expiresAt: timestamp,
+  });
+  const order = await settleFreeOrder(pendingOrder);
+
+  assert.equal(order.amount, 0);
+  assert.equal(order.status, 'paid');
+  assert.equal(order.mock, false);
+  assert.equal(order.prepayId, '');
+  assert.equal(order.paymentPreparationToken, '');
+  assert.equal(order.transactionId, `FREE_SHOP_${order.id}`);
+  assert.ok(order.paidAt);
+  assert.equal(order.address, null);
+  assert.equal(order.fulfillmentType, 'onsite');
+  assert.equal(order.fulfillmentLabel, '现场享用');
+  assert.equal(order.unitLabel, '杯');
+});
+
+test('atomically allows only one concurrent activity reservation for the last seat', async () => {
+  const activityId = 'act-capacity-race';
+  const results = await Promise.allSettled([
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder('WA_CAPACITY_RACE_FIRST', activityId, 'openid-capacity-first'),
+      { currentParticipants: 0, maxParticipants: 1 },
+    ),
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder('WA_CAPACITY_RACE_SECOND', activityId, 'openid-capacity-second'),
+      { currentParticipants: 0, maxParticipants: 1 },
+    ),
+  ]);
+
+  assert.equal(results.filter((item) => item.status === 'fulfilled').length, 1);
+  const rejected = results.find((item) => item.status === 'rejected');
+  assert.ok(rejected && rejected.status === 'rejected');
+  assert.ok(rejected.reason instanceof ActivityCapacityExceededError);
+  assert.equal((await getOrdersByProductId(activityId, 'activity')).length, 1);
+});
+
+test('keeps concurrent activity reservation retries idempotent', async () => {
+  const activityId = 'act-capacity-idempotent';
+  const input = buildCapacityActivityOrder(
+    'WA_CAPACITY_IDEMPOTENT',
+    activityId,
+    'openid-capacity-idempotent',
+  );
+  const [first, duplicate] = await Promise.all([
+    createActivityOrderWithCapacity(input, { currentParticipants: 0, maxParticipants: 1 }),
+    createActivityOrderWithCapacity(input, { currentParticipants: 0, maxParticipants: 1 }),
+  ]);
+
+  assert.equal(duplicate.id, first.id);
+  assert.equal((await getOrdersByProductId(activityId, 'activity')).length, 1);
+});
+
+test('deduplicates concurrent reservations for the same openid and activity', async () => {
+  const activityId = 'act-capacity-openid';
+  const openid = 'openid-capacity-shared';
+  const [first, duplicate] = await Promise.all([
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder('WA_CAPACITY_OPENID_FIRST', activityId, openid),
+      { currentParticipants: 0, maxParticipants: 2 },
+    ),
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder('WA_CAPACITY_OPENID_SECOND', activityId, openid),
+      { currentParticipants: 0, maxParticipants: 2 },
+    ),
+  ]);
+
+  assert.equal(duplicate.id, first.id);
+  assert.equal((await getOrdersByProductId(activityId, 'activity')).length, 1);
+});
+
+test('rejects activity reservations when base participants already fill capacity', async () => {
+  const activityId = 'act-capacity-full';
+  await assert.rejects(
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder('WA_CAPACITY_FULL', activityId, 'openid-capacity-full'),
+      { currentParticipants: 2, maxParticipants: 2 },
+    ),
+    ActivityCapacityExceededError,
+  );
+  assert.equal((await getOrdersByProductId(activityId, 'activity')).length, 0);
+});
+
+test('keeps expired pending activity orders reserved until they are explicitly closed', async () => {
+  const activityId = 'act-capacity-expired-pending';
+  const expiredInput = {
+    ...buildCapacityActivityOrder(
+      'WA_CAPACITY_EXPIRED_PENDING',
+      activityId,
+      'openid-capacity-expired',
+    ),
+    expiresAt: new Date(Date.now() - 60_000).toISOString(),
+  };
+  await createActivityOrderWithCapacity(expiredInput, { currentParticipants: 0, maxParticipants: 1 });
+
+  await assert.rejects(
+    createActivityOrderWithCapacity(
+      buildCapacityActivityOrder(
+        'WA_CAPACITY_AFTER_EXPIRED',
+        activityId,
+        'openid-capacity-after-expired',
+      ),
+      { currentParticipants: 0, maxParticipants: 1 },
+    ),
+    ActivityCapacityExceededError,
+  );
+
+  await updateOrderStatus(expiredInput.id, 'closed', { failureReason: '报名支付超时' });
+  const replacement = await createActivityOrderWithCapacity(
+    buildCapacityActivityOrder(
+      'WA_CAPACITY_AFTER_CLOSED',
+      activityId,
+      'openid-capacity-after-closed',
+    ),
+    { currentParticipants: 0, maxParticipants: 1 },
+  );
+  assert.equal(replacement.id, 'WA_CAPACITY_AFTER_CLOSED');
 });

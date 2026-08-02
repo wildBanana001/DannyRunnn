@@ -3,6 +3,7 @@ import type { Address } from './address';
 import { getPaymentApiMode, requestWithMode, type RequestOptions } from './request';
 
 export type ShopOrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
+export type ShopFulfillmentType = 'delivery' | 'pickup' | 'onsite';
 
 export interface ShopProduct {
   id: string;
@@ -11,8 +12,15 @@ export interface ShopProduct {
   originalPrice: number;
   imageUrl: string;
   description: string;
-  stock: number;
   tags: string[];
+  category: string;
+  fulfillmentType: ShopFulfillmentType;
+  fulfillmentLabel: string;
+  unitLabel: string;
+  alcoholic: boolean;
+  abv: number;
+  volumeMl: number;
+  enabled: boolean;
 }
 
 export interface ShopAddressSnapshot {
@@ -33,7 +41,10 @@ export interface ShopOrder {
   unitPrice: number;
   quantity: number;
   amount: number;
-  address: ShopAddressSnapshot;
+  address: ShopAddressSnapshot | null;
+  fulfillmentType: ShopFulfillmentType;
+  fulfillmentLabel: string;
+  unitLabel: string;
   remark: string;
   status: ShopOrderStatus;
   mock: boolean;
@@ -63,18 +74,18 @@ export interface ShopPaymentSession {
 export interface StartShopPaymentInput {
   productId: string;
   quantity: number;
-  address: Address | ShopAddressSnapshot;
+  address?: Address | ShopAddressSnapshot | null;
   remark?: string;
   clientRequestId: string;
 }
 
 const MOCK_PRODUCTS: ShopProduct[] = [
-  { id: 'prod-coffee-box', name: '社畜续命挂耳咖啡礼盒', price: 59.9, originalPrice: 89, imageUrl: '', description: '打工人早八续命必备，10 包精品挂耳，一口回魂，续航一整天。', stock: 200, tags: ['续命', '咖啡', '热销'] },
-  { id: 'prod-fish-tote', name: '摸鱼快乐屋帆布袋', price: 39, originalPrice: 59, imageUrl: '', description: '加厚帆布，容量超大，装下电脑也装得下摸鱼的心，通勤上班一包搞定。', stock: 150, tags: ['帆布袋', '通勤', '摸鱼'] },
-  { id: 'prod-stress-ball', name: '打工人解压捏捏乐', price: 19.9, originalPrice: 29.9, imageUrl: '', description: '开会想爆炸？捏它。需求又改了？捏它。软糯回弹，解压第一名。', stock: 300, tags: ['解压', '办公桌面'] },
-  { id: 'prod-thermos-cup', name: '早八人保命保温杯', price: 69, originalPrice: 99, imageUrl: '', description: '316 不锈钢内胆，12 小时长效保温，养生朋克的枸杞就靠它了。', stock: 120, tags: ['保温杯', '养生', '早八'] },
-  { id: 'prod-monday-stickers', name: '周一不上班主题贴纸包', price: 12.9, originalPrice: 19.9, imageUrl: '', description: '30 张防水贴纸，把不想上班的心情贴在电脑、水杯和工牌上。', stock: 500, tags: ['贴纸', '周边', '低价'] },
-  { id: 'prod-off-work-slippers', name: '社畜下班快乐拖鞋', price: 45, originalPrice: 69, imageUrl: '', description: '轻软 EVA 鞋底，回家第一件事就是换上它，宣告今天的班上完了。', stock: 180, tags: ['拖鞋', '居家', '解放双脚'] },
+  { id: 'cocktail-afterwork-sour', name: '下班快乐威士忌酸', price: 39.9, originalPrice: 49, imageUrl: '', description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。', tags: ['威士忌', '酸甜', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 14, volumeMl: 180, enabled: true },
+  { id: 'cocktail-mint-mojito', name: '薄荷青柠莫吉托', price: 36, originalPrice: 45, imageUrl: '', description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。', tags: ['朗姆酒', '清爽', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 10, volumeMl: 300, enabled: true },
+  { id: 'cocktail-berry-fizz', name: '莓果微醺气泡', price: 42, originalPrice: 52, imageUrl: '', description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。', tags: ['莓果', '气泡', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 8, volumeMl: 300, enabled: true },
+  { id: 'cocktail-sunset-highball', name: '落日柑橘嗨棒', price: 38, originalPrice: 48, imageUrl: '', description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。', tags: ['嗨棒', '柑橘', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 9, volumeMl: 320, enabled: true },
+  { id: 'cocktail-espresso-martini', name: '浓缩咖啡马天尼', price: 46, originalPrice: 56, imageUrl: '', description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。', tags: ['咖啡', '醇香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 16, volumeMl: 180, enabled: true },
+  { id: 'cocktail-elderflower-zero', name: '接骨木花零度特调', price: 32, originalPrice: 39, imageUrl: '', description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。', tags: ['无酒精', '花香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: false, abv: 0, volumeMl: 300, enabled: true },
 ];
 
 const MOCK_ORDER_STORAGE_KEY = 'worker-house-mock-shop-orders-v2';
@@ -113,6 +124,14 @@ function resolveAssetUrl(imageUrl: string): string {
 function normalizeProduct(product: ShopProduct): ShopProduct {
   return {
     ...product,
+    category: product.category?.trim() || 'general',
+    fulfillmentType: product.fulfillmentType === 'onsite' || product.fulfillmentType === 'pickup' ? product.fulfillmentType : 'delivery',
+    fulfillmentLabel: product.fulfillmentLabel?.trim() || (product.fulfillmentType === 'onsite' ? '到店享用' : product.fulfillmentType === 'pickup' ? '到店自取' : '快递配送'),
+    unitLabel: product.unitLabel?.trim() || '件',
+    alcoholic: Boolean(product.alcoholic),
+    abv: Math.max(0, Number(product.abv) || 0),
+    volumeMl: Math.max(0, Number(product.volumeMl) || 0),
+    enabled: product.enabled !== false,
     imageUrl: resolveAssetUrl(product.imageUrl),
   };
 }
@@ -120,13 +139,17 @@ function normalizeProduct(product: ShopProduct): ShopProduct {
 function normalizeOrder(order: ShopOrder): ShopOrder {
   return {
     ...order,
+    address: order.address || null,
+    fulfillmentType: order.fulfillmentType === 'onsite' || order.fulfillmentType === 'pickup' ? order.fulfillmentType : 'delivery',
+    fulfillmentLabel: order.fulfillmentLabel?.trim() || (order.fulfillmentType === 'onsite' ? '到店享用' : order.fulfillmentType === 'pickup' ? '到店自取' : '快递配送'),
+    unitLabel: order.unitLabel?.trim() || '件',
     productImageUrl: resolveAssetUrl(order.productImageUrl),
   };
 }
 
 function getMockOrders(): ShopOrder[] {
   const cached = Taro.getStorageSync<ShopOrder[] | null>(MOCK_ORDER_STORAGE_KEY);
-  return Array.isArray(cached) ? cached : [];
+  return Array.isArray(cached) ? cached.map(normalizeOrder) : [];
 }
 
 function saveMockOrders(orders: ShopOrder[]) {
@@ -139,9 +162,12 @@ function createMockPayment(input: StartShopPaymentInput): ShopPaymentSession {
     throw new Error('商品不存在');
   }
 
-  const quantity = Math.max(1, Math.min(product.stock, Math.floor(input.quantity || 1)));
-  const address = normalizeAddress(input.address);
-  if (!address.name || !address.phone || !address.detail) {
+  const quantity = Number(input.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+    throw new Error('购买数量有误');
+  }
+  const address = input.address ? normalizeAddress(input.address) : null;
+  if (product.fulfillmentType === 'delivery' && (!address?.name || !address.phone || !address.detail)) {
     throw new Error('请先填写完整收货地址');
   }
 
@@ -167,7 +193,10 @@ function createMockPayment(input: StartShopPaymentInput): ShopPaymentSession {
     unitPrice: Math.round(product.price * 100),
     quantity,
     amount: Math.round(product.price * 100) * quantity,
-    address,
+    address: product.fulfillmentType === 'delivery' ? address : null,
+    fulfillmentType: product.fulfillmentType,
+    fulfillmentLabel: product.fulfillmentLabel,
+    unitLabel: product.unitLabel,
     remark: input.remark?.trim() || '',
     status: 'paid',
     mock: true,
@@ -223,14 +252,16 @@ export async function startShopPayment(input: StartShopPaymentInput): Promise<Sh
     return createMockPayment(input);
   }
 
+  const data = {
+    productId: input.productId,
+    quantity: input.quantity,
+    remark: input.remark?.trim() || '',
+    clientRequestId: input.clientRequestId,
+    ...(input.address ? { address: normalizeAddress(input.address) } : {}),
+  };
+
   return shopRequest<ShopPaymentSession>({
-    data: {
-      productId: input.productId,
-      quantity: input.quantity,
-      address: normalizeAddress(input.address),
-      remark: input.remark?.trim() || '',
-      clientRequestId: input.clientRequestId,
-    },
+    data,
     method: 'POST',
     path: '/api/shop/orders/pay',
   });
@@ -252,7 +283,7 @@ export async function retryShopPayment(orderId: string): Promise<ShopPaymentSess
 }
 
 export async function launchShopPayment(session: ShopPaymentSession): Promise<void> {
-  if (session.mock || session.status === 'paid') {
+  if (session.amount <= 0 || session.mock || session.status === 'paid') {
     return;
   }
   if (!session.payment) {

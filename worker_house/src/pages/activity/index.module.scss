@@ -1,12 +1,14 @@
 @use '@/styles/variables.scss' as *;
 
 .container {
-  min-height: 100vh;
+  height: var(--app-window-height, 100vh);
+  min-height: var(--app-window-height, 100vh);
+  overflow-x: hidden;
   background: $color-oat;
 }
 
 .pageIntro {
-  padding: calc(env(safe-area-inset-top) + 50rpx) 32rpx 34rpx;
+  padding: var(--app-header-top, calc(env(safe-area-inset-top) + 50rpx)) 32rpx 34rpx;
 }
 
 .eyebrow,
@@ -261,5 +263,5 @@
 }
 
 .bottomSpacing {
-  height: 40rpx;
+  height: calc(var(--app-safe-bottom, env(safe-area-inset-bottom)) + 40rpx);
 }

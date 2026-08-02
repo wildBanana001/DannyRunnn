@@ -2,9 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { Router, type RequestHandler, type Response } from 'express';
 import { config } from '../config.js';
 import { getActivityById } from '../data/activities.js';
-import { getProductById, listProducts } from '../data/shop.js';
+import { getProductById, listProducts, type ShopFulfillmentType } from '../data/shop.js';
 import {
   createOrder,
+  createActivityOrderWithCapacity,
   claimOrderPaymentPreparation,
   checkOrderStorageReady,
   finishOrderPaymentPreparation,
@@ -12,6 +13,9 @@ import {
   getOrderStorageType,
   getOrdersByOpenid,
   getOrdersByProductId,
+  isActivityCapacityExceededError,
+  isActivityCapacityInitializationError,
+  settleFreeOrder,
   updateOrderStatus,
   type ActivityRegistrationSnapshot,
   type OrderAddressSnapshot,
@@ -96,6 +100,13 @@ function parseAddress(value: unknown): OrderAddressSnapshot | null {
   return address;
 }
 
+export function resolveShopOrderAddress(
+  fulfillmentType: ShopFulfillmentType,
+  value: unknown,
+): OrderAddressSnapshot | null {
+  return fulfillmentType === 'delivery' ? parseAddress(value) : null;
+}
+
 function parseActivityRegistration(value: unknown, activityId: string): ActivityRegistrationSnapshot | null {
   if (!value || typeof value !== 'object') return null;
   const input = value as Record<string, unknown>;
@@ -149,7 +160,7 @@ function matchesPaymentRequest(
     productId: string;
     quantity: number;
     amount: number;
-    address: OrderAddressSnapshot;
+    address: OrderAddressSnapshot | null;
     remark: string;
   },
 ) {
@@ -171,9 +182,20 @@ function matchesActivityPaymentRequest(
     amount: number;
   },
 ) {
+  return order.clientRequestId === input.clientRequestId
+    && matchesActivityPaymentDetails(order, input);
+}
+
+function matchesActivityPaymentDetails(
+  order: OrderRecord,
+  input: {
+    activityId: string;
+    profile: ActivityRegistrationSnapshot;
+    amount: number;
+  },
+) {
   const storedProfile = order.activityRegistration;
   return order.kind === 'activity'
-    && order.clientRequestId === input.clientRequestId
     && order.productId === input.activityId
     && storedProfile?.profileId === input.profile.profileId
     && storedProfile.participantNickname === input.profile.participantNickname
@@ -194,6 +216,9 @@ function toPublicOrder(order: OrderRecord) {
     quantity: order.quantity,
     amount: order.amount,
     address: order.address,
+    fulfillmentType: order.fulfillmentType,
+    fulfillmentLabel: order.fulfillmentLabel,
+    unitLabel: order.unitLabel,
     remark: order.remark,
     status: order.status,
     mock: order.mock,
@@ -288,6 +313,9 @@ async function applyWechatOrderState(order: OrderRecord, result: WechatPayOrderR
 }
 
 async function refreshWechatOrder(order: OrderRecord): Promise<OrderRecord> {
+  if (order.status === 'pending' && order.amount === 0) {
+    return await settleFreeOrder(order);
+  }
   if (order.mock || order.status !== 'pending' || !isWechatPayConfigured()) return order;
   try {
     return await applyWechatOrderState(order, await queryWechatPayOrder(order.id));
@@ -295,6 +323,42 @@ async function refreshWechatOrder(order: OrderRecord): Promise<OrderRecord> {
     if (error instanceof WechatPayApiError && error.code === 'ORDER_NOT_EXIST') return order;
     console.warn(`[shop] query order failed id=${order.id}`, error instanceof Error ? error.message : error);
     return order;
+  }
+}
+
+async function closePendingOrderSafely(
+  order: OrderRecord,
+  failureReason: string,
+  requireExpired = true,
+): Promise<OrderRecord> {
+  let latest = await refreshWechatOrder(order);
+  if (latest.status !== 'pending' || (requireExpired && !isExpired(latest))) return latest;
+
+  if (!latest.mock && latest.amount > 0) {
+    if (!isWechatPayConfigured()) return latest;
+    try {
+      await closeWechatPayOrder(latest.id);
+    } catch (error) {
+      if (!(error instanceof WechatPayApiError && error.code === 'ORDER_NOT_EXIST')) {
+        latest = await refreshWechatOrder(latest);
+        if (latest.status !== 'pending') return latest;
+        console.warn(
+          `[shop] keep expired reservation after close failure id=${latest.id}`,
+          error instanceof Error ? error.message : error,
+        );
+        return latest;
+      }
+    }
+  }
+
+  return await updateOrderStatus(latest.id, 'closed', { failureReason }) || latest;
+}
+
+async function closeExpiredActivityOrders(activityId: string) {
+  const orders = await getOrdersByProductId(activityId, 'activity');
+  const expiredOrders = orders.filter((item) => item.status === 'pending' && isExpired(item));
+  for (const order of expiredOrders) {
+    await closePendingOrderSafely(order, '报名支付超时');
   }
 }
 
@@ -311,6 +375,7 @@ function assertOrderOwner(order: OrderRecord | null, openid: string, response: R
 }
 
 async function prepareRealPayment(order: OrderRecord): Promise<OrderRecord> {
+  if (order.amount === 0) return settleFreeOrder(order);
   if (order.prepayId) return order;
 
   const token = randomUUID();
@@ -458,28 +523,28 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
   try {
     const productId = sanitizeString(request.body?.productId, 80);
     const quantity = parseQuantity(request.body?.quantity);
-    const address = parseAddress(request.body?.address);
     const remark = sanitizeString(request.body?.remark, 80);
     const clientRequestId = sanitizeString(request.body?.clientRequestId, 64);
 
-    if (!productId || !quantity || !address || !CLIENT_REQUEST_ID_PATTERN.test(clientRequestId)) {
+    if (!productId || !quantity || !CLIENT_REQUEST_ID_PATTERN.test(clientRequestId)) {
       response.status(400).json({ message: '订单参数不完整或格式错误' });
       return;
     }
 
     const product = getProductById(productId);
-    if (!product) {
-      response.status(404).json({ message: '商品不存在' });
+    if (!product || !product.enabled) {
+      response.status(404).json({ message: '商品不存在或已下架' });
       return;
     }
-    if (product.stock <= 0 || quantity > product.stock) {
-      response.status(409).json({ message: '商品库存不足' });
+    const address = resolveShopOrderAddress(product.fulfillmentType, request.body?.address);
+    if (product.fulfillmentType === 'delivery' && !address) {
+      response.status(400).json({ message: '请填写完整的收货地址' });
       return;
     }
 
     const unitPrice = Math.round(product.price * 100);
     const amount = unitPrice * quantity;
-    if (!Number.isSafeInteger(amount) || amount <= 0) {
+    if (!Number.isSafeInteger(amount) || amount < 0) {
       response.status(400).json({ message: '订单金额异常' });
       return;
     }
@@ -496,6 +561,10 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
         response.json(toPaymentSession(existing));
         return;
       }
+      if (existing.status === 'pending' && existing.amount === 0) {
+        response.json(toPaymentSession(await settleFreeOrder(existing)));
+        return;
+      }
       if (existing.status !== 'pending' || isExpired(existing)) {
         response.status(409).json({ message: '原订单已失效，请刷新页面重新下单' });
         return;
@@ -507,12 +576,14 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
 
     const expiresAt = buildExpiresAt();
     const isMockPayment = config.cloudMode === 'mock';
+    const isFreeOrder = amount === 0;
 
-    if (!isMockPayment && !isWechatPayConfigured()) {
+    if (!isMockPayment && !isFreeOrder && !isWechatPayConfigured()) {
       response.status(503).json({ message: '微信支付尚未完成配置，请联系管理员' });
       return;
     }
 
+    const timestamp = new Date().toISOString();
     let order = await createOrder({
       id: outTradeNo,
       kind: 'shop',
@@ -524,12 +595,19 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
       quantity,
       amount,
       address,
+      fulfillmentType: product.fulfillmentType,
+      fulfillmentLabel: product.fulfillmentLabel,
+      unitLabel: product.unitLabel,
       openid,
       remark,
-      status: isMockPayment ? 'paid' : 'pending',
+      status: isMockPayment || isFreeOrder ? 'paid' : 'pending',
       mock: isMockPayment,
-      transactionId: isMockPayment ? `MOCK_TX_${Date.now()}` : '',
-      paidAt: isMockPayment ? new Date().toISOString() : '',
+      transactionId: isMockPayment
+        ? `MOCK_TX_${Date.now()}`
+        : isFreeOrder
+          ? `FREE_SHOP_${outTradeNo}`
+          : '',
+      paidAt: isMockPayment || isFreeOrder ? timestamp : '',
       expiresAt,
     });
 
@@ -538,7 +616,9 @@ shopRouter.post('/orders/pay', requireShopEnabled, wxPaymentAuth, asyncHandler(a
       return;
     }
 
-    if (!isMockPayment) {
+    if (isFreeOrder) {
+      if (order.status === 'pending') order = await settleFreeOrder(order);
+    } else if (!isMockPayment) {
       order = await prepareRealPayment(order);
     }
     response.json(toPaymentSession(order));
@@ -573,14 +653,15 @@ shopRouter.post('/orders/:id/retry', requireShopEnabled, wxPaymentAuth, asyncHan
     return;
   }
   if (isExpired(refreshed)) {
-    if (!refreshed.mock && isWechatPayConfigured()) {
-      try {
-        await closeWechatPayOrder(refreshed.id);
-      } catch (error) {
-        console.warn(`[shop] close expired order failed id=${refreshed.id}`, error instanceof Error ? error.message : error);
-      }
+    const closed = await closePendingOrderSafely(refreshed, '订单支付超时');
+    if (closed.status === 'paid') {
+      response.json(toPaymentSession(closed));
+      return;
     }
-    await updateOrderStatus(refreshed.id, 'closed', { failureReason: '订单支付超时' });
+    if (closed.status === 'pending') {
+      response.status(503).json({ message: '订单状态正在确认，请稍后重试' });
+      return;
+    }
     response.status(409).json({ message: '订单已超时，请重新下单' });
     return;
   }
@@ -667,7 +748,22 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
         response.json(toActivityPaymentSession(existing));
         return;
       }
-      if (existing.status !== 'pending' || isExpired(existing)) {
+      if (existing.status === 'pending' && existing.amount === 0) {
+        response.json(toActivityPaymentSession(await settleFreeOrder(existing)));
+        return;
+      }
+      if (existing.status === 'pending' && isExpired(existing)) {
+        const closed = await closePendingOrderSafely(existing, '报名支付超时');
+        if (closed.status === 'paid') {
+          response.json(toActivityPaymentSession(closed));
+          return;
+        }
+        response.status(closed.status === 'pending' ? 503 : 409).json({
+          message: closed.status === 'pending' ? '报名状态正在确认，请稍后重试' : '原报名支付单已失效，请刷新页面重新报名',
+        });
+        return;
+      }
+      if (existing.status !== 'pending') {
         response.status(409).json({ message: '原报名支付单已失效，请刷新页面重新报名' });
         return;
       }
@@ -676,6 +772,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
       return;
     }
 
+    await closeExpiredActivityOrders(activityId);
     const ownActivityOrders = (await getOrdersByOpenid(openid, 'activity'))
       .filter((item) => item.productId === activityId);
     for (const previous of ownActivityOrders) {
@@ -684,23 +781,28 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
         response.json(toActivityPaymentSession(refreshed));
         return;
       }
+      if (refreshed.status === 'pending' && !matchesActivityPaymentDetails(refreshed, paymentRequest)) {
+        const closed = await closePendingOrderSafely(refreshed, '报名资料或活动金额已变更', false);
+        if (closed.status === 'paid') {
+          response.json(toActivityPaymentSession(closed));
+          return;
+        }
+        if (closed.status === 'pending') {
+          response.status(503).json({ message: '原报名状态正在确认，请稍后重试' });
+          return;
+        }
+        continue;
+      }
       if (refreshed.status === 'pending' && !isExpired(refreshed)) {
         const prepared = config.cloudMode === 'mock' ? refreshed : await prepareRealPayment(refreshed);
         response.json(toActivityPaymentSession(prepared));
         return;
       }
-      if (refreshed.status === 'pending' && isExpired(refreshed)) {
-        await updateOrderStatus(refreshed.id, 'closed', { failureReason: '报名支付超时' });
+      if (refreshed.status === 'pending') {
+        // 微信侧状态暂时无法确认时继续占位，避免释放后发生迟到支付超额报名。
+        response.status(503).json({ message: '报名状态正在确认，请稍后重试' });
+        return;
       }
-    }
-
-    const activityOrders = await getOrdersByProductId(activityId, 'activity');
-    const reservedCount = activityOrders.filter((item) => (
-      item.status === 'paid' || (item.status === 'pending' && !isExpired(item))
-    )).length;
-    if (activity.maxParticipants > 0 && activity.currentParticipants + reservedCount >= activity.maxParticipants) {
-      response.status(409).json({ message: '活动名额已满' });
-      return;
     }
 
     const isMockPayment = config.cloudMode === 'mock';
@@ -711,7 +813,7 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
     }
 
     const timestamp = new Date().toISOString();
-    let order = await createOrder({
+    let order = await createActivityOrderWithCapacity({
       id: outTradeNo,
       kind: 'activity',
       clientRequestId,
@@ -721,7 +823,10 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
       unitPrice: amount,
       quantity: 1,
       amount,
-      address: { name: '', phone: '', province: '', city: '', district: '', detail: '' },
+      address: null,
+      fulfillmentType: 'onsite',
+      fulfillmentLabel: '现场参与',
+      unitLabel: '位',
       openid,
       remark: 'activity-registration',
       activityRegistration: {
@@ -738,18 +843,58 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
           : '',
       paidAt: isMockPayment || isFreeRegistration ? timestamp : '',
       expiresAt: buildExpiresAt(),
+    }, {
+      currentParticipants: activity.currentParticipants,
+      maxParticipants: activity.maxParticipants,
     });
+
+    if (order.id !== outTradeNo) {
+      if (order.status === 'paid') {
+        response.json(toActivityPaymentSession(order));
+        return;
+      }
+      if (!matchesActivityPaymentDetails(order, paymentRequest)) {
+        const closed = await closePendingOrderSafely(order, '报名资料或活动金额已变更', false);
+        if (closed.status === 'paid') {
+          response.json(toActivityPaymentSession(closed));
+          return;
+        }
+        response.status(closed.status === 'pending' ? 503 : 409).json({
+          message: closed.status === 'pending'
+            ? '原报名状态正在确认，请稍后重试'
+            : '原报名信息已更新，请重新提交',
+        });
+        return;
+      }
+      if (order.status === 'pending' && order.amount === 0) {
+        order = await settleFreeOrder(order);
+      } else if (order.status === 'pending' && !order.mock && config.cloudMode !== 'mock') {
+        order = await prepareRealPayment(order);
+      }
+      response.json(toActivityPaymentSession(order));
+      return;
+    }
 
     if (!matchesActivityPaymentRequest(order, paymentRequest)) {
       response.status(409).json({ message: '重复请求与原报名信息不一致，请刷新页面重试' });
       return;
     }
-    if (!isMockPayment && !isFreeRegistration) {
+    if (isFreeRegistration) {
+      if (order.status === 'pending') order = await settleFreeOrder(order);
+    } else if (!isMockPayment) {
       order = await prepareRealPayment(order);
     }
     response.status(201).json(toActivityPaymentSession(order));
   } catch (error) {
     console.error('[activity-payment] create failed', error instanceof Error ? error.message : error);
+    if (isActivityCapacityExceededError(error)) {
+      response.status(409).json({ message: '活动名额已满' });
+      return;
+    }
+    if (isActivityCapacityInitializationError(error)) {
+      response.status(503).json({ message: '活动名额数据需要迁移，请联系管理员' });
+      return;
+    }
     if (error instanceof PaymentPreparationInProgressError) {
       response.status(409).json({ message: error.message });
       return;
@@ -779,14 +924,15 @@ shopRouter.post('/activity-registrations/:id/retry', requireShopEnabled, wxPayme
     return;
   }
   if (isExpired(refreshed)) {
-    if (!refreshed.mock && isWechatPayConfigured()) {
-      try {
-        await closeWechatPayOrder(refreshed.id);
-      } catch (error) {
-        console.warn(`[activity-payment] close expired order failed id=${refreshed.id}`, error instanceof Error ? error.message : error);
-      }
+    const closed = await closePendingOrderSafely(refreshed, '报名支付超时');
+    if (closed.status === 'paid') {
+      response.json(toActivityPaymentSession(closed));
+      return;
     }
-    await updateOrderStatus(refreshed.id, 'closed', { failureReason: '报名支付超时' });
+    if (closed.status === 'pending') {
+      response.status(503).json({ message: '报名状态正在确认，请稍后重试' });
+      return;
+    }
     response.status(409).json({ message: '报名支付单已超时，请重新报名' });
     return;
   }

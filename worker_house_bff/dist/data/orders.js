@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,41 @@ const store = { orders: [] };
 let cloudDatabase = null;
 let cloudCollectionReady = null;
 const CLOUD_QUERY_PAGE_SIZE = 100;
+const ACTIVITY_CAPACITY_RECORD_TYPE = 'activity_capacity';
+const MAX_ACTIVITY_CAPACITY_BOOTSTRAP_ORDERS = 40;
+export class ActivityCapacityExceededError extends Error {
+    code = 'ACTIVITY_CAPACITY_EXCEEDED';
+    constructor() {
+        super('活动名额已满');
+        this.name = 'ActivityCapacityExceededError';
+    }
+}
+export class ActivityCapacityInitializationError extends Error {
+    code = 'ACTIVITY_CAPACITY_INITIALIZATION_REQUIRED';
+    constructor() {
+        super('活动名额账本需要人工迁移');
+        this.name = 'ActivityCapacityInitializationError';
+    }
+}
+export function isActivityCapacityExceededError(error) {
+    if (error instanceof ActivityCapacityExceededError)
+        return true;
+    if (!error || typeof error !== 'object')
+        return false;
+    const input = error;
+    return input.code === 'ACTIVITY_CAPACITY_EXCEEDED'
+        || input.name === 'ActivityCapacityExceededError'
+        || (typeof input.message === 'string' && input.message.includes('活动名额已满'));
+}
+export function isActivityCapacityInitializationError(error) {
+    if (error instanceof ActivityCapacityInitializationError)
+        return true;
+    if (!error || typeof error !== 'object')
+        return false;
+    const input = error;
+    return input.code === 'ACTIVITY_CAPACITY_INITIALIZATION_REQUIRED'
+        || input.name === 'ActivityCapacityInitializationError';
+}
 function clone(value) {
     return structuredClone(value);
 }
@@ -24,10 +60,26 @@ function getCloudErrorText(error) {
     const input = error;
     return [input.code, input.errCode, input.message, input.errMsg].filter(Boolean).join(' ');
 }
+export function unwrapCloudTransactionDocuments(data) {
+    if (!data)
+        return [];
+    if (Array.isArray(data)) {
+        return data.flatMap((item) => unwrapCloudTransactionDocuments(item));
+    }
+    if (typeof data !== 'object')
+        return [];
+    const input = data;
+    if (Array.isArray(input.list)) {
+        return unwrapCloudTransactionDocuments(input.list);
+    }
+    if (Object.prototype.hasOwnProperty.call(input, 'data')
+        && (input.data === null || Array.isArray(input.data) || typeof input.data === 'object')) {
+        return unwrapCloudTransactionDocuments(input.data);
+    }
+    return [input];
+}
 function getTransactionOrder(data) {
-    if (Array.isArray(data))
-        return data[0];
-    return data && typeof data === 'object' ? data : undefined;
+    return unwrapCloudTransactionDocuments(data)[0];
 }
 function isCollectionMissingError(error) {
     return /(COLLECTION|TABLE).*(NOT[_ ]?EXIST|NOT[_ ]?FOUND)|集合.*不存在|-502005/i.test(getCloudErrorText(error));
@@ -115,6 +167,16 @@ function sanitizeStatus(value) {
 function sanitizeOrderKind(value) {
     return value === 'activity' ? 'activity' : 'shop';
 }
+function sanitizeFulfillmentType(value, fallback) {
+    return value === 'delivery' || value === 'onsite' || value === 'pickup' ? value : fallback;
+}
+function getDefaultFulfillmentLabel(type, kind) {
+    if (type === 'onsite')
+        return kind === 'activity' ? '现场参与' : '到店享用';
+    if (type === 'pickup')
+        return '到店自提';
+    return '快递配送';
+}
 function normalizeActivityRegistration(value) {
     if (!value || typeof value !== 'object')
         return undefined;
@@ -145,7 +207,9 @@ function normalizeActivityRegistration(value) {
     };
 }
 function normalizeAddress(value) {
-    return {
+    if (!value || typeof value !== 'object')
+        return null;
+    const address = {
         name: sanitizeString(value?.name),
         phone: sanitizeString(value?.phone),
         province: sanitizeString(value?.province),
@@ -153,13 +217,16 @@ function normalizeAddress(value) {
         district: sanitizeString(value?.district),
         detail: sanitizeString(value?.detail),
     };
+    return Object.values(address).some(Boolean) ? address : null;
 }
 function normalizeOrder(item) {
     const createdAt = sanitizeString(item.createdAt) || now();
     const unitPrice = sanitizeNumber(item.unitPrice, item.quantity ? sanitizeNumber(item.amount) / sanitizeNumber(item.quantity, 1) : 0);
+    const kind = sanitizeOrderKind(item.kind);
+    const fulfillmentType = sanitizeFulfillmentType(item.fulfillmentType, kind === 'activity' ? 'onsite' : 'delivery');
     return {
         id: sanitizeString(item.id),
-        kind: sanitizeOrderKind(item.kind),
+        kind,
         clientRequestId: sanitizeString(item.clientRequestId) || sanitizeString(item.id),
         productId: sanitizeString(item.productId),
         productName: sanitizeString(item.productName),
@@ -168,6 +235,9 @@ function normalizeOrder(item) {
         quantity: Math.max(1, Math.floor(sanitizeNumber(item.quantity, 1))),
         amount: Math.max(0, Math.round(sanitizeNumber(item.amount))),
         address: normalizeAddress(item.address),
+        fulfillmentType,
+        fulfillmentLabel: sanitizeString(item.fulfillmentLabel) || getDefaultFulfillmentLabel(fulfillmentType, kind),
+        unitLabel: sanitizeString(item.unitLabel) || (kind === 'activity' ? '位' : '件'),
         openid: sanitizeString(item.openid),
         remark: sanitizeString(item.remark),
         activityRegistration: normalizeActivityRegistration(item.activityRegistration),
@@ -184,6 +254,100 @@ function normalizeOrder(item) {
         createdAt,
         updatedAt: sanitizeString(item.updatedAt) || createdAt,
     };
+}
+function getActivityCapacityDocumentId(activityId) {
+    const digest = createHash('sha256').update(activityId).digest('hex').slice(0, 40);
+    return `ACTIVITY_CAPACITY_${digest}`;
+}
+function getTransactionCapacity(data) {
+    return unwrapCloudTransactionDocuments(data)[0];
+}
+function isActivityCapacityRecord(record, activityId) {
+    return record?.recordType === ACTIVITY_CAPACITY_RECORD_TYPE
+        && sanitizeString(record.activityId) === activityId
+        && Array.isArray(record.reservations);
+}
+async function getCloudActivityCapacityRecord(activityId) {
+    await ensureCloudCollection();
+    const response = await getCloudDatabase()
+        .collection(config.shopOrderCollection)
+        .doc(getActivityCapacityDocumentId(activityId))
+        .get();
+    return getTransactionCapacity(response.data);
+}
+function getOrderCapacityReservation(order) {
+    if (order.kind !== 'activity')
+        return null;
+    if (order.status !== 'paid' && order.status !== 'pending')
+        return null;
+    return {
+        orderId: order.id,
+        openid: order.openid,
+        status: order.status,
+        expiresAt: order.expiresAt,
+    };
+}
+function mergeCapacityReservation(reservations, reservation) {
+    const current = reservations.get(reservation.orderId);
+    if (!current || reservation.status === 'paid' || current.status !== 'paid') {
+        reservations.set(reservation.orderId, reservation);
+    }
+}
+function buildActiveCapacityReservations(stored, initialOrders) {
+    const reservations = new Map();
+    if (Array.isArray(stored?.reservations)) {
+        for (const rawReservation of stored.reservations) {
+            if (!rawReservation || typeof rawReservation !== 'object')
+                continue;
+            const orderId = sanitizeString(rawReservation.orderId);
+            const status = rawReservation.status === 'paid' || rawReservation.status === 'pending'
+                ? rawReservation.status
+                : null;
+            if (!orderId || !status)
+                continue;
+            const reservation = {
+                orderId,
+                openid: sanitizeString(rawReservation.openid),
+                status,
+                expiresAt: sanitizeString(rawReservation.expiresAt),
+            };
+            mergeCapacityReservation(reservations, reservation);
+        }
+    }
+    for (const order of initialOrders) {
+        const reservation = getOrderCapacityReservation(order);
+        if (reservation)
+            mergeCapacityReservation(reservations, reservation);
+    }
+    return reservations;
+}
+function buildActivityCapacityRecord(activityId, reservations, updatedAt) {
+    return {
+        recordType: ACTIVITY_CAPACITY_RECORD_TYPE,
+        activityId,
+        reservations: [...reservations.values()],
+        updatedAt,
+    };
+}
+function findExistingOpenidReservation(reservations, order) {
+    const matches = [...reservations.values()].filter((reservation) => (reservation.orderId !== order.id
+        && Boolean(order.openid)
+        && reservation.openid === order.openid));
+    return matches.find((reservation) => reservation.status === 'paid') ?? matches[0] ?? null;
+}
+function buildNewOrderRecord(input) {
+    const timestamp = now();
+    return normalizeOrder({
+        ...input,
+        remark: input.remark ?? '',
+        status: input.status ?? 'pending',
+        mock: input.mock ?? false,
+        prepayId: input.prepayId ?? '',
+        transactionId: input.transactionId ?? '',
+        paidAt: input.paidAt ?? '',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+    });
 }
 function persistOrders() {
     mkdirSync(path.dirname(storageFilePath), { recursive: true });
@@ -206,26 +370,17 @@ function loadOrders() {
     }
 }
 export async function createOrder(input) {
+    const record = buildNewOrderRecord(input);
     if (usesCloudbaseStorage()) {
-        const timestamp = now();
-        const record = normalizeOrder({
-            ...input,
-            remark: input.remark ?? '',
-            status: input.status ?? 'pending',
-            mock: input.mock ?? false,
-            prepayId: input.prepayId ?? '',
-            transactionId: input.transactionId ?? '',
-            paidAt: input.paidAt ?? '',
-            createdAt: timestamp,
-            updatedAt: timestamp,
-        });
         await ensureCloudCollection();
         return getCloudDatabase().runTransaction(async (transaction) => {
             const collection = transaction.collection(config.shopOrderCollection);
-            const response = await collection.doc(record.id).get();
+            const document = collection.doc(record.id);
+            const response = await document.get();
             const stored = getTransactionOrder(response.data);
             if (stored)
                 return clone(normalizeOrder(stored));
+            // SDK 3.7.0 的 Gateway 事务 create 不会转发顶层 _id；必须同时放进 data。
             await collection.add({ ...record, _id: record.id });
             return clone(record);
         });
@@ -234,17 +389,107 @@ export async function createOrder(input) {
     const duplicate = store.orders.find((item) => item.id === input.id);
     if (duplicate)
         return clone(duplicate);
-    const record = normalizeOrder({
-        ...input,
-        remark: input.remark ?? '',
-        status: input.status ?? 'pending',
-        mock: input.mock ?? false,
-        prepayId: input.prepayId ?? '',
-        transactionId: input.transactionId ?? '',
-        paidAt: input.paidAt ?? '',
-        createdAt: now(),
-        updatedAt: now(),
-    });
+    store.orders.unshift(record);
+    persistOrders();
+    return clone(record);
+}
+export async function createActivityOrderWithCapacity(input, capacity) {
+    const record = buildNewOrderRecord(input);
+    const currentParticipants = Math.max(0, Math.floor(sanitizeNumber(capacity.currentParticipants)));
+    const maxParticipants = Math.max(0, Math.floor(sanitizeNumber(capacity.maxParticipants)));
+    if (usesCloudbaseStorage()) {
+        await ensureCloudCollection();
+        const existingCapacity = await getCloudActivityCapacityRecord(record.productId);
+        const needsBootstrap = !isActivityCapacityRecord(existingCapacity, record.productId);
+        const initialOrders = needsBootstrap
+            ? (await getAllCloudOrders({ productId: record.productId }))
+                .filter((item) => item.kind === 'activity')
+            : [];
+        if (initialOrders.length > MAX_ACTIVITY_CAPACITY_BOOTSTRAP_ORDERS) {
+            throw new ActivityCapacityInitializationError();
+        }
+        return getCloudDatabase().runTransaction(async (transaction) => {
+            const collection = transaction.collection(config.shopOrderCollection);
+            const orderDocument = collection.doc(record.id);
+            const orderResponse = await orderDocument.get();
+            const storedOrder = getTransactionOrder(orderResponse.data);
+            if (storedOrder)
+                return clone(normalizeOrder(storedOrder));
+            const capacityDocument = collection.doc(getActivityCapacityDocumentId(record.productId));
+            const capacityResponse = await capacityDocument.get();
+            const storedCapacity = getTransactionCapacity(capacityResponse.data);
+            const hasCapacityRecord = isActivityCapacityRecord(storedCapacity, record.productId);
+            const reservations = hasCapacityRecord
+                ? buildActiveCapacityReservations(storedCapacity, [])
+                : new Map();
+            const bootstrapDocuments = [];
+            if (!hasCapacityRecord) {
+                if (!needsBootstrap)
+                    throw new ActivityCapacityInitializationError();
+                // 首次启用容量账本时，在事务中逐单复核事务外快照；随后会给每个历史订单写迁移标记，
+                // 让并发状态更新形成写冲突并自动重试，避免幽灵占位。后续仅以容量账本为权威源。
+                for (const initialOrder of initialOrders) {
+                    const initialDocument = collection.doc(initialOrder.id);
+                    const initialResponse = await initialDocument.get();
+                    const initialData = getTransactionOrder(initialResponse.data);
+                    if (!initialData)
+                        continue;
+                    bootstrapDocuments.push(initialDocument);
+                    const latestInitialOrder = normalizeOrder(initialData);
+                    if (latestInitialOrder.kind !== 'activity' || latestInitialOrder.productId !== record.productId)
+                        continue;
+                    const initialReservation = getOrderCapacityReservation(latestInitialOrder);
+                    if (initialReservation)
+                        mergeCapacityReservation(reservations, initialReservation);
+                }
+            }
+            const existingOpenidReservation = findExistingOpenidReservation(reservations, record);
+            if (existingOpenidReservation) {
+                const existingResponse = await collection.doc(existingOpenidReservation.orderId).get();
+                const existingOrderData = getTransactionOrder(existingResponse.data);
+                if (existingOrderData) {
+                    const existingOrder = normalizeOrder(existingOrderData);
+                    if (getOrderCapacityReservation(existingOrder))
+                        return clone(existingOrder);
+                }
+                reservations.delete(existingOpenidReservation.orderId);
+            }
+            const reservation = getOrderCapacityReservation(record);
+            const additionalReservationCount = reservation && !reservations.has(record.id) ? 1 : 0;
+            if (maxParticipants > 0
+                && currentParticipants + reservations.size + additionalReservationCount > maxParticipants) {
+                throw new ActivityCapacityExceededError();
+            }
+            if (reservation)
+                mergeCapacityReservation(reservations, reservation);
+            const updatedAt = now();
+            for (const bootstrapDocument of bootstrapDocuments) {
+                await bootstrapDocument.update({ capacityLedgerMigratedAt: updatedAt });
+            }
+            await capacityDocument.set(buildActivityCapacityRecord(record.productId, reservations, updatedAt));
+            await collection.add({ ...record, _id: record.id });
+            return clone(record);
+        });
+    }
+    loadOrders();
+    const duplicate = store.orders.find((item) => item.id === record.id);
+    if (duplicate)
+        return clone(duplicate);
+    const activityOrders = store.orders.filter((item) => (item.kind === 'activity' && item.productId === record.productId));
+    const reservations = buildActiveCapacityReservations(undefined, activityOrders);
+    const existingOpenidReservation = findExistingOpenidReservation(reservations, record);
+    if (existingOpenidReservation) {
+        const existingOrder = store.orders.find((item) => item.id === existingOpenidReservation.orderId);
+        if (existingOrder && getOrderCapacityReservation(existingOrder))
+            return clone(existingOrder);
+        reservations.delete(existingOpenidReservation.orderId);
+    }
+    const reservation = getOrderCapacityReservation(record);
+    const additionalReservationCount = reservation && !reservations.has(record.id) ? 1 : 0;
+    if (maxParticipants > 0
+        && currentParticipants + reservations.size + additionalReservationCount > maxParticipants) {
+        throw new ActivityCapacityExceededError();
+    }
     store.orders.unshift(record);
     persistOrders();
     return clone(record);
@@ -400,42 +645,59 @@ export async function finishOrderPaymentPreparation(orderId, token, input) {
 }
 export async function updateOrderStatus(orderId, status, options = {}) {
     if (usesCloudbaseStorage()) {
-        const current = await getCloudOrderById(orderId);
-        if (!current)
-            return null;
-        if (current.status === 'paid' && status !== 'paid')
-            return clone(current);
-        const update = {
-            status,
-            transactionId: options.transactionId || current.transactionId,
-            paidAt: status === 'paid' ? (options.paidAt || current.paidAt || now()) : current.paidAt,
-            failureReason: options.failureReason ?? current.failureReason,
-            lastNotifyId: options.notifyId || current.lastNotifyId,
-            paymentPreparationToken: status === 'pending' ? current.paymentPreparationToken : '',
-            paymentPreparingUntil: status === 'pending' ? current.paymentPreparingUntil : '',
-            updatedAt: now(),
-        };
         await ensureCloudCollection();
-        await getCloudDatabase().runTransaction(async (transaction) => {
-            const document = transaction.collection(config.shopOrderCollection).doc(orderId);
+        return getCloudDatabase().runTransaction(async (transaction) => {
+            const collection = transaction.collection(config.shopOrderCollection);
+            const document = collection.doc(orderId);
             const response = await document.get();
             const stored = getTransactionOrder(response.data);
             if (!stored)
-                return;
+                return null;
             const latest = normalizeOrder(stored);
             if (latest.status === 'paid' && status !== 'paid')
-                return;
-            await document.update({
-                ...update,
+                return clone(latest);
+            const capacityDocument = latest.kind === 'activity'
+                ? collection.doc(getActivityCapacityDocumentId(latest.productId))
+                : null;
+            const capacityResponse = capacityDocument ? await capacityDocument.get() : null;
+            const storedCapacity = capacityResponse ? getTransactionCapacity(capacityResponse.data) : undefined;
+            const updatedAt = now();
+            const next = normalizeOrder({
+                ...latest,
+                status,
                 transactionId: options.transactionId || latest.transactionId,
-                paidAt: status === 'paid' ? (options.paidAt || latest.paidAt || now()) : latest.paidAt,
+                paidAt: status === 'paid' ? (options.paidAt || latest.paidAt || updatedAt) : latest.paidAt,
                 failureReason: options.failureReason ?? latest.failureReason,
                 lastNotifyId: options.notifyId || latest.lastNotifyId,
                 paymentPreparationToken: status === 'pending' ? latest.paymentPreparationToken : '',
                 paymentPreparingUntil: status === 'pending' ? latest.paymentPreparingUntil : '',
+                updatedAt,
             });
+            await document.update({
+                status: next.status,
+                transactionId: next.transactionId,
+                paidAt: next.paidAt,
+                failureReason: next.failureReason,
+                lastNotifyId: next.lastNotifyId,
+                paymentPreparationToken: next.paymentPreparationToken,
+                paymentPreparingUntil: next.paymentPreparingUntil,
+                updatedAt: next.updatedAt,
+            });
+            if (capacityDocument
+                && storedCapacity?.recordType === ACTIVITY_CAPACITY_RECORD_TYPE
+                && sanitizeString(storedCapacity.activityId) === latest.productId) {
+                const reservations = buildActiveCapacityReservations(storedCapacity, []);
+                const reservation = getOrderCapacityReservation(next);
+                if (reservation) {
+                    mergeCapacityReservation(reservations, reservation);
+                }
+                else {
+                    reservations.delete(next.id);
+                }
+                await capacityDocument.set(buildActivityCapacityRecord(latest.productId, reservations, updatedAt));
+            }
+            return clone(next);
         });
-        return getCloudOrderById(orderId);
     }
     loadOrders();
     const index = store.orders.findIndex((item) => item.id === orderId);
@@ -459,6 +721,16 @@ export async function updateOrderStatus(orderId, status, options = {}) {
     store.orders[index] = next;
     persistOrders();
     return clone(next);
+}
+export async function settleFreeOrder(order) {
+    if (order.amount !== 0 || order.status !== 'pending')
+        return clone(order);
+    const transactionId = `${order.kind === 'activity' ? 'FREE_ACTIVITY' : 'FREE_SHOP'}_${order.id}`;
+    const paidAt = now();
+    const settled = await updateOrderStatus(order.id, 'paid', { transactionId, paidAt });
+    if (!settled)
+        throw new Error('订单不存在');
+    return settled;
 }
 export function getOrderStorageType() {
     return config.shopOrderStorage;

@@ -1,17 +1,18 @@
 @use '@/styles/variables.scss' as *;
 
 .page {
-  min-height: 100vh;
+  min-height: var(--app-window-height, 100vh);
+  overflow-x: hidden;
   background: $color-oat;
 }
 
 .scrollView {
-  height: 100vh;
+  height: var(--app-window-height, 100vh);
   background: $color-oat;
 }
 
 .pageShell {
-  padding: calc(env(safe-area-inset-top) + 34rpx) 0 calc(env(safe-area-inset-bottom) + 170rpx);
+  padding: var(--app-header-top, calc(env(safe-area-inset-top) + 34rpx)) 0 calc(var(--app-safe-bottom, env(safe-area-inset-bottom)) + 170rpx);
 }
 
 .heroSection,
@@ -52,13 +53,13 @@
 
 .heroCard {
   width: 84%;
-  height: 752rpx;
+  height: 768rpx;
   margin-top: 26rpx;
 }
 
 .heroSwiper {
   width: 100%;
-  height: 752rpx;
+  height: 100%;
 }
 
 .heroSwiperItem {
@@ -308,13 +309,13 @@
 
 .spaceVisual {
   position: relative;
-  height: 970rpx;
+  height: 1000rpx;
   margin: 0 -32rpx;
 }
 
 .spaceSwiper {
   width: 100%;
-  height: 970rpx;
+  height: 100%;
 }
 
 .spaceImage {

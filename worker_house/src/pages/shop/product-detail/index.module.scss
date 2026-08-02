@@ -4,7 +4,7 @@ $shop-accent: $color-brand;
 
 .container,
 .state {
-  min-height: 100vh;
+  min-height: var(--app-window-height, 100vh);
   background: $color-oat;
 }
 
@@ -111,13 +111,30 @@ $shop-accent: $color-brand;
   color: $color-text-secondary;
 }
 
+.drinkMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18rpx;
+  margin-top: 28rpx;
+  padding: 24rpx 0;
+  border-top: 2rpx solid $color-divider;
+  border-bottom: 2rpx solid $color-divider;
+}
+
+.drinkMetaItem {
+  min-width: 0;
+
+  & + & {
+    padding-left: 18rpx;
+    border-left: 2rpx solid $color-divider;
+  }
+}
+
 .metaRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 28rpx;
-  padding-top: 24rpx;
-  border-top: 2rpx solid $color-divider;
 }
 
 .metaLabel,
@@ -133,6 +150,7 @@ $shop-accent: $color-brand;
 .metaValue {
   margin-top: 4rpx;
   font-size: 27rpx;
+  line-height: 1.35;
   font-weight: $font-weight-semibold;
   color: $color-text-primary;
 }
@@ -197,7 +215,7 @@ $shop-accent: $color-brand;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 28rpx calc(16rpx + var(--app-safe-bottom, env(safe-area-inset-bottom)));
   background: rgba(250, 249, 231, 0.96);
   border-top: 2rpx solid $color-text-primary;
   box-shadow: none;
@@ -228,7 +246,7 @@ $shop-accent: $color-brand;
 @media screen and (min-width: 768px) {
   .footer {
     right: auto;
-    left: calc(50% - 195PX);
-    width: 390PX;
+    left: calc(50% - #{$device-content-max * 0.5});
+    width: $device-content-max;
   }
 }

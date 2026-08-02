@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "test": "tsc && node --test dist/data/orders.test.js dist/utils/wechat-pay.test.js",
-    "build": "tsc",
+    "test": "npm run build && node --test dist/data/orders.test.js dist/utils/wechat-pay.test.js",
+    "build": "tsc && node scripts/copy-runtime-data.mjs",
     "start": "node dist/index.js",
     "migrate-images": "tsx scripts/migrate-images.ts",
     "seed:past-activities": "tsx scripts/seed-past-activities.ts"

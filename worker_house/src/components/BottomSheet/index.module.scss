@@ -42,6 +42,7 @@
   background: $color-oat;
   border-radius: 18rpx 18rpx 0 0;
   border-top: 2rpx solid $color-text-primary;
+  padding-bottom: var(--app-safe-bottom, env(safe-area-inset-bottom));
 }
 
 .dragArea {
@@ -70,8 +71,8 @@
 @media screen and (min-width: 768px) {
   .sheet {
     right: auto;
-    left: calc(50% - 195PX);
-    width: 390PX;
+    left: calc(50% - #{$device-content-max * 0.5});
+    width: $device-content-max;
   }
 
   .panel {

@@ -5,6 +5,7 @@ import { Edit, Search } from '@nutui/icons-react-taro';
 import { commentWallPost, fetchPostDetail, fetchPostList } from '@/cloud/services';
 import Pressable from '@/components/Pressable';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
+import { useViewportLayout } from '@/hooks/useViewportLayout';
 import type { Comment, Post } from '@/types/post';
 import { estimatePostHeight, getFixedTilt, matchPostKeyword } from '@/utils/helpers';
 import NoteCard from './components/NoteCard';
@@ -27,6 +28,7 @@ const WallPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const { style: enterStyle } = useEnterAnimation();
+  const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 56, reserveH5TabBar: true });
 
   const loadPosts = async () => {
     try {
@@ -130,9 +132,9 @@ const WallPage: React.FC = () => {
   };
 
   return (
-    <View className={styles.container}>
+    <View className={styles.container} style={viewportStyle}>
       <View className={styles.header}>
-        <View>
+        <View className={styles.headerCopy}>
           <Text className={styles.title}>留言墙</Text>
           <Text className={styles.subtitle}>把今天想说的话贴在这里，慢慢被看见。</Text>
         </View>
