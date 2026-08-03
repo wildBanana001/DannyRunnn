@@ -47,6 +47,20 @@ test('assigns a stable diagnostic code to generic network failures', () => {
   assert.match(failure.payload.message, /stage=order_lookup/);
 });
 
+test('reports reset MySQL connections as a retryable service outage', () => {
+  const failure = buildPaymentFailureResponse(
+    Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+    { fallbackMessage: '活动报名支付单创建失败', operation: 'activity_create', stage: 'order_lookup' },
+  );
+
+  assert.equal(failure.status, 503);
+  assert.equal(failure.payload.diagnostic.status, 503);
+  assert.equal(failure.payload.diagnostic.code, 'ECONNRESET');
+  assert.equal(failure.payload.diagnostic.source, 'mysql');
+  assert.match(failure.payload.diagnostic.detail, /连接被临时中断/);
+  assert.doesNotMatch(failure.payload.message, /read ECONNRESET/);
+});
+
 test('translates missing MySQL configuration into an actionable configuration error', () => {
   const failure = buildPaymentFailureResponse(
     Object.assign(new Error('MySQL 订单库配置不完整：MYSQL_ADDRESS、MYSQL_PASSWORD'), {

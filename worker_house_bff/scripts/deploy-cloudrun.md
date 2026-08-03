@@ -58,6 +58,8 @@ CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 
 `ENABLE_SHOP` 不属于上面的部署清单；请在云托管服务变量中单独维护。支付、管理员与 MySQL 密码必须继续放在云托管 Secret 中，不得写入 Git。支付配置及订单存储 readiness 验证通过后，才在服务变量中把 `ENABLE_SHOP` 设置为 `true`；开关关闭期间支付回调与已有订单查询仍保持可用。有限名额的活动会在 MySQL 事务内原子占位。
 
+`MYSQL_ADDRESS` 必须使用生产内网地址。若云开发 MySQL 控制台提示该实例需要 VPC，请在 `worker-house-bff` 的“服务设置 → 网络配置”中开启私有网络，并选择数据库所在 VPC；单独设置环境变量不会打通网络。参考 CloudBase 官方的 [MySQL 数据库集成](https://docs.cloudbase.net/run/develop/resource-integration/mysql) 和 [直连服务](https://docs.cloudbase.net/database/configuration/db/tdsql/direct-connection)。
+
 如果服务变量中还残留 `SHOP_ORDER_STORAGE=cloudbase`，新版本会在启动时临时兼容为 `mysql` 并记录警告；部署稳定后请删除该旧变量，使用仓库清单中的 `SHOP_ORDER_STORAGE=mysql`。
 
 首次启用时必须等新版本完成部署并切换到 100% 流量，再设置 `ENABLE_SHOP=true`；不要在新旧实例分别写 CloudBase 与 MySQL 的滚动阶段提前开单。若旧版已经产生支付订单，应先暂停新单与支付回调，完成历史订单迁移和核对。
@@ -71,6 +73,7 @@ CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 3. `GET /health` 应返回 HTTP `200`。
 4. `GET /api/health` 在持久化数据源未就绪时预期返回 HTTP `503` 和 `configuration_required`；这不代表容器启动失败。
 5. 开启支付后，`GET /api/shop/readiness` 应返回 `ready=true`；小程序支付模式已在 `src/constants/runtime.ts` 固定为 `cloudrun`。
+6. 连续请求数次 `GET /api/shop/readiness`，确认 `orderStorage.ready` 始终为 `true`；若反复出现 `ECONNRESET`，优先核对数据库实例状态、生产内网地址以及服务的 VPC 网络配置。
 
 ## 手动备用部署
 

@@ -1,5 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import { WechatPayApiError } from './wechat-pay.js';
+const STORAGE_UNAVAILABLE_CODES = new Set([
+    'MYSQL_CONFIGURATION_REQUIRED',
+    'ER_ACCESS_DENIED_ERROR',
+    'ER_BAD_DB_ERROR',
+    'ER_NO_SUCH_TABLE',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ENOTFOUND',
+    'EPIPE',
+    'ETIMEDOUT',
+    'NETWORK_FETCH_FAILED',
+    'PROTOCOL_CONNECTION_LOST',
+    'PROTOCOL_SEQUENCE_TIMEOUT',
+]);
 function asRecord(value) {
     return value && typeof value === 'object' ? value : null;
 }
@@ -70,7 +84,10 @@ function normalizeDetail(code, detail) {
         return 'MySQL 数据库不存在，请先在微信云托管的 MySQL 页面创建数据库，并核对 MYSQL_DATABASE。';
     if (code === 'ER_NO_SUCH_TABLE')
         return 'MySQL 订单表尚未初始化，请保持 MYSQL_AUTO_MIGRATE=true 后重新部署，或执行 npm run migrate:orders。';
-    if (['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'NETWORK_FETCH_FAILED'].includes(code)) {
+    if (['ECONNRESET', 'EPIPE', 'PROTOCOL_CONNECTION_LOST'].includes(code)) {
+        return 'MySQL 订单库连接被临时中断，请稍后重试；如持续出现，请检查云托管 MySQL 状态和内网连接配置。';
+    }
+    if (['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'NETWORK_FETCH_FAILED', 'PROTOCOL_SEQUENCE_TIMEOUT'].includes(code)) {
         return 'BFF 无法连接微信云托管 MySQL，请核对内网地址、端口与网络环境。';
     }
     return detail;
@@ -85,16 +102,7 @@ function inferSource(error, stage, code, detail) {
     return 'bff';
 }
 function isStorageUnavailable(code) {
-    return [
-        'MYSQL_CONFIGURATION_REQUIRED',
-        'ER_ACCESS_DENIED_ERROR',
-        'ER_BAD_DB_ERROR',
-        'ER_NO_SUCH_TABLE',
-        'ECONNREFUSED',
-        'ETIMEDOUT',
-        'ENOTFOUND',
-        'NETWORK_FETCH_FAILED',
-    ].includes(code);
+    return STORAGE_UNAVAILABLE_CODES.has(code);
 }
 export function buildPaymentFailureResponse(error, options) {
     const records = collectErrorRecords(error);

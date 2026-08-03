@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { readShopOrderStorage } from '../config.js';
-import { decodeMysqlOrderPayload, formatMysqlOrderStorageError } from './mysql-orders.js';
+import {
+  decodeMysqlOrderPayload,
+  formatMysqlOrderStorageError,
+  isRetriableMysqlReadError,
+  retryTransientMysqlRead,
+} from './mysql-orders.js';
 
 const sampleOrder = {
   id: 'WH_MYSQL_CODEC',
@@ -52,6 +57,33 @@ test('redacts credentials when formatting MySQL driver errors', () => {
   assert.match(formatted, /ECONNREFUSED/);
   assert.doesNotMatch(formatted, /super-secret/);
   assert.match(formatted, /mysql:\/\/\[REDACTED_CONNECTION\]/);
+});
+
+test('retries safe MySQL reads after transient pooled-connection resets', async () => {
+  let attempts = 0;
+  const result = await retryTransientMysqlRead(async () => {
+    attempts += 1;
+    if (attempts < 3) {
+      throw Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
+    }
+    return 'recovered';
+  }, [0, 0]);
+
+  assert.equal(result, 'recovered');
+  assert.equal(attempts, 3);
+  assert.equal(isRetriableMysqlReadError({ cause: { code: 'EPIPE' } }), true);
+});
+
+test('does not retry non-transient MySQL failures', async () => {
+  let attempts = 0;
+  await assert.rejects(
+    retryTransientMysqlRead(async () => {
+      attempts += 1;
+      throw Object.assign(new Error('access denied'), { code: 'ER_ACCESS_DENIED_ERROR' });
+    }, [0, 0]),
+    (error: unknown) => (error as { code?: string }).code === 'ER_ACCESS_DENIED_ERROR',
+  );
+  assert.equal(attempts, 1);
 });
 
 test('ships an InnoDB utf8mb4 schema with the required order indexes', () => {

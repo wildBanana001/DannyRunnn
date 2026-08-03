@@ -26,6 +26,12 @@ const ACTIVITY_LOCKS_TABLE = 'worker_house_activity_locks';
 const MIGRATIONS_TABLE = 'worker_house_schema_migrations';
 const INITIAL_MIGRATION = '001_mysql_order_storage';
 const MAX_TRANSACTION_ATTEMPTS = 3;
+const MYSQL_READ_RETRY_DELAYS_MS = [50, 150] as const;
+const RETRIABLE_MYSQL_READ_CODES = new Set([
+  'ECONNRESET',
+  'EPIPE',
+  'PROTOCOL_CONNECTION_LOST',
+]);
 
 interface MysqlErrorLike {
   code?: unknown;
@@ -154,6 +160,38 @@ function getMysqlError(error: unknown): MysqlErrorLike {
 function getMysqlErrorCode(error: unknown) {
   const code = getMysqlError(error).code;
   return typeof code === 'string' ? code : '';
+}
+
+export function isRetriableMysqlReadError(error: unknown): boolean {
+  let current = error;
+  const seen = new Set<unknown>();
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    if (RETRIABLE_MYSQL_READ_CODES.has(getMysqlErrorCode(current).toUpperCase())) return true;
+    seen.add(current);
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
+export async function retryTransientMysqlRead<T>(
+  read: () => Promise<T>,
+  retryDelaysMs: readonly number[] = MYSQL_READ_RETRY_DELAYS_MS,
+): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await read();
+    } catch (error) {
+      if (!isRetriableMysqlReadError(error) || attempt >= retryDelaysMs.length) throw error;
+      const delay = Math.max(0, retryDelaysMs[attempt] || 0);
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
+function runMysqlRead<T>(read: (database: Pool) => Promise<T>) {
+  // mysql2 removes a fatally disconnected pooled connection. A fresh acquisition
+  // therefore recovers the common CloudRun/MySQL idle-connection reset safely.
+  return retryTransientMysqlRead(() => read(getPool()));
 }
 
 function isRetriableTransactionError(error: unknown) {
@@ -333,7 +371,9 @@ async function verifySchema() {
 
 async function ensureSchemaReady() {
   if (!schemaReady) {
-    schemaReady = (config.mysql.autoMigrate ? applyInitialSchema() : verifySchema())
+    schemaReady = retryTransientMysqlRead(
+      () => config.mysql.autoMigrate ? applyInitialSchema() : verifySchema(),
+    )
       .catch((error) => {
         schemaReady = null;
         throw error;
@@ -381,7 +421,7 @@ export async function createMysqlOrder(record: OrderRecord) {
     });
   } catch (error) {
     if (!isDuplicateEntryError(error)) throw error;
-    const existing = await selectOrderById(getPool(), record.id);
+    const existing = await runMysqlRead((database) => selectOrderById(database, record.id));
     if (existing) return cloneOrder(existing);
     throw error;
   }
@@ -426,7 +466,7 @@ export async function createMysqlActivityOrderWithCapacity(
     });
   } catch (error) {
     if (!isDuplicateEntryError(error)) throw error;
-    const existing = await selectOrderById(getPool(), record.id);
+    const existing = await runMysqlRead((database) => selectOrderById(database, record.id));
     if (existing) return cloneOrder(existing);
     throw error;
   }
@@ -434,7 +474,7 @@ export async function createMysqlActivityOrderWithCapacity(
 
 export async function getMysqlOrderById(orderId: string) {
   await ensureSchemaReady();
-  const order = await selectOrderById(getPool(), orderId);
+  const order = await runMysqlRead((database) => selectOrderById(database, orderId));
   return order ? cloneOrder(order) : null;
 }
 
@@ -443,13 +483,13 @@ export async function getMysqlOrdersByOpenid(openid: string, kind?: OrderKind) {
   const parameters: unknown[] = [openid];
   const kindClause = kind ? ' AND kind = ?' : '';
   if (kind) parameters.push(kind);
-  return cloneOrder(await selectOrders(
-    getPool(),
+  return cloneOrder(await runMysqlRead((database) => selectOrders(
+    database,
     `SELECT payload FROM ${ORDERS_TABLE}
      WHERE openid = ?${kindClause}
      ORDER BY created_at DESC`,
     parameters,
-  ));
+  )));
 }
 
 export async function getMysqlOrdersByProductId(productId: string, kind?: OrderKind) {
@@ -457,20 +497,20 @@ export async function getMysqlOrdersByProductId(productId: string, kind?: OrderK
   const parameters: unknown[] = [productId];
   const kindClause = kind ? ' AND kind = ?' : '';
   if (kind) parameters.push(kind);
-  return cloneOrder(await selectOrders(
-    getPool(),
+  return cloneOrder(await runMysqlRead((database) => selectOrders(
+    database,
     `SELECT payload FROM ${ORDERS_TABLE} WHERE product_id = ?${kindClause}`,
     parameters,
-  ));
+  )));
 }
 
 export async function getMysqlOrdersByKind(kind: OrderKind) {
   await ensureSchemaReady();
-  return cloneOrder(await selectOrders(
-    getPool(),
+  return cloneOrder(await runMysqlRead((database) => selectOrders(
+    database,
     `SELECT payload FROM ${ORDERS_TABLE} WHERE kind = ? ORDER BY created_at DESC`,
     [kind],
-  ));
+  )));
 }
 
 export async function claimMysqlOrderPaymentPreparation(
@@ -662,7 +702,7 @@ export async function updateMysqlOrderStatus(
   } = {},
 ) {
   await ensureSchemaReady();
-  const snapshot = await selectOrderById(getPool(), orderId);
+  const snapshot = await runMysqlRead((database) => selectOrderById(database, orderId));
   if (!snapshot) return null;
 
   return runTransaction(async (connection) => {

@@ -79,6 +79,7 @@ PORT=4000
 - `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。当前鸡尾酒为不限库存、现点现做；有限名额活动通过 MySQL 行锁与事务原子占位。
 - `SHOP_ORDER_STORAGE`：云托管默认 `mysql`；`file` 只用于本地或临时联调。已确认旧库无真实订单后，线上遗留值 `cloudbase` 会临时兼容为 `mysql` 并输出警告；仍应从云托管服务变量中删除该旧值
 - `MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD`：微信云托管 MySQL 的内网地址、用户名和密码；密码只放服务 Secret，禁止提交到 Git。也支持 `DB_HOST / DB_PORT / DB_USER / DB_PASSWORD` 或完整 `CONNECTION_URI`
+- 生产环境应使用 MySQL 直连服务的内网地址；如果数据库控制台要求 VPC，必须同时在 `worker-house-bff` 服务的网络配置中开启私有网络并选择数据库所在 VPC。仅填写内网地址不能替代网络连通配置，详见 [MySQL 数据库集成](https://docs.cloudbase.net/run/develop/resource-integration/mysql) 与 [直连服务](https://docs.cloudbase.net/database/configuration/db/tdsql/direct-connection)
 - `MYSQL_DATABASE`：数据库名，默认 `worker_house`
 - `MYSQL_CONNECTION_LIMIT`：单实例连接池上限，默认 `5`；当前最多 5 个 BFF 实例，数据库至少需允许约 25 条业务连接
 - `MYSQL_AUTO_MIGRATE`：是否由 BFF 自动执行幂等建表。首次发布及现有云托管服务升级建议保持 `true`，确认表结构就绪后可按需关闭
@@ -289,9 +290,10 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 1. 在微信公众平台开通云托管并创建服务
 2. 获取环境 ID（例如 `prod-xxxx`）
 3. 确认 `worker_house/src/constants/runtime.ts` 中的支付模式为 `cloudrun`；商城和活动报名支付会一起启用，其他模块可继续保持 `TARO_APP_API_MODE=mock`
-4. 确认 `/api/shop/readiness` 返回支付配置与 MySQL 订单库均为 `ready=true`
-5. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
-6. 重启服务并验证 `/api/health` 与小程序写接口
+4. 使用生产内网地址连接 MySQL；若该数据库要求 VPC，在云托管服务网络配置中选择数据库所在 VPC
+5. 确认 `/api/shop/readiness` 返回支付配置与 MySQL 订单库均为 `ready=true`
+6. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
+7. 重启服务并验证 `/api/health` 与小程序写接口
 
 ## 部署建议
 
