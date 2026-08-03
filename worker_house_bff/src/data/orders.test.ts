@@ -4,10 +4,12 @@ import { fileURLToPath } from 'node:url';
 import test, { after } from 'node:test';
 import {
   ActivityCapacityExceededError,
+  claimOrderFulfillmentReport,
   claimOrderPaymentPreparation,
   createActivityOrderWithCapacity,
   createOrder,
   finishOrderPaymentPreparation,
+  finishOrderFulfillmentReport,
   getOrderById,
   getOrdersByOpenid,
   getOrdersByProductId,
@@ -15,6 +17,7 @@ import {
   updateOrderStatus,
 } from './orders.js';
 import { getActivityById } from './activities.js';
+import { ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS } from '../constants/payment.js';
 import { getProductById, listProducts, normalizeShopProduct } from './shop.js';
 import { resolveShopOrderAddress } from '../routes/shop.js';
 
@@ -101,6 +104,64 @@ test('keeps order creation idempotent and serializes prepay_id preparation', asy
   const afterCompletion = await claimOrderPaymentPreparation(created.id, 'token-third', 10_000);
   assert.equal(afterCompletion.claimed, false);
   assert.equal(afterCompletion.order?.prepayId, 'wx-prepay-id');
+});
+
+test('records onsite fulfillment and serializes WeChat self-pickup reporting', async () => {
+  const pending = await createOrder({
+    id: 'WHFULFILLMENT0123456789ABCDEF0123',
+    clientRequestId: 'shop-fulfillment-request',
+    productId: 'cocktail-001',
+    productName: '到店测试鸡尾酒',
+    productImageUrl: '',
+    unitPrice: 1,
+    quantity: 1,
+    amount: 1,
+    address: null,
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    openid: 'openid-fulfillment-test',
+    status: 'pending',
+    mock: false,
+    expiresAt: new Date(Date.now() + 15 * 60 * 1_000).toISOString(),
+  });
+  assert.equal(pending.wechatShippingStatus, 'not_required');
+
+  const paid = await updateOrderStatus(pending.id, 'paid', { transactionId: 'wx-tx-fulfillment' });
+  assert.equal(paid?.wechatShippingStatus, 'pending');
+
+  const claim = await claimOrderFulfillmentReport(pending.id, 'admin-openid', 'report-token-1', 10_000);
+  assert.equal(claim.claimed, true);
+  assert.equal(claim.reportRequired, true);
+  assert.equal(claim.order?.fulfillmentStatus, 'fulfilled');
+  assert.equal(claim.order?.fulfilledBy, 'admin-openid');
+  assert.equal(claim.order?.wechatShippingStatus, 'reporting');
+  assert.equal(claim.order?.wechatShippingAttempts, 1);
+
+  const concurrent = await claimOrderFulfillmentReport(pending.id, 'other-admin', 'report-token-2', 10_000);
+  assert.equal(concurrent.claimed, false);
+  assert.equal(concurrent.order?.fulfilledBy, 'admin-openid');
+
+  const ignoredFinish = await finishOrderFulfillmentReport(pending.id, 'report-token-2', { success: true });
+  assert.equal(ignoredFinish?.wechatShippingStatus, 'reporting');
+
+  const failed = await finishOrderFulfillmentReport(pending.id, 'report-token-1', {
+    success: false,
+    error: 'temporary failure',
+  });
+  assert.equal(failed?.wechatShippingStatus, 'failed');
+  assert.equal(failed?.wechatShippingError, 'temporary failure');
+
+  const retry = await claimOrderFulfillmentReport(pending.id, 'other-admin', 'report-token-3', 10_000);
+  assert.equal(retry.claimed, true);
+  assert.equal(retry.order?.wechatShippingAttempts, 2);
+  const reported = await finishOrderFulfillmentReport(pending.id, 'report-token-3', { success: true });
+  assert.equal(reported?.wechatShippingStatus, 'reported');
+  assert.ok(reported?.wechatShippingReportedAt);
+
+  const duplicate = await claimOrderFulfillmentReport(pending.id, 'other-admin', 'report-token-4', 10_000);
+  assert.equal(duplicate.claimed, false);
+  assert.equal(duplicate.order?.wechatShippingStatus, 'reported');
 });
 
 test('stores activity registrations separately from shop orders', async () => {
@@ -208,6 +269,7 @@ test('keeps upcoming activity payment fixtures at one cent', () => {
   const secondActivity = getActivityById('act-002');
   assert.equal(firstActivity?.price, 0.01);
   assert.equal(secondActivity?.price, 0.01);
+  assert.equal(ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS, 1);
   assert.equal(firstActivity?.startDate, '2026-08-08');
   assert.equal(secondActivity?.startDate, '2026-08-14');
 });

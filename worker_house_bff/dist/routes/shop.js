@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { config } from '../config.js';
+import { ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS } from '../constants/payment.js';
 import { getActivityById } from '../data/activities.js';
 import { getProductById, listProducts } from '../data/shop.js';
 import { createOrder, createActivityOrderWithCapacity, claimOrderPaymentPreparation, checkOrderStorageReady, finishOrderPaymentPreparation, getOrderById, getOrderStorageType, getOrdersByOpenid, getOrdersByProductId, isActivityCapacityExceededError, settleFreeOrder, updateOrderStatus, } from '../data/orders.js';
 import { wxPaymentAuth } from '../middlewares/wx-cloudrun-auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { buildJsapiPayParams, closeWechatPayOrder, createOutTradeNo, decryptNotifyResource, getWechatPayConfigurationStatus, isWechatPayConfigured, jsapiUnifiedOrder, queryWechatPayOrder, verifyWechatPaySignature, verifyWechatPayConnectivity, WechatPayApiError, } from '../utils/wechat-pay.js';
+import { getWechatOrderShippingConfigurationStatus } from '../utils/wechat-order-shipping.js';
 import { buildPaymentFailureResponse, } from '../utils/payment-diagnostics.js';
 import { requireWxOpenid } from './utils.js';
 export const shopRouter = Router();
@@ -146,6 +148,10 @@ function toPublicOrder(order) {
         address: order.address,
         fulfillmentType: order.fulfillmentType,
         fulfillmentLabel: order.fulfillmentLabel,
+        fulfillmentStatus: order.fulfillmentStatus,
+        fulfilledAt: order.fulfilledAt,
+        wechatShippingStatus: order.wechatShippingStatus,
+        wechatShippingReportedAt: order.wechatShippingReportedAt,
         unitLabel: order.unitLabel,
         remark: order.remark,
         status: order.status,
@@ -378,7 +384,9 @@ shopRouter.get('/readiness', asyncHandler(async (_request, response) => {
     const paymentConfiguration = getWechatPayConfigurationStatus();
     const storageReady = await checkOrderStorageReady();
     const paymentReady = config.cloudMode === 'mock' || paymentConfiguration.ready;
-    const ready = storageReady && paymentReady;
+    const shippingConfiguration = getWechatOrderShippingConfigurationStatus();
+    const orderShippingReady = config.cloudMode === 'mock' || shippingConfiguration.ready;
+    const ready = storageReady && paymentReady && orderShippingReady;
     response.status(ready ? 200 : 503).json({
         ready,
         mode: config.cloudMode,
@@ -389,6 +397,10 @@ shopRouter.get('/readiness', asyncHandler(async (_request, response) => {
         payment: {
             ready: paymentReady,
             keyMode: paymentConfiguration.keyMode,
+        },
+        orderShipping: {
+            ready: orderShippingReady,
+            issues: orderShippingReady ? [] : shippingConfiguration.issues,
         },
     });
 }));
@@ -649,7 +661,8 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
             response.status(409).json({ message: '活动已结束，无法继续报名' });
             return;
         }
-        const amount = Math.round(activity.price * 100);
+        // 测试期统一使用 1 分钱，后续恢复正式价格时只需移除此覆盖值。
+        const amount = ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS;
         if (!Number.isSafeInteger(amount) || amount < 0) {
             response.status(400).json({ message: '活动金额异常' });
             return;

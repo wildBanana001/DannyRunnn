@@ -2,6 +2,8 @@ import type { ShopFulfillmentType } from './shop.js';
 
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
 export type OrderKind = 'shop' | 'activity';
+export type FulfillmentStatus = 'pending' | 'fulfilled';
+export type WechatShippingStatus = 'not_required' | 'pending' | 'reporting' | 'reported' | 'failed';
 
 export interface ActivityRegistrationSnapshot {
   activityId: string;
@@ -45,6 +47,15 @@ export interface OrderRecord {
   address: OrderAddressSnapshot | null;
   fulfillmentType: ShopFulfillmentType;
   fulfillmentLabel: string;
+  fulfillmentStatus: FulfillmentStatus;
+  fulfilledAt: string;
+  fulfilledBy: string;
+  wechatShippingStatus: WechatShippingStatus;
+  wechatShippingReportedAt: string;
+  wechatShippingError: string;
+  wechatShippingAttempts: number;
+  wechatShippingReportToken: string;
+  wechatShippingReportingUntil: string;
   unitLabel: string;
   openid: string;
   remark: string;
@@ -99,6 +110,12 @@ export interface PaymentPreparationClaim {
   order: OrderRecord | null;
 }
 
+export interface FulfillmentReportClaim {
+  claimed: boolean;
+  order: OrderRecord | null;
+  reportRequired: boolean;
+}
+
 export class ActivityCapacityExceededError extends Error {
   readonly code = 'ACTIVITY_CAPACITY_EXCEEDED';
 
@@ -145,6 +162,20 @@ function sanitizeOrderKind(value: unknown): OrderKind {
 
 function sanitizeFulfillmentType(value: unknown, fallback: ShopFulfillmentType): ShopFulfillmentType {
   return value === 'delivery' || value === 'onsite' || value === 'pickup' ? value : fallback;
+}
+
+function sanitizeFulfillmentStatus(value: unknown): FulfillmentStatus {
+  return value === 'fulfilled' ? 'fulfilled' : 'pending';
+}
+
+function sanitizeWechatShippingStatus(value: unknown, fallback: WechatShippingStatus): WechatShippingStatus {
+  return value === 'not_required'
+    || value === 'pending'
+    || value === 'reporting'
+    || value === 'reported'
+    || value === 'failed'
+    ? value
+    : fallback;
 }
 
 function getDefaultFulfillmentLabel(type: ShopFulfillmentType, kind: OrderKind) {
@@ -202,9 +233,19 @@ export function normalizeOrder(item: Partial<OrderRecord>): OrderRecord {
     item.quantity ? sanitizeOrderNumber(item.amount) / sanitizeOrderNumber(item.quantity, 1) : 0,
   );
   const kind = sanitizeOrderKind(item.kind);
+  const address = normalizeAddress(item.address);
+  const status = sanitizeStatus(item.status);
+  const mock = Boolean(item.mock);
+  const amount = Math.max(0, Math.round(sanitizeOrderNumber(item.amount)));
   const fulfillmentType = sanitizeFulfillmentType(
     item.fulfillmentType,
-    kind === 'activity' ? 'onsite' : 'delivery',
+    kind === 'activity' || !address ? 'onsite' : 'delivery',
+  );
+  const fulfillmentStatus = sanitizeFulfillmentStatus(item.fulfillmentStatus);
+  const shippingRequired = kind === 'shop' && status === 'paid' && !mock && amount > 0;
+  const wechatShippingStatus = sanitizeWechatShippingStatus(
+    item.wechatShippingStatus,
+    shippingRequired ? 'pending' : 'not_required',
   );
   return {
     id: sanitizeOrderString(item.id),
@@ -215,17 +256,26 @@ export function normalizeOrder(item: Partial<OrderRecord>): OrderRecord {
     productImageUrl: sanitizeOrderString(item.productImageUrl),
     unitPrice: Math.max(0, Math.round(unitPrice)),
     quantity: Math.max(1, Math.floor(sanitizeOrderNumber(item.quantity, 1))),
-    amount: Math.max(0, Math.round(sanitizeOrderNumber(item.amount))),
-    address: normalizeAddress(item.address),
+    amount,
+    address,
     fulfillmentType,
     fulfillmentLabel: sanitizeOrderString(item.fulfillmentLabel)
       || getDefaultFulfillmentLabel(fulfillmentType, kind),
+    fulfillmentStatus,
+    fulfilledAt: sanitizeOrderString(item.fulfilledAt),
+    fulfilledBy: sanitizeOrderString(item.fulfilledBy),
+    wechatShippingStatus,
+    wechatShippingReportedAt: sanitizeOrderString(item.wechatShippingReportedAt),
+    wechatShippingError: sanitizeOrderString(item.wechatShippingError),
+    wechatShippingAttempts: Math.max(0, Math.floor(sanitizeOrderNumber(item.wechatShippingAttempts))),
+    wechatShippingReportToken: sanitizeOrderString(item.wechatShippingReportToken),
+    wechatShippingReportingUntil: sanitizeOrderString(item.wechatShippingReportingUntil),
     unitLabel: sanitizeOrderString(item.unitLabel) || (kind === 'activity' ? '位' : '件'),
     openid: sanitizeOrderString(item.openid),
     remark: sanitizeOrderString(item.remark),
     activityRegistration: normalizeActivityRegistration(item.activityRegistration),
-    status: sanitizeStatus(item.status),
-    mock: Boolean(item.mock),
+    status,
+    mock,
     prepayId: sanitizeOrderString(item.prepayId),
     paymentPreparationToken: sanitizeOrderString(item.paymentPreparationToken),
     paymentPreparingUntil: sanitizeOrderString(item.paymentPreparingUntil),
@@ -264,5 +314,15 @@ export function hasActivePaymentPreparation(order: OrderRecord) {
     order.paymentPreparationToken
     && Number.isFinite(preparingUntil)
     && preparingUntil > Date.now()
+  );
+}
+
+export function hasActiveWechatShippingReport(order: OrderRecord) {
+  const reportingUntil = Date.parse(order.wechatShippingReportingUntil);
+  return Boolean(
+    order.wechatShippingStatus === 'reporting'
+    && order.wechatShippingReportToken
+    && Number.isFinite(reportingUntil)
+    && reportingUntil > Date.now()
   );
 }

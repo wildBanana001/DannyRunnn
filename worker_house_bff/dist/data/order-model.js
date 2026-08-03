@@ -39,6 +39,18 @@ function sanitizeOrderKind(value) {
 function sanitizeFulfillmentType(value, fallback) {
     return value === 'delivery' || value === 'onsite' || value === 'pickup' ? value : fallback;
 }
+function sanitizeFulfillmentStatus(value) {
+    return value === 'fulfilled' ? 'fulfilled' : 'pending';
+}
+function sanitizeWechatShippingStatus(value, fallback) {
+    return value === 'not_required'
+        || value === 'pending'
+        || value === 'reporting'
+        || value === 'reported'
+        || value === 'failed'
+        ? value
+        : fallback;
+}
 function getDefaultFulfillmentLabel(type, kind) {
     if (type === 'onsite')
         return kind === 'activity' ? '现场参与' : '到店享用';
@@ -92,7 +104,14 @@ export function normalizeOrder(item) {
     const createdAt = sanitizeOrderString(item.createdAt) || nowIso();
     const unitPrice = sanitizeOrderNumber(item.unitPrice, item.quantity ? sanitizeOrderNumber(item.amount) / sanitizeOrderNumber(item.quantity, 1) : 0);
     const kind = sanitizeOrderKind(item.kind);
-    const fulfillmentType = sanitizeFulfillmentType(item.fulfillmentType, kind === 'activity' ? 'onsite' : 'delivery');
+    const address = normalizeAddress(item.address);
+    const status = sanitizeStatus(item.status);
+    const mock = Boolean(item.mock);
+    const amount = Math.max(0, Math.round(sanitizeOrderNumber(item.amount)));
+    const fulfillmentType = sanitizeFulfillmentType(item.fulfillmentType, kind === 'activity' || !address ? 'onsite' : 'delivery');
+    const fulfillmentStatus = sanitizeFulfillmentStatus(item.fulfillmentStatus);
+    const shippingRequired = kind === 'shop' && status === 'paid' && !mock && amount > 0;
+    const wechatShippingStatus = sanitizeWechatShippingStatus(item.wechatShippingStatus, shippingRequired ? 'pending' : 'not_required');
     return {
         id: sanitizeOrderString(item.id),
         kind,
@@ -102,17 +121,26 @@ export function normalizeOrder(item) {
         productImageUrl: sanitizeOrderString(item.productImageUrl),
         unitPrice: Math.max(0, Math.round(unitPrice)),
         quantity: Math.max(1, Math.floor(sanitizeOrderNumber(item.quantity, 1))),
-        amount: Math.max(0, Math.round(sanitizeOrderNumber(item.amount))),
-        address: normalizeAddress(item.address),
+        amount,
+        address,
         fulfillmentType,
         fulfillmentLabel: sanitizeOrderString(item.fulfillmentLabel)
             || getDefaultFulfillmentLabel(fulfillmentType, kind),
+        fulfillmentStatus,
+        fulfilledAt: sanitizeOrderString(item.fulfilledAt),
+        fulfilledBy: sanitizeOrderString(item.fulfilledBy),
+        wechatShippingStatus,
+        wechatShippingReportedAt: sanitizeOrderString(item.wechatShippingReportedAt),
+        wechatShippingError: sanitizeOrderString(item.wechatShippingError),
+        wechatShippingAttempts: Math.max(0, Math.floor(sanitizeOrderNumber(item.wechatShippingAttempts))),
+        wechatShippingReportToken: sanitizeOrderString(item.wechatShippingReportToken),
+        wechatShippingReportingUntil: sanitizeOrderString(item.wechatShippingReportingUntil),
         unitLabel: sanitizeOrderString(item.unitLabel) || (kind === 'activity' ? '位' : '件'),
         openid: sanitizeOrderString(item.openid),
         remark: sanitizeOrderString(item.remark),
         activityRegistration: normalizeActivityRegistration(item.activityRegistration),
-        status: sanitizeStatus(item.status),
-        mock: Boolean(item.mock),
+        status,
+        mock,
         prepayId: sanitizeOrderString(item.prepayId),
         paymentPreparationToken: sanitizeOrderString(item.paymentPreparationToken),
         paymentPreparingUntil: sanitizeOrderString(item.paymentPreparingUntil),
@@ -147,4 +175,11 @@ export function hasActivePaymentPreparation(order) {
     return Boolean(order.paymentPreparationToken
         && Number.isFinite(preparingUntil)
         && preparingUntil > Date.now());
+}
+export function hasActiveWechatShippingReport(order) {
+    const reportingUntil = Date.parse(order.wechatShippingReportingUntil);
+    return Boolean(order.wechatShippingStatus === 'reporting'
+        && order.wechatShippingReportToken
+        && Number.isFinite(reportingUntil)
+        && reportingUntil > Date.now());
 }

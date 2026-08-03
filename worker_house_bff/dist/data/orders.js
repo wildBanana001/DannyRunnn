@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
-import { ActivityCapacityExceededError, buildNewOrderRecord, cloneOrder, hasActivePaymentPreparation, isActiveActivityOrder, normalizeOrder, nowIso, sanitizeOrderNumber, sanitizeOrderString, } from './order-model.js';
-import { checkMysqlOrderStorageReady, claimMysqlOrderPaymentPreparation, createMysqlActivityOrderWithCapacity, createMysqlOrder, finishMysqlOrderPaymentPreparation, getMysqlOrderById, getMysqlOrdersByKind, getMysqlOrdersByOpenid, getMysqlOrdersByProductId, updateMysqlOrderStatus, } from './mysql-orders.js';
+import { ActivityCapacityExceededError, buildNewOrderRecord, cloneOrder, hasActivePaymentPreparation, hasActiveWechatShippingReport, isActiveActivityOrder, normalizeOrder, nowIso, sanitizeOrderNumber, sanitizeOrderString, } from './order-model.js';
+import { checkMysqlOrderStorageReady, claimMysqlOrderPaymentPreparation, claimMysqlOrderFulfillmentReport, createMysqlActivityOrderWithCapacity, createMysqlOrder, finishMysqlOrderPaymentPreparation, finishMysqlOrderFulfillmentReport, getMysqlOrderById, getMysqlOrdersByKind, getMysqlOrdersByOpenid, getMysqlOrdersByProductId, updateMysqlOrderStatus, } from './mysql-orders.js';
 export { ActivityCapacityExceededError, isActivityCapacityExceededError, } from './order-model.js';
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const storageFilePath = path.join(currentDir, 'orders.store.json');
@@ -164,6 +164,89 @@ export async function finishOrderPaymentPreparation(orderId, token, input) {
     persistOrders();
     return cloneOrder(store.orders[index]);
 }
+export async function claimOrderFulfillmentReport(orderId, fulfilledBy, token, leaseMilliseconds) {
+    const normalizedOrderId = sanitizeOrderString(orderId);
+    const normalizedFulfilledBy = sanitizeOrderString(fulfilledBy);
+    const normalizedToken = sanitizeOrderString(token);
+    if (usesMysqlStorage()) {
+        return claimMysqlOrderFulfillmentReport(normalizedOrderId, normalizedFulfilledBy, normalizedToken, leaseMilliseconds);
+    }
+    loadOrders();
+    const index = store.orders.findIndex((item) => item.id === normalizedOrderId);
+    if (index === -1)
+        return { claimed: false, order: null, reportRequired: false };
+    const current = store.orders[index];
+    const reportRequired = current.kind === 'shop'
+        && current.status === 'paid'
+        && !current.mock
+        && current.amount > 0;
+    const fulfilledAt = current.fulfilledAt || nowIso();
+    const fulfillmentPatch = {
+        fulfillmentStatus: 'fulfilled',
+        fulfilledAt,
+        fulfilledBy: current.fulfilledBy || normalizedFulfilledBy,
+    };
+    if (!reportRequired) {
+        store.orders[index] = normalizeOrder({
+            ...current,
+            ...fulfillmentPatch,
+            wechatShippingStatus: 'not_required',
+            updatedAt: nowIso(),
+        });
+        persistOrders();
+        return { claimed: false, order: cloneOrder(store.orders[index]), reportRequired: false };
+    }
+    if (current.wechatShippingStatus === 'reported' || hasActiveWechatShippingReport(current)) {
+        if (current.fulfillmentStatus !== 'fulfilled') {
+            store.orders[index] = normalizeOrder({
+                ...current,
+                ...fulfillmentPatch,
+                updatedAt: nowIso(),
+            });
+            persistOrders();
+        }
+        return { claimed: false, order: cloneOrder(store.orders[index]), reportRequired: true };
+    }
+    store.orders[index] = normalizeOrder({
+        ...current,
+        ...fulfillmentPatch,
+        wechatShippingStatus: 'reporting',
+        wechatShippingError: '',
+        wechatShippingAttempts: current.wechatShippingAttempts + 1,
+        wechatShippingReportToken: normalizedToken,
+        wechatShippingReportingUntil: new Date(Date.now() + Math.max(1_000, leaseMilliseconds)).toISOString(),
+        updatedAt: nowIso(),
+    });
+    persistOrders();
+    return { claimed: true, order: cloneOrder(store.orders[index]), reportRequired: true };
+}
+export async function finishOrderFulfillmentReport(orderId, token, input) {
+    const normalizedOrderId = sanitizeOrderString(orderId);
+    const normalizedToken = sanitizeOrderString(token);
+    if (usesMysqlStorage()) {
+        return finishMysqlOrderFulfillmentReport(normalizedOrderId, normalizedToken, input);
+    }
+    loadOrders();
+    const index = store.orders.findIndex((item) => item.id === normalizedOrderId);
+    if (index === -1)
+        return null;
+    const current = store.orders[index];
+    if (current.wechatShippingStatus === 'reported')
+        return cloneOrder(current);
+    if (current.wechatShippingReportToken !== normalizedToken)
+        return cloneOrder(current);
+    store.orders[index] = normalizeOrder({
+        ...current,
+        wechatShippingStatus: input.success ? 'reported' : 'failed',
+        wechatShippingReportedAt: input.success ? (current.wechatShippingReportedAt || nowIso()) : '',
+        wechatShippingError: input.success ? '' : sanitizeOrderString(input.error, '微信履约上报失败'),
+        wechatShippingReportToken: '',
+        wechatShippingReportingUntil: '',
+        updatedAt: nowIso(),
+    });
+    persistOrders();
+    return cloneOrder(store.orders[index]);
+}
 export async function updateOrderStatus(orderId, status, options = {}) {
     const normalizedOrderId = sanitizeOrderString(orderId);
     if (usesMysqlStorage())
@@ -185,6 +268,11 @@ export async function updateOrderStatus(orderId, status, options = {}) {
         throw error;
     }
     const updatedAt = nowIso();
+    const shouldQueueWechatShipping = status === 'paid'
+        && current.kind === 'shop'
+        && !current.mock
+        && current.amount > 0
+        && current.wechatShippingStatus === 'not_required';
     const next = normalizeOrder({
         ...current,
         status,
@@ -194,6 +282,7 @@ export async function updateOrderStatus(orderId, status, options = {}) {
         lastNotifyId: options.notifyId || current.lastNotifyId,
         paymentPreparationToken: status === 'pending' ? current.paymentPreparationToken : '',
         paymentPreparingUntil: status === 'pending' ? current.paymentPreparingUntil : '',
+        wechatShippingStatus: shouldQueueWechatShipping ? 'pending' : current.wechatShippingStatus,
         updatedAt,
     });
     store.orders[index] = next;

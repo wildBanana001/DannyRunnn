@@ -5,6 +5,8 @@ import { getPaymentApiMode, requestWithMode, type RequestOptions } from './reque
 
 export type ShopOrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
 export type ShopFulfillmentType = 'delivery' | 'pickup' | 'onsite';
+export type ShopFulfillmentStatus = 'pending' | 'fulfilled';
+export type WechatShippingStatus = 'not_required' | 'pending' | 'reporting' | 'reported' | 'failed';
 
 export interface ShopProduct {
   id: string;
@@ -45,6 +47,10 @@ export interface ShopOrder {
   address: ShopAddressSnapshot | null;
   fulfillmentType: ShopFulfillmentType;
   fulfillmentLabel: string;
+  fulfillmentStatus: ShopFulfillmentStatus;
+  fulfilledAt: string;
+  wechatShippingStatus: WechatShippingStatus;
+  wechatShippingReportedAt: string;
   unitLabel: string;
   remark: string;
   status: ShopOrderStatus;
@@ -140,11 +146,19 @@ function normalizeProduct(product: ShopProduct): ShopProduct {
 }
 
 function normalizeOrder(order: ShopOrder): ShopOrder {
+  const fulfillmentStatus = order.fulfillmentStatus === 'fulfilled' ? 'fulfilled' : 'pending';
+  const wechatShippingStatus = ['pending', 'reporting', 'reported', 'failed'].includes(order.wechatShippingStatus)
+    ? order.wechatShippingStatus
+    : 'not_required';
   return {
     ...order,
     address: order.address || null,
     fulfillmentType: order.fulfillmentType === 'onsite' || order.fulfillmentType === 'pickup' ? order.fulfillmentType : 'delivery',
     fulfillmentLabel: order.fulfillmentLabel?.trim() || (order.fulfillmentType === 'onsite' ? '到店享用' : order.fulfillmentType === 'pickup' ? '到店自取' : '快递配送'),
+    fulfillmentStatus,
+    fulfilledAt: order.fulfilledAt || '',
+    wechatShippingStatus,
+    wechatShippingReportedAt: order.wechatShippingReportedAt || '',
     unitLabel: order.unitLabel?.trim() || '件',
     productImageUrl: resolveAssetUrl(order.productImageUrl),
   };

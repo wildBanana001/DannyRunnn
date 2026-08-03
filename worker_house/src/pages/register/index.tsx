@@ -7,6 +7,7 @@ import SafeImage from '@/components/SafeImage';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
+import { REAL_PAYMENT_TEST_PRICE_YUAN } from '@/constants/runtime';
 import { calculateCardDeduction } from '@/data/mock-member';
 import {
   confirmActivityPayment,
@@ -66,6 +67,7 @@ const RegisterPage: React.FC = () => {
   const [successRegistrationId, setSuccessRegistrationId] = useState('');
   const [clientRequestId] = useState(createActivityPaymentClientRequestId);
   const directPaymentEnabled = isDirectActivityPaymentEnabled();
+  const registrationPrice = directPaymentEnabled ? REAL_PAYMENT_TEST_PRICE_YUAN : activity?.price || 0;
   const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
 
   const refreshMemberData = useCallback(async () => {
@@ -142,16 +144,16 @@ const RegisterPage: React.FC = () => {
     }
     const remainingCount = currentCard?.remainingCount || 0;
     const deductionAmount = calculateCardDeduction(
-      activity.price,
+      registrationPrice,
       directPaymentEnabled ? false : useCard,
       Boolean(activity.cardEligible),
       remainingCount
     );
     return {
       deductionAmount,
-      payableAmount: Math.max(0, activity.price - deductionAmount),
+      payableAmount: Math.max(0, registrationPrice - deductionAmount),
     };
-  }, [activity, currentCard?.remainingCount, directPaymentEnabled, useCard]);
+  }, [activity, currentCard?.remainingCount, directPaymentEnabled, registrationPrice, useCard]);
 
   const handleCreateProfile = () => {
     setEditingProfileId(undefined);
@@ -301,7 +303,7 @@ const RegisterPage: React.FC = () => {
           <View className={styles.activityInfo}>
             <Text className={styles.activityTitle}>{activity.title}</Text>
             <Text className={styles.activityMeta}>{formatDate(activity.startDate)} · {activity.startTime}-{activity.endTime}</Text>
-            <Text className={styles.activityPrice}>报名价 {formatPrice(activity.price)}</Text>
+            <Text className={styles.activityPrice}>报名价 {formatPrice(registrationPrice)}</Text>
           </View>
         </View>
 
@@ -368,7 +370,7 @@ const RegisterPage: React.FC = () => {
               ) : null}
 
               <View className={styles.pricePanel}>
-                <View className={styles.priceRow}><Text className={styles.priceLabel}>报名价</Text><Text className={styles.priceValue}>{formatPrice(activity.price)}</Text></View>
+                <View className={styles.priceRow}><Text className={styles.priceLabel}>报名价</Text><Text className={styles.priceValue}>{formatPrice(registrationPrice)}</Text></View>
                 <View className={styles.priceRow}><Text className={styles.priceLabel}>抵扣</Text><Text className={styles.discountValue}>- {formatPrice(paymentSummary.deductionAmount)}</Text></View>
                 <View className={styles.priceRowStrong}><Text className={styles.priceStrongLabel}>实付</Text><Text className={styles.priceStrongValue}>{formatPrice(paymentSummary.payableAmount)}</Text></View>
               </View>

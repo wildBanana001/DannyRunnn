@@ -35,7 +35,8 @@ export default defineAppConfig({
         'card-orders/index',
         'card-order-detail/index',
         'card-packages/index',
-        'card-package-edit/index'
+        'card-package-edit/index',
+        'shop-orders/index'
       ],
     },
     {
@@ -57,6 +58,7 @@ export default defineAppConfig({
         'product-detail/index',
         'order-confirm/index',
         'my-orders/index',
+        'order-detail/index',
         'payment-result/index'
       ],
     },

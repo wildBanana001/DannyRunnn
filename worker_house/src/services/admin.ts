@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro';
 import type { Activity, CardOrder, CardPackage, Registration, RegistrationStatus, Story } from '@/types';
 import type { Post } from '@/types/post';
+import type { ShopFulfillmentStatus, ShopFulfillmentType, ShopOrderStatus, WechatShippingStatus } from './shop';
 import { request } from './request';
 
 declare const wx: any;
@@ -106,6 +107,41 @@ export interface AdminCardOrdersQuery {
   pageSize?: number;
   status?: CardOrder['status'];
   userId?: string;
+}
+
+export interface AdminShopOrdersQuery {
+  fulfillmentStatus?: ShopFulfillmentStatus | '';
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+  status?: ShopOrderStatus | '';
+}
+
+export interface AdminShopOrder {
+  id: string;
+  openid: string;
+  productId: string;
+  productName: string;
+  productImageUrl: string;
+  unitPrice: number;
+  quantity: number;
+  amount: number;
+  fulfillmentType: ShopFulfillmentType;
+  fulfillmentLabel: string;
+  fulfillmentStatus: ShopFulfillmentStatus;
+  fulfilledAt: string;
+  fulfilledBy: string;
+  wechatShippingStatus: WechatShippingStatus;
+  wechatShippingReportedAt: string;
+  wechatShippingError: string;
+  wechatShippingAttempts: number;
+  status: ShopOrderStatus;
+  mock: boolean;
+  transactionId: string;
+  paidAt: string;
+  remark: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminRegistrationDetail extends Registration {
@@ -285,6 +321,25 @@ export async function fetchAdminRegistrations(query: AdminRegistrationsQuery = {
     status: query.status,
   });
   return adminRequest<AdminPagedResult<Registration>>('GET', `/api/admin-mini/registrations${search}`);
+}
+
+export async function fetchAdminShopOrders(query: AdminShopOrdersQuery = {}) {
+  const search = buildQueryString({
+    fulfillmentStatus: query.fulfillmentStatus,
+    keyword: query.keyword,
+    page: query.page ?? 1,
+    pageSize: query.pageSize ?? 30,
+    status: query.status,
+  });
+  return adminRequest<AdminPagedResult<AdminShopOrder>>('GET', `/api/admin-mini/shop-orders${search}`);
+}
+
+export async function confirmAdminShopOrderFulfillment(id: string) {
+  const result = await adminRequest<{ data: AdminShopOrder }>(
+    'POST',
+    `/api/admin-mini/shop-orders/${encodeURIComponent(id)}/fulfill`,
+  );
+  return unwrapData(result);
 }
 
 export async function fetchAdminRegistrationDetail(id: string) {

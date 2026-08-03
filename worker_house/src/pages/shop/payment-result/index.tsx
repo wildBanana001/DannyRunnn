@@ -100,7 +100,14 @@ const PaymentResultPage: React.FC = () => {
             <Text className={styles.primaryBtnText}>{retrying ? '正在处理…' : (isFree ? '继续领取' : '继续支付')}</Text>
           </View>
         ) : null}
-        <View className={status === 'pending' ? styles.ghostBtn : styles.primaryBtn} onClick={() => Taro.redirectTo({ url: '/pages/shop/my-orders/index' })}>
+        <View
+          className={status === 'pending' ? styles.ghostBtn : styles.primaryBtn}
+          onClick={() => Taro.redirectTo({
+            url: orderId
+              ? `/pages/shop/order-detail/index?orderId=${encodeURIComponent(orderId)}`
+              : '/pages/shop/my-orders/index',
+          })}
+        >
           <Text className={status === 'pending' ? styles.ghostBtnText : styles.primaryBtnText}>查看订单</Text>
         </View>
         <View className={styles.textButton} onClick={() => Taro.switchTab({ url: '/pages/shop-home/index' })}>

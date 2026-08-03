@@ -33,6 +33,11 @@ const menuItems = [
     url: '/pages/admin/registrations/index',
   },
   {
+    title: '商城订单与核销',
+    description: '确认到店交付，并同步微信小程序订单履约状态',
+    url: '/pages/admin/shop-orders/index',
+  },
+  {
     title: '次卡订单',
     description: '查看次卡订单、使用记录，并手动调整余量和有效期',
     url: '/pages/admin/card-orders/index',

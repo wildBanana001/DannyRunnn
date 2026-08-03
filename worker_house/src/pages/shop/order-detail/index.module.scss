@@ -1,0 +1,179 @@
+@use '@/styles/variables.scss' as *;
+
+.container,
+.state {
+  min-height: 100vh;
+  background: $color-oat;
+  color: $color-text-primary;
+}
+
+.state {
+  box-sizing: border-box;
+  padding: 180rpx 40rpx 40rpx;
+  text-align: center;
+}
+
+.hero,
+.productCard,
+.detailCard,
+.actions {
+  margin: 24rpx 32rpx 0;
+}
+
+.hero {
+  padding: 34rpx 0 28rpx;
+  border-bottom: 2rpx solid $color-text-primary;
+}
+
+.eyebrow,
+.title,
+.fulfillmentState,
+.syncState,
+.productName,
+.meta,
+.amount,
+.label,
+.value {
+  display: block;
+}
+
+.eyebrow {
+  font-size: 18rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 3rpx;
+  color: $color-brand;
+}
+
+.titleRow,
+.productCard,
+.detailRow {
+  display: flex;
+}
+
+.titleRow {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10rpx;
+}
+
+.title {
+  font-family: $font-family-hand;
+  font-size: 54rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.status {
+  padding: 8rpx 14rpx;
+  border: 2rpx solid currentColor;
+  font-size: 21rpx;
+  color: #3d7654;
+}
+
+.status_pending { color: #a66c25; }
+.status_failed,
+.status_closed { color: #76685e; }
+
+.fulfillmentState {
+  margin-top: 18rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.syncState {
+  margin-top: 8rpx;
+  font-size: 21rpx;
+  color: $color-text-secondary;
+}
+
+.productCard,
+.detailCard {
+  padding: 26rpx;
+  border: 2rpx solid $color-text-primary;
+  background: $color-white;
+}
+
+.productCard {
+  align-items: center;
+}
+
+.productImage {
+  width: 150rpx;
+  height: 150rpx;
+  flex: 0 0 auto;
+  border: 2rpx solid $color-text-primary;
+}
+
+.productInfo {
+  min-width: 0;
+  margin-left: 24rpx;
+}
+
+.productName {
+  font-size: 30rpx;
+  font-weight: $font-weight-bold;
+}
+
+.meta {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: $color-text-secondary;
+}
+
+.amount {
+  margin-top: 12rpx;
+  font-size: 32rpx;
+  font-weight: $font-weight-heavy;
+  color: $color-brand;
+}
+
+.detailRow {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.detailRow:last-child { border-bottom: none; }
+
+.label {
+  flex: 0 0 130rpx;
+  font-size: 23rpx;
+  color: $color-text-secondary;
+}
+
+.value {
+  min-width: 0;
+  flex: 1;
+  font-size: 23rpx;
+  line-height: 1.5;
+  text-align: right;
+  word-break: break-all;
+}
+
+.actions {
+  display: flex;
+  gap: 18rpx;
+}
+
+.primaryButton,
+.secondaryButton {
+  flex: 1;
+  padding: 20rpx;
+  border: 2rpx solid $color-text-primary;
+  text-align: center;
+  font-size: 25rpx;
+  font-weight: $font-weight-bold;
+}
+
+.primaryButton {
+  background: $color-text-primary;
+  color: $color-white;
+}
+
+.secondaryButton {
+  background: transparent;
+  color: $color-text-primary;
+}
+
+.bottomSpacing { height: 56rpx; }

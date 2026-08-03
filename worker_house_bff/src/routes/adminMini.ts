@@ -9,6 +9,7 @@ import { getRegistrationByIdUnsafe, listAllRegistrations, updateRegistrationStat
 import { getOrderById, getOrdersByKind, type OrderRecord } from '../data/orders.js';
 import { getSiteConfig, updateSiteConfig } from '../data/siteConfig.js';
 import { openidAdminAuth, resolveAdminOpenid } from '../middleware/openidAdminAuth.js';
+import { confirmShopOrderFulfillment, OrderFulfillmentError } from '../services/order-fulfillment.js';
 import type {
   ActivityRecord,
   CardOrder,
@@ -214,6 +215,35 @@ function buildPaymentRegistration(order: OrderRecord | null): Registration | nul
   };
 }
 
+function toAdminShopOrder(order: OrderRecord) {
+  return {
+    id: order.id,
+    openid: order.openid,
+    productId: order.productId,
+    productName: order.productName,
+    productImageUrl: order.productImageUrl,
+    unitPrice: order.unitPrice,
+    quantity: order.quantity,
+    amount: order.amount,
+    fulfillmentType: order.fulfillmentType,
+    fulfillmentLabel: order.fulfillmentLabel,
+    fulfillmentStatus: order.fulfillmentStatus,
+    fulfilledAt: order.fulfilledAt,
+    fulfilledBy: order.fulfilledBy,
+    wechatShippingStatus: order.wechatShippingStatus,
+    wechatShippingReportedAt: order.wechatShippingReportedAt,
+    wechatShippingError: order.wechatShippingError,
+    wechatShippingAttempts: order.wechatShippingAttempts,
+    status: order.status,
+    mock: order.mock,
+    transactionId: order.transactionId,
+    paidAt: order.paidAt,
+    remark: order.remark,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+  };
+}
+
 async function fetchAdminMiniPosterList() {
   const result = await callCloudFunction<Record<string, unknown>[]>('poster', {
     action: 'list',
@@ -361,6 +391,51 @@ adminMiniRouter.delete('/activities/:id', (request, response) => {
   }
 
   response.json({ success: true });
+});
+
+adminMiniRouter.get('/shop-orders', async (request, response) => {
+  try {
+    const page = parsePage(request.query.page, 1);
+    const pageSize = Math.min(parsePage(request.query.pageSize, 30), 100);
+    const status = sanitizeString(request.query.status);
+    const fulfillmentStatus = sanitizeString(request.query.fulfillmentStatus);
+    const keyword = sanitizeString(request.query.keyword).toLowerCase();
+    let orders = await getOrdersByKind('shop');
+    if (status) orders = orders.filter((item) => item.status === status);
+    if (fulfillmentStatus) {
+      orders = orders.filter((item) => item.fulfillmentStatus === fulfillmentStatus);
+    }
+    if (keyword) {
+      orders = orders.filter((item) => matchKeyword([
+        item.id,
+        item.productName,
+        item.openid,
+        item.transactionId,
+      ], keyword));
+    }
+    response.json(buildPagedResult(orders.map(toAdminShopOrder), page, pageSize));
+  } catch (error) {
+    response.status(500).json({ message: error instanceof Error ? error.message : '读取商城订单失败' });
+  }
+});
+
+adminMiniRouter.post('/shop-orders/:id/fulfill', async (request, response) => {
+  try {
+    const order = await confirmShopOrderFulfillment(
+      String(request.params.id),
+      resolveAdminOpenid(request),
+    );
+    response.json({ data: toAdminShopOrder(order) });
+  } catch (error) {
+    if (error instanceof OrderFulfillmentError) {
+      response.status(error.status).json({
+        message: error.message,
+        ...(error.order ? { data: toAdminShopOrder(error.order) } : {}),
+      });
+      return;
+    }
+    response.status(500).json({ message: error instanceof Error ? error.message : '确认到店交付失败' });
+  }
 });
 
 adminMiniRouter.get('/registrations', async (request, response) => {

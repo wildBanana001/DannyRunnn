@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACTIVITY_PAYMENT_TEST_PRICE_YUAN } from '../constants/payment.js';
 import { activitySeedData } from '../mock/seed.js';
 import type { ActivityRecord, ActivitySignupRecord } from '../types/index.js';
 
@@ -80,6 +81,8 @@ function normalizeActivityRecord(record: ActivityRecord): ActivityRecord {
   const startDate = sanitizeString(record.startDate) || defaultActivityTemplate.startDate;
   const endDate = sanitizeString(record.endDate) || startDate;
   const signups = Array.isArray(record.signups) ? clone(record.signups) : [];
+  const status = deriveActivityStatus(startDate, endDate);
+  const configuredPrice = sanitizeNumber(record.price, defaultActivityTemplate.price);
 
   return {
     ...defaultActivityTemplate,
@@ -98,11 +101,11 @@ function normalizeActivityRecord(record: ActivityRecord): ActivityRecord {
     endTime: sanitizeString(record.endTime) || defaultActivityTemplate.endTime,
     location: sanitizeString(record.location) || defaultActivityTemplate.location,
     address: sanitizeString(record.address) || undefined,
-    price: sanitizeNumber(record.price, defaultActivityTemplate.price),
-    originalPrice: sanitizeNumber(record.originalPrice, sanitizeNumber(record.price, defaultActivityTemplate.originalPrice ?? defaultActivityTemplate.price)),
+    price: status === 'ongoing' ? ACTIVITY_PAYMENT_TEST_PRICE_YUAN : configuredPrice,
+    originalPrice: sanitizeNumber(record.originalPrice, configuredPrice),
     maxParticipants: Math.max(1, sanitizeNumber(record.maxParticipants, defaultActivityTemplate.maxParticipants)),
     currentParticipants: Math.max(0, sanitizeNumber(record.currentParticipants, 0)),
-    status: deriveActivityStatus(startDate, endDate),
+    status,
     category: sanitizeString(record.category) || defaultActivityTemplate.category,
     tags: sanitizeStringArray(record.tags),
     cardEligible: Boolean(record.cardEligible),

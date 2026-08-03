@@ -109,14 +109,27 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 安全规则：
 
 - `MODE=mock` 始终模拟支付，不会因为本机误配证书而发起真实扣款。
-- 当前联调版本只在微信小程序中允许发起支付；商城 6 款鸡尾酒与 `act-001`、`act-002` 两场活动均使用 ¥0.01 真实支付测试价，联调完成后需恢复正式售价。
+- 当前联调版本只在微信小程序中允许发起支付；商城 6 款鸡尾酒和所有可报名活动均使用 ¥0.01 真实支付测试价。活动支付金额由 BFF 强制按 1 分创建，不能通过客户端或活动后台价格绕过；联调完成后需统一恢复正式售价。
 - 用户身份与真实支付只接受云托管注入的微信身份，并校验 `X-WX-APPID`；传统 `wechat` BFF 模式在接入服务端签名会话前会返回 `503`，不会信任客户端自报的 OpenID。
 - 非 `mock` 模式缺少任一支付配置时，收费订单返回 `503`；价格为 0 的活动仍可直接完成报名。
 - 前端支付成功只代表收银台返回成功；订单必须以后端主动查单或验签后的支付通知为准。
 - 回调会校验签名时间、微信支付公钥 ID、AppID、商户号、订单号、金额和币种，并按通知 ID 幂等处理。
 - `ENABLE_SHOP` 由云托管控制台管理。支付配置与 `/api/shop/readiness` 验证通过后可设置为 `true`；自动部署不会覆盖该值。
 - 首次开启该变量前，先等待新 BFF 版本切换到 100% 流量，避免新旧实例并存期间接收支付订单。
-- 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=mysql`；商城还需按照交易类小程序规范接入发货管理。
+- 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=mysql`；商城订单已按交易类小程序规范接入订单发货管理，门店实际交付后使用“用户自提”类型上报。
+
+### 到店享用履约与微信订单管理
+
+到店订单不会在支付成功时提前标记为已履约。正确操作顺序是：
+
+1. 用户完成微信支付，订单进入“已支付 / 待交付”。
+2. 用户到店，店员实际交付饮品后进入小程序管理员中心的“商城订单与核销”。
+3. 点击“确认到店交付”。BFF 原子记录核销人和时间，再调用微信小程序订单发货管理接口，以 `logistics_type=4`（用户自提）上报。
+4. 微信接口失败时，门店交付记录不会丢失；后台会显示错误并提供“重试微信上报”。并发点击、接口超时和重复上报均按订单号幂等处理。
+
+履约上报使用 `CLOUD_APP_ID`、`CLOUD_APP_SECRET` 和 `WECHAT_PAY_MCH_ID`。`CLOUD_APP_ID` 必须与 `WECHAT_APP_ID` 一致，否则 BFF 会拒绝上报，避免把订单写入错误的小程序。
+
+如需通过微信的“消息跳转路径设置接口”自定义发货服务通知入口，建议使用静态订单列表页 `pages/shop/my-orders/index`。项目同时提供订单详情页 `pages/shop/order-detail/index`；从自有页面或支持动态参数的入口跳转时，推荐传 `orderId=<商户订单号>`，也兼容 `outTradeNo`、`out_trade_no`、`merchantTradeNo`、`merchant_trade_no` 和 `id`。
 
 ## 本地启动
 
@@ -145,16 +158,21 @@ npm run migrate-images
 
 - `GET /health`：只检查 Node 进程是否存活，正常时返回 `200`
 - `GET /api/health`：检查业务运行配置；云托管未接入持久化数据源时返回 `503 configuration_required`
-- `GET /api/shop/readiness`：检查商城/活动支付配置与订单库；不会调用微信支付或产生扣款
+- `GET /api/shop/readiness`：检查商城/活动支付、订单库及微信履约上报配置；不会调用微信支付或产生扣款
 - `POST /api/shop/readiness/verify`：需管理端令牌，调用微信支付官方安全回显接口验证双向签名；不会创建交易
 
 活动报名支付接口：
 
-- `POST /api/shop/activity-registrations/pay`：按服务端活动价格创建报名支付单
+- `POST /api/shop/activity-registrations/pay`：测试期由服务端固定按 ¥0.01 创建报名支付单
 - `GET /api/shop/activity-registrations/mine`：读取当前用户的报名记录
 - `GET /api/shop/activity-registrations/:id`：查单并返回服务端确认后的报名状态
 - `POST /api/shop/activity-registrations/:id/retry`：继续支付未过期的报名单
 - 支付通知仍统一使用 `POST /api/shop/orders/notify`；旧的直接报名接口在非 `mock` 模式返回 `410`，不可绕过支付
+
+商城履约管理接口（均需管理员 OpenID 白名单鉴权）：
+
+- `GET /api/admin-mini/shop-orders`：查询商城订单、门店交付状态和微信履约同步状态
+- `POST /api/admin-mini/shop-orders/:id/fulfill`：确认实际到店交付并幂等上报微信；失败后调用同一接口重试
 
 返回示例：
 

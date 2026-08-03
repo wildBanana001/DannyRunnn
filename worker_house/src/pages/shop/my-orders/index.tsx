@@ -137,9 +137,7 @@ const MyOrdersPage: React.FC = () => {
               <View
                 key={item.id}
                 className={styles.card}
-                onClick={item.fulfillmentType === 'onsite'
-                  ? () => Taro.navigateTo({ url: `/pages/shop/product-detail/index?id=${encodeURIComponent(item.productId)}` })
-                  : undefined}
+                onClick={() => Taro.navigateTo({ url: `/pages/shop/order-detail/index?orderId=${encodeURIComponent(item.id)}` })}
               >
                 <View className={styles.cardHeader}>
                   <View>
@@ -164,7 +162,9 @@ const MyOrdersPage: React.FC = () => {
                   <Text className={styles.amount}>{item.amount <= 0 ? '免费' : `¥${(item.amount / 100).toFixed(2)}`}</Text>
                 </View>
                 <View className={styles.cardFooter}>
-                  <Text className={styles.address}>{getFulfillmentText(item)}</Text>
+                  <Text className={styles.address}>
+                    {item.fulfillmentStatus === 'fulfilled' ? '已完成到店交付' : getFulfillmentText(item)}
+                  </Text>
                   {item.status === 'pending' ? (
                     <View className={styles.payButton} onClick={(event) => handleRetry(event, item.id)}>
                       <Text>{payingOrderId === item.id ? '处理中…' : (item.amount <= 0 ? '继续领取' : '继续支付')}</Text>

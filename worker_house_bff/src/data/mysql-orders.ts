@@ -9,10 +9,12 @@ import {
   ActivityCapacityExceededError,
   cloneOrder,
   hasActivePaymentPreparation,
+  hasActiveWechatShippingReport,
   normalizeOrder,
   nowIso,
   sanitizeOrderString,
   type ActivityOrderCapacity,
+  type FulfillmentReportClaim,
   type OrderKind,
   type OrderRecord,
   type OrderStatus,
@@ -521,6 +523,88 @@ export async function finishMysqlOrderPaymentPreparation(
   });
 }
 
+export async function claimMysqlOrderFulfillmentReport(
+  orderId: string,
+  fulfilledBy: string,
+  token: string,
+  leaseMilliseconds: number,
+): Promise<FulfillmentReportClaim> {
+  await ensureSchemaReady();
+  return runTransaction(async (connection) => {
+    const current = await selectOrderById(connection, orderId, true);
+    if (!current) return { claimed: false, order: null, reportRequired: false };
+
+    const reportRequired = current.kind === 'shop'
+      && current.status === 'paid'
+      && !current.mock
+      && current.amount > 0;
+    const fulfillmentPatch = {
+      fulfillmentStatus: 'fulfilled' as const,
+      fulfilledAt: current.fulfilledAt || nowIso(),
+      fulfilledBy: current.fulfilledBy || sanitizeOrderString(fulfilledBy),
+    };
+
+    if (!reportRequired) {
+      const updated = normalizeOrder({
+        ...current,
+        ...fulfillmentPatch,
+        wechatShippingStatus: 'not_required',
+        updatedAt: nowIso(),
+      });
+      await replaceOrder(connection, updated);
+      return { claimed: false, order: cloneOrder(updated), reportRequired: false };
+    }
+
+    if (current.wechatShippingStatus === 'reported' || hasActiveWechatShippingReport(current)) {
+      if (current.fulfillmentStatus === 'fulfilled') {
+        return { claimed: false, order: cloneOrder(current), reportRequired: true };
+      }
+      const updated = normalizeOrder({ ...current, ...fulfillmentPatch, updatedAt: nowIso() });
+      await replaceOrder(connection, updated);
+      return { claimed: false, order: cloneOrder(updated), reportRequired: true };
+    }
+
+    const updated = normalizeOrder({
+      ...current,
+      ...fulfillmentPatch,
+      wechatShippingStatus: 'reporting',
+      wechatShippingError: '',
+      wechatShippingAttempts: current.wechatShippingAttempts + 1,
+      wechatShippingReportToken: sanitizeOrderString(token),
+      wechatShippingReportingUntil: new Date(Date.now() + Math.max(1_000, leaseMilliseconds)).toISOString(),
+      updatedAt: nowIso(),
+    });
+    await replaceOrder(connection, updated);
+    return { claimed: true, order: cloneOrder(updated), reportRequired: true };
+  });
+}
+
+export async function finishMysqlOrderFulfillmentReport(
+  orderId: string,
+  token: string,
+  input: { success: boolean; error?: string },
+) {
+  await ensureSchemaReady();
+  return runTransaction(async (connection) => {
+    const current = await selectOrderById(connection, orderId, true);
+    if (!current) return null;
+    if (current.wechatShippingStatus === 'reported') return cloneOrder(current);
+    if (current.wechatShippingReportToken !== sanitizeOrderString(token)) return cloneOrder(current);
+
+    const updated = normalizeOrder({
+      ...current,
+      wechatShippingStatus: input.success ? 'reported' : 'failed',
+      wechatShippingReportedAt: input.success ? (current.wechatShippingReportedAt || nowIso()) : '',
+      wechatShippingError: input.success ? '' : sanitizeOrderString(input.error, '微信履约上报失败'),
+      wechatShippingReportToken: '',
+      wechatShippingReportingUntil: '',
+      updatedAt: nowIso(),
+    });
+    await replaceOrder(connection, updated);
+    return cloneOrder(updated);
+  });
+}
+
 async function updateLockedOrderStatus(
   connection: PoolConnection,
   current: OrderRecord,
@@ -546,6 +630,11 @@ async function updateLockedOrderStatus(
   }
 
   const updatedAt = nowIso();
+  const shouldQueueWechatShipping = status === 'paid'
+    && current.kind === 'shop'
+    && !current.mock
+    && current.amount > 0
+    && current.wechatShippingStatus === 'not_required';
   const next = normalizeOrder({
     ...current,
     status,
@@ -555,6 +644,7 @@ async function updateLockedOrderStatus(
     lastNotifyId: options.notifyId || current.lastNotifyId,
     paymentPreparationToken: status === 'pending' ? current.paymentPreparationToken : '',
     paymentPreparingUntil: status === 'pending' ? current.paymentPreparingUntil : '',
+    wechatShippingStatus: shouldQueueWechatShipping ? 'pending' : current.wechatShippingStatus,
     updatedAt,
   });
   await replaceOrder(connection, next);
