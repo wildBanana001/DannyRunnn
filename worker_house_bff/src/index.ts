@@ -1,6 +1,6 @@
 import cors from 'cors';
 import express from 'express';
-import { config } from './config.js';
+import { config, hasWechatCloudConfig } from './config.js';
 import { getSiteConfig as getCommunitySiteConfig } from './data/siteConfig.js';
 import { checkOrderStorageReady } from './data/orders.js';
 import { activityRouter } from './routes/activity.js';
@@ -30,20 +30,37 @@ function isRuntimeReady() {
 
 function isRequestRuntimeReady(path: string, method: string) {
   if (isRuntimeReady()) return true;
-  const accountDeletionReady = path === '/account' || path.startsWith('/account/');
+  const isAccountPath = path === '/account' || path.startsWith('/account/');
+  const accountDeletionReady = isAccountPath && (method !== 'DELETE' || hasWechatCloudConfig());
+  const communityReady = hasWechatCloudConfig() && (
+    path === '/posts'
+    || path.startsWith('/posts/')
+    || path === '/upload'
+    || path.startsWith('/upload/')
+    || path === '/admin/upload'
+    || path.startsWith('/admin/upload/')
+    || path === '/admin-mini/check'
+    || path === '/admin-mini/stats'
+    || path === '/admin-mini/upload'
+    || path === '/admin-mini/posts'
+    || path.startsWith('/admin-mini/posts/')
+  );
   const paymentStorageReady = config.shopOrderStorage === 'mysql'
     && (path === '/shop' || path.startsWith('/shop/'));
   const paymentRegistrationAdminRead = config.enableShop
     && config.shopOrderStorage === 'mysql'
     && method === 'GET'
     && (path === '/admin-mini/registrations' || path.startsWith('/admin-mini/registrations/'));
-  return accountDeletionReady || paymentStorageReady || paymentRegistrationAdminRead;
+  return accountDeletionReady || communityReady || paymentStorageReady || paymentRegistrationAdminRead;
 }
 
 function buildHealthPayload() {
   const paymentConfiguration = getWechatPayConfigurationStatus();
   return {
     mode: config.cloudMode,
+    community: {
+      storage: hasWechatCloudConfig() ? 'cloudbase' : 'configuration_required',
+    },
     persistence: config.cloudMode === 'cloudrun'
       ? config.shopOrderStorage === 'mysql'
         ? 'mysql-orders+bundled-content'

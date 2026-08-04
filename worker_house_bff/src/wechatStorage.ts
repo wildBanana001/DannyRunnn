@@ -34,6 +34,11 @@ export interface UploadedFileResult {
   url: string;
 }
 
+export interface DeleteCloudFilesResult {
+  deleted: number;
+  failures: string[];
+}
+
 let accessTokenCache: AccessTokenCache | null = null;
 
 function getErrorMessage(error: unknown) {
@@ -273,6 +278,54 @@ async function getDownloadUrl(fileID: string, maxAge = 31536000) {
 
     return file.download_url;
   });
+}
+
+export async function deleteWechatCloudFiles(fileIds: string[]): Promise<DeleteCloudFilesResult> {
+  const normalizedFileIds = Array.from(new Set(
+    fileIds.map((item) => String(item).trim()).filter((item) => item.startsWith('cloud://')),
+  ));
+  if (normalizedFileIds.length === 0) return { deleted: 0, failures: [] };
+
+  let deleted = 0;
+  const failures: string[] = [];
+  for (let index = 0; index < normalizedFileIds.length; index += 50) {
+    const fileidList = normalizedFileIds.slice(index, index + 50);
+    try {
+      const accessToken = await getAccessToken();
+      const url = new URL('https://api.weixin.qq.com/tcb/batchdeletefile');
+      url.searchParams.set('access_token', accessToken);
+      const payload = await parseWechatResponse<{
+        delete_list?: Array<{ errmsg?: string; fileid?: string; status?: number }>;
+        errcode?: number;
+        errmsg?: string;
+      }>(
+        await fetch(url, {
+          body: JSON.stringify({ env: config.cloudEnvId, fileid_list: fileidList }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        }),
+      );
+      const results = Array.isArray(payload.delete_list) ? payload.delete_list : [];
+      if (results.length === 0) {
+        failures.push(...fileidList);
+        continue;
+      }
+      const handledFileIds = new Set<string>();
+      results.forEach((item) => {
+        const fileID = String(item.fileid || '').trim();
+        if (fileID) handledFileIds.add(fileID);
+        const errorMessage = String(item.errmsg || '').toLowerCase();
+        const alreadyMissing = errorMessage.includes('not exist') || errorMessage.includes('不存在');
+        if (Number(item.status) === 0 || alreadyMissing) deleted += 1;
+        else failures.push(fileID || 'unknown');
+      });
+      failures.push(...fileidList.filter((fileID) => !handledFileIds.has(fileID)));
+    } catch {
+      failures.push(...fileidList);
+    }
+  }
+
+  return { deleted, failures: Array.from(new Set(failures)) };
 }
 
 export async function uploadToWechatCloudStorage(

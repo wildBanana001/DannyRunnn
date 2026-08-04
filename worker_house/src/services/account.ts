@@ -2,8 +2,6 @@ import Taro from '@tarojs/taro';
 import { getPaymentApiMode, requestWithMode } from './request';
 import { deleteTrackedPostImages } from './upload';
 
-declare const wx: any;
-
 export const ACCOUNT_DELETION_CONFIRMATION = '注销账号';
 
 export interface AccountDeletionBlocker {
@@ -58,13 +56,6 @@ export interface AccountDeletionResult {
   success: true;
 }
 
-interface DirectCommunityDeletionResult {
-  commentsDeleted: number;
-  failedFileIds: string[];
-  filesDeleted: number;
-  postsDeleted: number;
-}
-
 export class AccountDeletionCleanupError extends Error {
   constructor(message = '账号基础数据已删除，但社区内容仍有部分未清理，请保持当前登录状态并重试') {
     super(message);
@@ -80,48 +71,6 @@ const PERSONAL_STORAGE_KEYS = [
   'worker-house-member-state-v5',
   'worker-house-post-file-ids:v1',
 ] as const;
-
-function getCloudApi() {
-  return (Taro as any).cloud || (typeof wx !== 'undefined' ? (wx as any).cloud : null);
-}
-
-function parseCloudFunctionResult(value: unknown) {
-  if (typeof value !== 'string') return value;
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return value;
-  }
-}
-
-async function deleteCommunityDataAsCurrentUser(): Promise<DirectCommunityDeletionResult> {
-  const cloudApi = getCloudApi();
-  if (!cloudApi?.callFunction) {
-    throw new AccountDeletionCleanupError('当前微信环境无法完成社区内容清理，请稍后在小程序内重试');
-  }
-
-  const response = await cloudApi.callFunction({
-    name: 'post',
-    data: { action: 'deleteAccountData' },
-  });
-  const payload = parseCloudFunctionResult(response?.result) as {
-    data?: Partial<DirectCommunityDeletionResult>;
-    error?: string;
-    success?: boolean;
-  } | null;
-  if (!payload || payload.success !== true) {
-    throw new AccountDeletionCleanupError(payload?.error || '社区内容清理未完成，请稍后重试');
-  }
-
-  return {
-    commentsDeleted: Math.max(0, Number(payload.data?.commentsDeleted) || 0),
-    failedFileIds: Array.isArray(payload.data?.failedFileIds)
-      ? payload.data.failedFileIds.map((item) => String(item)).filter(Boolean)
-      : [],
-    filesDeleted: Math.max(0, Number(payload.data?.filesDeleted) || 0),
-    postsDeleted: Math.max(0, Number(payload.data?.postsDeleted) || 0),
-  };
-}
 
 export function fetchAccountDeletionPreview() {
   return requestWithMode<AccountDeletionPreview>(getPaymentApiMode(), {
@@ -139,20 +88,7 @@ export function deleteAccount() {
 }
 
 export async function finishAccountDataCleanup(result: AccountDeletionResult) {
-  let failedFileIds = [...(result.community.failedFileIds || [])];
-  let directCleanupError: unknown = null;
-
-  if (result.community.requiresClientCleanup) {
-    try {
-      const directResult = await deleteCommunityDataAsCurrentUser();
-      failedFileIds = [...failedFileIds, ...directResult.failedFileIds];
-    } catch (error) {
-      directCleanupError = error;
-    }
-  }
-
-  const remainingFiles = await deleteTrackedPostImages(failedFileIds);
-  if (directCleanupError) throw directCleanupError;
+  const remainingFiles = await deleteTrackedPostImages(result.community.failedFileIds || []);
   if (remainingFiles.length > 0) {
     throw new AccountDeletionCleanupError(`仍有 ${remainingFiles.length} 张社区图片清理失败，请检查网络后重试`);
   }

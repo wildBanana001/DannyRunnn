@@ -53,6 +53,9 @@ MYSQL_PASSWORD=<通过云托管 Secret 配置>
 MYSQL_DATABASE=worker_house
 MYSQL_CONNECTION_LIMIT=5
 MYSQL_AUTO_MIGRATE=true
+CLOUD_ENV_ID=<云开发环境 ID>
+CLOUD_APP_ID=<小程序 AppID>
+CLOUD_APP_SECRET=<通过云托管 Secret 配置>
 CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 ```
 

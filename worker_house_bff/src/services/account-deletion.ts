@@ -1,5 +1,3 @@
-import { callCloudFunction } from '../cloudClient.js';
-import { config } from '../config.js';
 import { deleteAddressesByOpenid, getAddressesByOpenid } from '../data/addresses.js';
 import {
   removeActivityParticipantsByOpenid,
@@ -24,6 +22,7 @@ import {
   listRegistrationsByOpenid,
 } from '../data/registrations.js';
 import { deleteUserByOpenid, getUserByOpenid } from '../data/users.js';
+import { deleteCommunityDataByOpenid } from './community.js';
 
 export const ACCOUNT_DELETION_CONFIRMATION = '注销账号';
 
@@ -137,67 +136,16 @@ export async function getAccountDeletionPreview(openid: string): Promise<Account
 }
 
 async function deleteCommunityData(openid: string): Promise<CommunityDeletionSummary> {
-  const canUseMockCleanup = config.cloudMode === 'mock'
-    || (config.cloudMode === 'cloudrun' && config.allowEphemeralCloudrunData);
-  if (!canUseMockCleanup && !config.cloudAdminServiceToken) {
-    return {
-      attempted: false,
-      commentsDeleted: 0,
-      failedFileIds: [],
-      filesDeleted: 0,
-      postsDeleted: 0,
-      requiresClientCleanup: true,
-      warning: '服务端未配置社区数据删除凭证，将由小程序使用当前微信身份完成清理',
-    };
-  }
-
-  try {
-    const result = await callCloudFunction<{
-      commentsDeleted?: number;
-      failedFileIds?: string[];
-      filesDeleted?: number;
-      postsDeleted?: number;
-    }>('post', {
-      action: 'deleteAccountData',
-      openid,
-      serviceToken: config.cloudAdminServiceToken,
-    });
-
-    if (!result.success) {
-      return {
-        attempted: true,
-        commentsDeleted: 0,
-        failedFileIds: [],
-        filesDeleted: 0,
-        postsDeleted: 0,
-        requiresClientCleanup: true,
-        warning: result.error || '社区内容清理未完成',
-      };
-    }
-
-    const failedFileIds = Array.isArray(result.data.failedFileIds)
-      ? result.data.failedFileIds.filter((item): item is string => typeof item === 'string' && Boolean(item))
-      : [];
-    return {
-      attempted: true,
-      commentsDeleted: Math.max(0, Number(result.data.commentsDeleted) || 0),
-      failedFileIds,
-      filesDeleted: Math.max(0, Number(result.data.filesDeleted) || 0),
-      postsDeleted: Math.max(0, Number(result.data.postsDeleted) || 0),
-      requiresClientCleanup: failedFileIds.length > 0,
-      warning: failedFileIds.length > 0 ? '部分社区图片需要由小程序继续清理' : '',
-    };
-  } catch (error) {
-    return {
-      attempted: true,
-      commentsDeleted: 0,
-      failedFileIds: [],
-      filesDeleted: 0,
-      postsDeleted: 0,
-      requiresClientCleanup: true,
-      warning: error instanceof Error ? error.message : '社区内容清理未完成',
-    };
-  }
+  const result = await deleteCommunityDataByOpenid(openid);
+  return {
+    attempted: true,
+    commentsDeleted: result.commentsDeleted,
+    failedFileIds: result.failedFileIds,
+    filesDeleted: result.filesDeleted,
+    postsDeleted: result.postsDeleted,
+    requiresClientCleanup: result.failedFileIds.length > 0,
+    warning: result.failedFileIds.length > 0 ? '部分社区图片需要由小程序继续清理' : '',
+  };
 }
 
 export async function deleteAccountData(openid: string): Promise<AccountDeletionResult> {

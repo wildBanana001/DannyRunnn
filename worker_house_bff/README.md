@@ -18,14 +18,14 @@
 适合本地联调、演示和未完成微信开放平台配置时使用。
 
 - 不依赖微信云开发服务端调用权限
-- 使用内存数据库模拟 `poster / activity / post / site_config / admin_auth`
+- 使用内存数据库模拟 `poster / activity / site_config / admin_auth`，留言墙由 BFF 内部社区服务模拟
 - 微信身份中间件会自动注入 `mock_openid_001`
 - 默认账号：`admin / admin123`
 - 重启服务后数据会重置
 
 ### 2. `wechat` 模式
 
-适合继续走微信云开发云函数数据链路。
+适合继续走微信云开发数据链路。留言墙由 BFF 直接调用云数据库和云存储 OpenAPI，其余兼容资源仍可调用云函数。
 
 BFF 会先通过微信开放平台接口获取 `access_token`，再调用：
 
@@ -42,8 +42,9 @@ BFF 会先通过微信开放平台接口获取 `access_token`，再调用：
 适合直接部署到微信云托管 CloudRun。
 
 - 通过 `X-WX-OPENID / X-WX-UNIONID / X-WX-APPID / X-WX-SOURCE / X-WX-FROM-OPENID` 读取微信自动注入身份
-- `GET /health` 是容器存活检查；`GET /api/health` 反映业务配置是否就绪
+- `GET /health` 是容器存活检查；`GET /api/health` 反映业务配置是否就绪，并单独返回留言墙 CloudBase 存储状态
 - 商城订单和活动报名支付单共用微信云托管内置 MySQL，并通过 `kind` 字段隔离；不依赖 CloudBase 文档库或 `CLOUDBASE_APIKEY`
+- 留言墙直接使用 `CLOUD_APP_ID / CLOUD_APP_SECRET / CLOUD_ENV_ID` 访问同环境的 `posts`、`comments` 集合和云存储，不再依赖 `post` 云函数
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA=true` 只用于临时联调，商城与活动支付均不依赖该开关
 
 ## 环境变量
@@ -74,7 +75,7 @@ PORT=4000
 - `MODE`：`mock`、`wechat` 或 `cloudrun`，默认 `mock`
 - `CLOUD_MODE`：兼容旧配置的别名，未设置 `MODE` 时仍可继续使用
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
-- `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用管理云函数的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git
+- `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用仍保留的管理云函数（例如海报管理）所用的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git。帖子接口不再使用该令牌
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
 - `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。当前鸡尾酒为不限库存、现点现做；有限名额活动通过 MySQL 行锁与事务原子占位。
 - `SHOP_ORDER_STORAGE`：云托管默认 `mysql`；`file` 只用于本地或临时联调。已确认旧库无真实订单后，线上遗留值 `cloudbase` 会临时兼容为 `mysql` 并输出警告；仍应从云托管服务变量中删除该旧值
@@ -144,7 +145,7 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 - 已完成真实支付的交易凭证，以及可能接收延迟支付通知的预支付记录，不直接删除；系统会移除 OpenID、地址、手机号、备注、报名档案和支付准备信息，改用不可反查的随机标识，仅保留订单号、商品、金额、交易流水与时间等对账必需字段。
 - 仍在支付中的订单、已支付但未交付/未核销的订单、仍有余额的次卡会返回 `409 ACCOUNT_DELETION_BLOCKED`，需先完成或联系商家处理，防止用户权益丢失。
 
-社区数据支持两层清理：BFF 配置 `CLOUD_ADMIN_SERVICE_TOKEN` 时由服务端调用 `post` 云函数；未配置时，小程序会以当前微信 OpenID 直接调用同一云函数完成自助删除。生产发布时必须同步部署本仓库最新的 `post` 云函数；BFF 与云函数使用服务令牌时，两端的 `CLOUD_ADMIN_SERVICE_TOKEN` 必须一致。
+社区数据由 BFF 使用云托管注入的 OpenID 确定删除范围，并直接删除云数据库中的帖子、评论及关联云存储文件。接口不接收客户端传入的 OpenID，也不再调用或部署 `post` 云函数；少量文件若因临时网络错误未删除，小程序会使用本机已追踪的文件 ID 做一次幂等补偿清理。
 
 ## 本地启动
 

@@ -61,8 +61,6 @@
 - `cloudfunctions/poster/package.json`
 - `cloudfunctions/activity/index.js`
 - `cloudfunctions/activity/package.json`
-- `cloudfunctions/post/index.js`
-- `cloudfunctions/post/package.json`
 - `cloudfunctions/site_config/index.js`
 - `cloudfunctions/site_config/package.json`
 - `cloudfunctions/admin_auth/index.js`

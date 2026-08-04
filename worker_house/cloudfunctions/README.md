@@ -2,10 +2,9 @@
 
 1. 在微信开发者工具中打开 `worker_house` 项目，确认 `project.config.json` 已包含 `cloudfunctionRoot: "cloudfunctions/"`。
 2. 将 `src/cloud/index.ts` 中的 `YOUR_CLOUD_ENV_ID` 替换成你的云开发环境 ID。
-3. 依次右键上传并部署以下云函数：`poster`、`activity`、`post`、`site_config`、`admin_auth`、`_seed`。
+3. 依次右键上传并部署以下云函数：`poster`、`activity`、`site_config`、`admin_auth`、`_seed`。
 4. 首次部署后，先在云数据库中创建集合：`posters`、`activities`、`posts`、`comments`、`site_config`、`admins`。
 5. 执行 `_seed` 云函数进行种子数据初始化。该函数会先清空上述业务集合再重写入，适合开发环境重复执行。
 6. 若需要管理后台能力，请在 `admins` 集合中写入管理员账号，字段至少包含 `username`、`passwordHash`、`passwordSalt`、`token`。密码使用 Node.js `scrypt` 派生：`passwordSalt` 为至少 16 字节随机盐的十六进制字符串，`passwordHash` 为 32 字节派生结果的十六进制字符串；`token` 也请使用随机高强度字符串。代码不再提供默认生产账号。
 7. `site_config` 集合建议保留单条记录，前端默认读取第一条数据作为站点配置。
-8. 账号注销依赖最新版 `post` 云函数的 `deleteAccountData` 动作：它会校验当前微信 OpenID，删除该用户发布的帖子、评论和帖子所引用的云存储文件，并重新计算其他帖子评论数。请勿只部署 BFF 而遗漏该云函数。
-9. 若允许 BFF 代用户执行社区数据清理，请在 BFF 与 `post` 云函数中配置相同的高强度 `CLOUD_ADMIN_SERVICE_TOKEN`；未配置时，小程序会退回到当前微信身份的自助清理，不能传入其他用户的 OpenID。
+8. 留言墙和账号注销的社区数据清理已迁移到微信云托管 BFF；`posts`、`comments` 集合和云存储仍保留，但不再部署独立的 `post` 云函数。

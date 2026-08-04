@@ -14,6 +14,11 @@ import {
   confirmShopOrderFulfillment,
   OrderFulfillmentError,
 } from '../services/order-fulfillment.js';
+import {
+  deleteCommunityPost,
+  listCommunityPosts,
+  pinCommunityPost,
+} from '../services/community.js';
 import type {
   ActivityRecord,
   CardOrder,
@@ -318,7 +323,7 @@ adminMiniRouter.use(openidAdminAuth);
 
 adminMiniRouter.use((request, response, next) => {
   const mutatesCloudContent = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
-    && (request.path.startsWith('/posts') || request.path.startsWith('/posters'));
+    && request.path.startsWith('/posters');
   if (mutatesCloudContent && !adminCloudFunctionToken) {
     response.status(503).json({ message: 'CLOUD_ADMIN_SERVICE_TOKEN 未配置，云内容写操作已停用' });
     return;
@@ -671,16 +676,7 @@ adminMiniRouter.post('/upload', upload.single('file'), async (request, response,
 
 adminMiniRouter.get('/stats', async (_request, response) => {
   try {
-    const [postResult] = await Promise.all([
-      callCloudFunction<Record<string, unknown>[]>('post', {
-        action: 'list',
-      }),
-    ]);
-
-    if (!postResult.success) {
-      response.status(400).json({ message: postResult.error });
-      return;
-    }
+    const posts = await listCommunityPosts();
 
     const activities = listActivities();
     const endedCount = activities.filter((item) => item.status === 'ended').length;
@@ -693,7 +689,7 @@ adminMiniRouter.get('/stats', async (_request, response) => {
         ended: endedCount,
       },
       posts: {
-        total: Array.isArray(postResult.data) ? postResult.data.length : 0,
+        total: posts.length,
       },
       registrations: {
         total: listAllRegistrations().length,
@@ -712,17 +708,8 @@ adminMiniRouter.get('/posts', async (request, response) => {
   const pageSize = Math.min(parsePage(request.query.pageSize, 20), 200);
 
   try {
-    const result = await callCloudFunction<Record<string, unknown>[]>('post', {
-      action: 'list',
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
-      return;
-    }
-
-    const list = (Array.isArray(result.data) ? result.data : [])
-      .map((item) => normalizeAdminMiniPost(item))
+    const list = (await listCommunityPosts())
+      .map((item) => normalizeAdminMiniPost(item as unknown as Record<string, unknown>))
       .sort((first, second) => {
         if (first.pinned !== second.pinned) {
           return Number(second.pinned) - Number(first.pinned);
@@ -742,14 +729,9 @@ adminMiniRouter.get('/posts', async (request, response) => {
 
 adminMiniRouter.delete('/posts/:id', async (request, response) => {
   try {
-    const result = await callCloudFunction<{ id: string }>('post', {
-      action: 'delete',
-      id: String(request.params.id),
-      token: adminCloudFunctionToken,
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
+    const deleted = await deleteCommunityPost(String(request.params.id));
+    if (!deleted) {
+      response.status(404).json({ message: '帖子不存在' });
       return;
     }
 
@@ -763,30 +745,12 @@ adminMiniRouter.put('/posts/:id/pin', async (request, response) => {
   const pinned = parseBoolean(request.body?.pinned);
 
   try {
-    const result = await callCloudFunction<{ id: string }>('post', {
-      action: 'pin',
-      id: String(request.params.id),
-      isPinned: pinned,
-      pinned,
-      token: adminCloudFunctionToken,
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
+    const post = await pinCommunityPost(String(request.params.id), pinned);
+    if (!post) {
+      response.status(404).json({ message: '帖子不存在' });
       return;
     }
-
-    const detail = await callCloudFunction<{ comments?: Record<string, unknown>[]; post?: Record<string, unknown> }>('post', {
-      action: 'get',
-      id: String(request.params.id),
-    });
-
-    if (!detail.success || !detail.data.post) {
-      response.json({ success: true, pinned });
-      return;
-    }
-
-    response.json(normalizeAdminMiniPost(detail.data.post));
+    response.json(normalizeAdminMiniPost(post as unknown as Record<string, unknown>));
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '更新帖子置顶状态失败' });
   }

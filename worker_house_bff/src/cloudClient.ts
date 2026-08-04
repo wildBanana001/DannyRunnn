@@ -29,7 +29,7 @@ export interface CloudFunctionFailure {
 
 export type CloudFunctionResult<T> = CloudFunctionSuccess<T> | CloudFunctionFailure;
 
-type CloudFunctionName = 'activity' | 'admin_auth' | 'post' | 'poster' | 'site_config';
+type CloudFunctionName = 'activity' | 'admin_auth' | 'poster' | 'site_config';
 
 interface AccessTokenCache {
   expiresAt: number;
@@ -64,8 +64,8 @@ function parseRespData(value: unknown) {
   }
 }
 
-async function getWechatAccessToken() {
-  if (accessTokenCache && accessTokenCache.expiresAt > Date.now()) {
+export async function getWechatAccessToken(forceRefresh = false) {
+  if (!forceRefresh && accessTokenCache && accessTokenCache.expiresAt > Date.now()) {
     return accessTokenCache.token;
   }
 
@@ -461,90 +461,6 @@ function invokeMockCloudFunction<T>(name: CloudFunctionName, event: Record<strin
       if (action === 'delete') {
         const deleted = mockStore.deleteActivity(String(event.id ?? ''));
         return deleted ? success({ id: event.id } as T) : fail('活动不存在');
-      }
-
-      return fail(`不支持的 action: ${String(action)}`) as CloudFunctionResult<T>;
-    }
-    case 'post': {
-      const action = event.action;
-      if (action === 'list') {
-        return success(mockStore.listPosts() as T);
-      }
-
-      if (action === 'get') {
-        const post = mockStore.getPost(String(event.id ?? ''));
-        if (!post) {
-          return fail('帖子不存在');
-        }
-
-        return success({ post, comments: mockStore.getPostComments(post.id) } as T);
-      }
-
-      if (action === 'create') {
-        const rawData = (event.data as Partial<PostRecord> | undefined) ?? {
-          authorAvatar: event.authorAvatar ? String(event.authorAvatar) : undefined,
-          authorId: event.authorId ? String(event.authorId) : undefined,
-          authorNickname: event.authorNickname ? String(event.authorNickname) : undefined,
-          color: event.color as PostRecord['color'],
-          title: event.title ? String(event.title) : '',
-          content: event.content ? String(event.content) : '',
-          images: Array.isArray(event.images) ? event.images.map((item) => String(item)) : undefined,
-          imageFileIds: Array.isArray(event.imageFileIds)
-            ? event.imageFileIds.map((item) => String(item))
-            : undefined,
-          isAnonymous: Boolean(event.isAnonymous),
-          tags: Array.isArray(event.tags) ? event.tags.map((item) => String(item)) : undefined,
-        };
-        const content = String(rawData.content ?? event.content ?? '');
-        if (!content.trim()) {
-          return fail('留言内容不能为空');
-        }
-
-        const record = mockStore.createPost({ ...rawData, content });
-        return success({ id: record.id } as T);
-      }
-
-      if (action === 'delete') {
-        const deleted = mockStore.deletePost(String(event.id ?? ''));
-        return deleted ? success({ id: event.id } as T) : fail('帖子不存在');
-      }
-
-      if (action === 'pin') {
-        const record = mockStore.pinPost(
-          String(event.id ?? ''),
-          Boolean(event.isPinned ?? event.pinned),
-        );
-        return record ? success({ id: record.id } as T) : fail('帖子不存在');
-      }
-
-      if (action === 'like') {
-        const record = mockStore.likePost(String(event.id ?? ''), Number(event.delta ?? 1));
-        return record ? success(record as T) : fail('帖子不存在');
-      }
-
-      if (action === 'comment') {
-        const postId = String(event.id ?? '');
-        const content = String(event.content ?? '');
-        if (!postId || !content.trim()) {
-          return fail('评论参数不完整');
-        }
-
-        const comment = mockStore.commentPost(postId, {
-          authorId: String(event.authorId ?? 'admin-user'),
-          authorNickname: String(event.authorNickname ?? '管理员'),
-          authorAvatar: event.authorAvatar ? String(event.authorAvatar) : undefined,
-          content,
-          isAnonymous: Boolean(event.isAnonymous),
-          parentId: event.parentId ? String(event.parentId) : undefined,
-        });
-
-        return comment ? success(comment as T) : fail('帖子不存在');
-      }
-
-      if (action === 'deleteAccountData') {
-        const authorId = String(event.openid ?? event.authorId ?? '').trim();
-        if (!authorId) return fail('缺少用户身份') as CloudFunctionResult<T>;
-        return success(mockStore.deleteAccountData(authorId) as T);
       }
 
       return fail(`不支持的 action: ${String(action)}`) as CloudFunctionResult<T>;

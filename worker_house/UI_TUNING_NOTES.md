@@ -40,7 +40,7 @@
 ## 4. 数据与类型同步
 
 - 小程序端 `Post` / `PostCreateParams` 增加 `title`，保留并强化 `tags` 字段。
-- 云函数 `cloudfunctions/post` 创建帖子时同步写入 `title` 与 `tags`。
+- BFF 社区服务创建帖子时同步写入 `title` 与 `tags`，并直接访问云数据库。
 - `worker_house_bff` 的帖子类型与标准化逻辑补充 `title` 映射，并让列表关键字搜索同时覆盖标题、正文和标签。
 - 管理后台原本已支持标签列展示，本轮未额外改动后台页面。
 

@@ -87,7 +87,7 @@ if (cloudMode === 'cloudrun' && shopOrderStorageValue?.toLowerCase() === 'cloudb
 export const config = {
   adminToken: process.env.ADMIN_TOKEN?.trim() || (!isProduction && cloudMode === 'mock' ? 'mock-admin-token' : ''),
   allowEphemeralCloudrunData: readBoolean(process.env.ALLOW_EPHEMERAL_CLOUDRUN_DATA),
-  cloudAppId: process.env.CLOUD_APP_ID?.trim() || '',
+  cloudAppId: process.env.CLOUD_APP_ID?.trim() || process.env.WECHAT_APP_ID?.trim() || '',
   cloudAppSecret: process.env.CLOUD_APP_SECRET?.trim() || '',
   cloudAdminServiceToken: process.env.CLOUD_ADMIN_SERVICE_TOKEN?.trim() || '',
   cloudEnvId: process.env.CLOUD_ENV_ID?.trim() || '',
