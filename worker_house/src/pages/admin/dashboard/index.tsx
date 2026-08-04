@@ -41,7 +41,6 @@ const AdminDashboardPage: React.FC = () => {
       { label: '活动总数', value: stats.activities.total },
       { label: '进行中活动', value: stats.activities.ongoing },
       { label: '已结束活动', value: stats.activities.ended },
-      { label: '树洞帖子数', value: stats.posts.total },
       { label: '报名总数', value: stats.registrations.total },
       { label: '次卡订单总数', value: stats.cardOrders.total },
     ],
@@ -52,7 +51,7 @@ const AdminDashboardPage: React.FC = () => {
     <ScrollView className={styles.container} scrollY enableFlex>
       <View className={styles.headerCard}>
         <Text className={styles.title}>Dashboard</Text>
-        <Text className={styles.description}>聚合查看活动、帖子、报名和次卡订单数据，适合手机上快速巡检。</Text>
+        <Text className={styles.description}>聚合查看活动、报名和次卡订单数据，适合手机上快速巡检。</Text>
         <View className={styles.headerActions}>
           <Button type="primary" loading={loading} onClick={() => void loadStats()}>{loading ? '刷新中…' : '刷新数据'}</Button>
         </View>

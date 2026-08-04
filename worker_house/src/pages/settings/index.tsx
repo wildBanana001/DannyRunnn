@@ -118,7 +118,7 @@ const SettingsPage: React.FC = () => {
       const warning = await Taro.showModal({
         title: '注销账号并删除数据',
         content: [
-          '注销后无法恢复。个人资料、地址、报名档案、次卡记录及社区内容将删除。',
+          '注销后无法恢复。个人资料、地址、报名档案、次卡记录及其他账号关联数据将删除。',
           preview.retention.orderCount > 0
             ? `另有 ${preview.retention.orderCount} 条支付凭证会依法去标识化留存，仅用于财务对账。`
             : '',
@@ -216,7 +216,7 @@ const SettingsPage: React.FC = () => {
         >
           <View className={styles.titleBlock}>
             <Text className={styles.dangerTitle}>{isDeleting ? '正在处理…' : '注销账号与删除数据'}</Text>
-            <Text className={styles.description}>删除个人资料、地址、报名、次卡及社区内容</Text>
+            <Text className={styles.description}>删除个人资料、地址、报名、次卡及其他账号关联数据</Text>
           </View>
           <Text className={styles.arrow}>›</Text>
         </View>

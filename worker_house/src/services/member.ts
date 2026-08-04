@@ -13,7 +13,6 @@ import {
 } from '@/data/mock-member';
 import type { Activity, CardOrder, CardPackage, CardUsageLog, Profile, ProfileFormValue, Registration } from '@/types';
 import { getApiMode, getPaymentApiMode, request, requestWithMode, type RequestOptions } from './request';
-import { fetchMyPosts } from './post';
 
 interface ListResponse<T> {
   data?: T[];
@@ -51,7 +50,6 @@ export interface ActivityPaymentSession {
 
 export interface MemberOverview {
   registrationsCount: number;
-  postsCount: number;
   remainingCardTimes: number;
   defaultProfileName?: string;
   likesReceived: number;
@@ -341,16 +339,14 @@ export async function purchaseCardOrder(packageId?: string): Promise<CardOrder> 
 }
 
 export async function fetchMemberOverview(): Promise<MemberOverview> {
-  const [registrations, currentCard, profiles, myPosts] = await Promise.all([
+  const [registrations, currentCard, profiles] = await Promise.all([
     fetchRegistrations(),
     fetchCurrentCardOrder(),
     fetchProfiles(),
-    fetchMyPosts(),
   ]);
 
   return {
     registrationsCount: registrations.length,
-    postsCount: myPosts.length,
     remainingCardTimes: currentCard?.remainingCount || 0,
     defaultProfileName: profiles.find((item) => item.isDefault)?.nickname,
     likesReceived: 0,

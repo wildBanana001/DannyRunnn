@@ -19,7 +19,7 @@ const defaultResult: AdminCheckResult = {
 const menuItems = [
   {
     title: 'Dashboard',
-    description: '查看活动、帖子、报名和次卡订单总览',
+    description: '查看活动、报名和次卡订单总览',
     url: '/pages/admin/dashboard/index',
   },
   {
@@ -46,11 +46,6 @@ const menuItems = [
     title: '次卡套餐',
     description: '维护公开售卖的次卡套餐与展示顺序',
     url: '/pages/admin/card-packages/index',
-  },
-  {
-    title: '留言墙管理',
-    description: '管理树洞帖子，支持删除与置顶',
-    url: '/pages/admin/posts/index',
   },
   {
     title: '海报管理',

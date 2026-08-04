@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
-import { ArrowRight, Articles, Coupon, Edit, Location, Order, Setting } from '@nutui/icons-react-taro';
+import { ArrowRight, Articles, Coupon, Location, Order, Setting } from '@nutui/icons-react-taro';
 import WxLoginModal from '@/components/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
 import { siteConfig } from '@/data/site';
@@ -18,14 +18,12 @@ const menuItems = [
   { key: 'registrations', icon: Order, title: '我的报名', description: '查看报名与支付快照', url: '/pages/content/my-registrations/index' },
   { key: 'profiles', icon: Articles, title: '我的档案', description: '新建、编辑、设默认社畜档案', url: '/pages/my-profiles/index' },
   { key: 'cards', icon: Coupon, title: '社畜次卡', description: '看余量、买次卡、查使用记录', url: '/pages/my-cards/index' },
-  { key: 'posts', icon: Edit, title: '我的帖子', description: '回看留在墙上的便利贴', url: '/pages/content/my-posts/index' },
   { key: 'addresses', icon: Location, title: '地址管理', description: '管理收件地址和默认信息', url: '/pages/my-addresses/index' },
   { key: 'settings', icon: Setting, title: '设置', description: '清缓存、关于我们、退出登录', url: '/pages/settings/index' }
 ] as const;
 
 const defaultOverview: MemberOverview = {
   registrationsCount: 0,
-  postsCount: 0,
   remainingCardTimes: 0,
   likesReceived: 0,
 };
@@ -119,10 +117,6 @@ const MinePage: React.FC = () => {
         <View className={styles.statItem}>
           <Text className={styles.statValue}>{overview.registrationsCount}</Text>
           <Text className={styles.statLabel}>报名</Text>
-        </View>
-        <View className={styles.statItem}>
-          <Text className={styles.statValue}>{overview.postsCount}</Text>
-          <Text className={styles.statLabel}>帖子</Text>
         </View>
         <View className={styles.statItem}>
           <Text className={styles.statValue}>{overview.remainingCardTimes}</Text>

@@ -2,12 +2,10 @@ export default defineAppConfig({
   pages: [
     'pages/home/index',
     'pages/activity/index',
-    'pages/wall/index',
     'pages/mine/index',
     'pages/poster-detail/index',
     'pages/register/index',
     'pages/registration/index',
-    'pages/post-detail/index',
     'pages/past-activities/index',
     'pages/my-profiles/index',
     'pages/my-cards/index',
@@ -24,7 +22,6 @@ export default defineAppConfig({
         'activities/index',
         'activity-edit/index',
         'dashboard/index',
-        'posts/index',
         'posters/index',
         'poster-edit/index',
         'site-config/index',
@@ -42,13 +39,11 @@ export default defineAppConfig({
     {
       root: 'pages/content',
       pages: [
-        'wall-publish/index',
         'story-detail/index',
         'story-webview/index',
         'origin-detail/index',
         'activity-detail/index',
         'my-registrations/index',
-        'my-posts/index',
         'registration-detail/index'
       ],
     },
@@ -86,12 +81,6 @@ export default defineAppConfig({
         text: '商城',
         iconPath: 'assets/tabbar/tab-shop-normal.png',
         selectedIconPath: 'assets/tabbar/tab-shop-active.png'
-      },
-      {
-        pagePath: 'pages/wall/index',
-        text: '留言墙',
-        iconPath: 'assets/tabbar/tab-wall-normal.png',
-        selectedIconPath: 'assets/tabbar/tab-wall-active.png'
       },
       {
         pagePath: 'pages/mine/index',
