@@ -3,16 +3,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import {
+  AccountOrderDeletionBlockedError,
   ActivityCapacityExceededError,
+  anonymizeOrderForAccountDeletion,
   buildNewOrderRecord,
   cloneOrder,
+  createAnonymizedOrderOpenid,
   hasActivePaymentPreparation,
   hasActiveWechatShippingReport,
+  isAccountDeletionBlockingOrder,
   isActiveActivityOrder,
   normalizeOrder,
   nowIso,
   sanitizeOrderNumber,
   sanitizeOrderString,
+  shouldRetainOrderAfterAccountDeletion,
+  type AccountOrderDeletionResult,
   type ActivityOrderCapacity,
   type CreateOrderInput,
   type FulfillmentReportClaim,
@@ -27,6 +33,7 @@ import {
   claimMysqlOrderFulfillmentReport,
   createMysqlActivityOrderWithCapacity,
   createMysqlOrder,
+  deleteOrAnonymizeMysqlOrdersByOpenid,
   finishMysqlOrderPaymentPreparation,
   finishMysqlOrderFulfillmentReport,
   getMysqlOrderById,
@@ -37,10 +44,13 @@ import {
 } from './mysql-orders.js';
 
 export {
+  AccountOrderDeletionBlockedError,
   ActivityCapacityExceededError,
+  isAccountOrderDeletionBlockedError,
   isActivityCapacityExceededError,
 } from './order-model.js';
 export type {
+  AccountOrderDeletionResult,
   ActivityOrderCapacity,
   ActivityRegistrationSnapshot,
   CreateOrderInput,
@@ -183,6 +193,45 @@ export async function getOrdersByKind(kind: OrderKind): Promise<OrderRecord[]> {
   return cloneOrder(store.orders
     .filter((item) => item.kind === kind)
     .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()));
+}
+
+export async function deleteOrAnonymizeOrdersByOpenid(
+  openid: string,
+): Promise<AccountOrderDeletionResult> {
+  const normalizedOpenid = sanitizeOrderString(openid);
+  if (!normalizedOpenid) return { anonymized: 0, deleted: 0 };
+  if (usesMysqlStorage()) {
+    return deleteOrAnonymizeMysqlOrdersByOpenid(normalizedOpenid);
+  }
+
+  loadOrders();
+  const matchingOrders = store.orders.filter((item) => item.openid === normalizedOpenid);
+  const blockers = matchingOrders.filter(isAccountDeletionBlockingOrder);
+  if (blockers.length > 0) {
+    throw new AccountOrderDeletionBlockedError(blockers);
+  }
+
+  const result: AccountOrderDeletionResult = { anonymized: 0, deleted: 0 };
+  const nextOrders: OrderRecord[] = [];
+  for (const order of store.orders) {
+    if (order.openid !== normalizedOpenid) {
+      nextOrders.push(order);
+      continue;
+    }
+
+    if (shouldRetainOrderAfterAccountDeletion(order)) {
+      nextOrders.push(anonymizeOrderForAccountDeletion(order, createAnonymizedOrderOpenid()));
+      result.anonymized += 1;
+    } else {
+      result.deleted += 1;
+    }
+  }
+
+  if (matchingOrders.length > 0) {
+    store.orders = nextOrders;
+    persistOrders();
+  }
+  return result;
 }
 
 export async function claimOrderPaymentPreparation(

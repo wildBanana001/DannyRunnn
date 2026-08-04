@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { getSiteConfig as getCommunitySiteConfig } from './data/siteConfig.js';
 import { checkOrderStorageReady } from './data/orders.js';
 import { activityRouter } from './routes/activity.js';
+import { accountRouter } from './routes/account.js';
 import { adminMiniRouter } from './routes/adminMini.js';
 import { adminRouter } from './routes/admin.js';
 import { authRouter } from './routes/auth.js';
@@ -29,13 +30,14 @@ function isRuntimeReady() {
 
 function isRequestRuntimeReady(path: string, method: string) {
   if (isRuntimeReady()) return true;
+  const accountDeletionReady = path === '/account' || path.startsWith('/account/');
   const paymentStorageReady = config.shopOrderStorage === 'mysql'
     && (path === '/shop' || path.startsWith('/shop/'));
   const paymentRegistrationAdminRead = config.enableShop
     && config.shopOrderStorage === 'mysql'
     && method === 'GET'
     && (path === '/admin-mini/registrations' || path.startsWith('/admin-mini/registrations/'));
-  return paymentStorageReady || paymentRegistrationAdminRead;
+  return accountDeletionReady || paymentStorageReady || paymentRegistrationAdminRead;
 }
 
 function buildHealthPayload() {
@@ -99,6 +101,7 @@ app.get('/api/site-config', (_request, response) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/auth', authWxRouter);
+app.use('/api/account', accountRouter);
 app.use('/api/posters', posterRouter);
 app.use('/api/activities', activityRouter);
 app.use('/api/profiles', profileRouter);

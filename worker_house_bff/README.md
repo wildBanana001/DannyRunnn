@@ -134,6 +134,18 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 
 微信后台“订单管理 → 订单信息录入”的商品订单详情 path 统一填写 `pages/shop/order-detail/index?orderId=${商品订单号}`。该入口先查询商城订单；若商户订单号属于活动报名，会自动跳转活动报名详情，因此商品和活动无需分别配置。页面必须先随小程序版本提交审核，再回到后台录入 path；开发版或预览版不满足平台校验。从自有页面跳转时也兼容 `outTradeNo`、`out_trade_no`、`merchantTradeNo`、`merchant_trade_no` 和 `id` 参数。
 
+### 注销账号与删除个人数据
+
+小程序“我的 → 设置 → 注销账号与删除数据”提供完整自助流程：
+
+- `GET /api/account/deletion-preview`：使用云托管注入的 OpenID 检查待支付订单、未履约订单和未使用次卡。
+- `DELETE /api/account`：请求体必须包含 `{ "confirmation": "注销账号" }`，服务端会在订单存储事务内再次检查，避免与支付通知并发竞态。
+- 用户资料、地址、报名档案、次卡、活动报名名单、留言和评论会删除；小程序本地缓存及已追踪的云存储图片会同步清理。
+- 已完成真实支付的交易凭证，以及可能接收延迟支付通知的预支付记录，不直接删除；系统会移除 OpenID、地址、手机号、备注、报名档案和支付准备信息，改用不可反查的随机标识，仅保留订单号、商品、金额、交易流水与时间等对账必需字段。
+- 仍在支付中的订单、已支付但未交付/未核销的订单、仍有余额的次卡会返回 `409 ACCOUNT_DELETION_BLOCKED`，需先完成或联系商家处理，防止用户权益丢失。
+
+社区数据支持两层清理：BFF 配置 `CLOUD_ADMIN_SERVICE_TOKEN` 时由服务端调用 `post` 云函数；未配置时，小程序会以当前微信 OpenID 直接调用同一云函数完成自助删除。生产发布时必须同步部署本仓库最新的 `post` 云函数；BFF 与云函数使用服务令牌时，两端的 `CLOUD_ADMIN_SERVICE_TOKEN` 必须一致。
+
 ## 本地启动
 
 ```bash
@@ -232,6 +244,8 @@ npm run migrate-images
 - `POST /api/posts`
 - `POST /api/posts/:id/comments`
 - `POST /api/posts/:id/like`
+- `GET /api/account/deletion-preview`
+- `DELETE /api/account`
 - `GET /api/site/config`
 
 其中以下接口会读取微信身份中间件：
@@ -240,6 +254,8 @@ npm run migrate-images
 - `POST /api/posts`
 - `POST /api/posts/:id/comments`
 - `POST /api/posts/:id/like`
+- `GET /api/account/deletion-preview`
+- `DELETE /api/account`
 
 行为规则：
 

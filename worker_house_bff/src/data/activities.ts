@@ -249,3 +249,33 @@ export function registerActivityParticipant(activityId: string, signup: Omit<Act
   persistActivities();
   return clone(nextRecord);
 }
+
+export function removeActivityParticipantsByOpenid(openid: string) {
+  loadActivities();
+  const normalizedOpenid = sanitizeString(openid);
+  if (!normalizedOpenid) return 0;
+
+  let removed = 0;
+  const nextActivities = activityStore.activities.map((activity) => {
+    const signups = activity.signups ?? [];
+    const remainingSignups = signups.filter(
+      (signup) => sanitizeString(signup.openid) !== normalizedOpenid,
+    );
+    const removedFromActivity = signups.length - remainingSignups.length;
+    if (removedFromActivity === 0) return activity;
+
+    removed += removedFromActivity;
+    return normalizeActivityRecord({
+      ...activity,
+      currentParticipants: Math.max(0, activity.currentParticipants - removedFromActivity),
+      signups: remainingSignups,
+      updatedAt: now(),
+    });
+  });
+
+  if (removed > 0) {
+    activityStore.activities = nextActivities;
+    persistActivities();
+  }
+  return removed;
+}

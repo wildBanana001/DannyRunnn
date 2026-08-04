@@ -20,6 +20,7 @@ const tagOptions = ['社畜', '日常', '吐槽', '其他'] as const;
 type TagOption = (typeof tagOptions)[number];
 
 interface LocalImage {
+  fileID: string;
   localPath: string;
   url: string;
 }
@@ -71,6 +72,7 @@ const WallPublishPage: React.FC = () => {
         try {
           const uploaded = await uploadPostImage(filePath);
           nextImages.push({
+            fileID: uploaded.fileID,
             localPath: filePath,
             url: uploaded.url,
           });
@@ -122,6 +124,7 @@ const WallPublishPage: React.FC = () => {
     }
 
     const imageUrls = images.map((item) => item.url).filter(Boolean);
+    const imageFileIds = images.map((item) => item.fileID).filter(Boolean);
 
     setIsSubmitting(true);
     try {
@@ -129,6 +132,7 @@ const WallPublishPage: React.FC = () => {
         title: title.trim(),
         content: content.trim(),
         images: imageUrls,
+        imageFileIds,
         isAnonymous,
         tags: finalTag ? [finalTag] : [],
         color: selectedColor,

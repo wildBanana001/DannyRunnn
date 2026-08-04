@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ShopFulfillmentType } from './shop.js';
 
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
@@ -116,12 +117,28 @@ export interface FulfillmentReportClaim {
   reportRequired: boolean;
 }
 
+export interface AccountOrderDeletionResult {
+  anonymized: number;
+  deleted: number;
+}
+
 export class ActivityCapacityExceededError extends Error {
   readonly code = 'ACTIVITY_CAPACITY_EXCEEDED';
 
   constructor() {
     super('活动名额已满');
     this.name = 'ActivityCapacityExceededError';
+  }
+}
+
+export class AccountOrderDeletionBlockedError extends Error {
+  readonly code = 'ACCOUNT_DELETION_BLOCKED';
+  readonly orders: OrderRecord[];
+
+  constructor(orders: OrderRecord[]) {
+    super('账号仍有待支付或未履约订单，暂时无法注销');
+    this.name = 'AccountOrderDeletionBlockedError';
+    this.orders = cloneOrder(orders);
   }
 }
 
@@ -132,6 +149,16 @@ export function isActivityCapacityExceededError(error: unknown): boolean {
   return input.code === 'ACTIVITY_CAPACITY_EXCEEDED'
     || input.name === 'ActivityCapacityExceededError'
     || (typeof input.message === 'string' && input.message.includes('活动名额已满'));
+}
+
+export function isAccountOrderDeletionBlockedError(
+  error: unknown,
+): error is AccountOrderDeletionBlockedError {
+  if (error instanceof AccountOrderDeletionBlockedError) return true;
+  if (!error || typeof error !== 'object') return false;
+  const input = error as { code?: unknown; name?: unknown };
+  return input.code === 'ACCOUNT_DELETION_BLOCKED'
+    || input.name === 'AccountOrderDeletionBlockedError';
 }
 
 export function cloneOrder<T>(value: T): T {
@@ -301,6 +328,77 @@ export function buildNewOrderRecord(input: CreateOrderInput): OrderRecord {
     paidAt: input.paidAt ?? '',
     createdAt: timestamp,
     updatedAt: timestamp,
+  });
+}
+
+/**
+ * Orders that can still charge the user or represent an undelivered entitlement
+ * must be resolved before account deletion. This check is repeated inside the
+ * storage transaction so a payment callback cannot race the preview screen.
+ */
+export function isAccountDeletionBlockingOrder(order: OrderRecord) {
+  if (order.mock) return false;
+  if (order.status === 'pending' && order.amount > 0) return true;
+  return order.status === 'paid' && order.fulfillmentStatus !== 'fulfilled';
+}
+
+/**
+ * Real payment evidence is retained only when it may still be needed for a
+ * payment callback, reconciliation or statutory bookkeeping. All direct user
+ * identifiers are removed before the record is retained.
+ */
+export function shouldRetainOrderAfterAccountDeletion(order: OrderRecord) {
+  if (order.mock || order.amount <= 0) return false;
+  return order.status === 'paid' || Boolean(order.prepayId);
+}
+
+export function createAnonymizedOrderOpenid() {
+  return `deleted_${randomUUID().replaceAll('-', '')}`;
+}
+
+export function anonymizeOrderForAccountDeletion(
+  order: OrderRecord,
+  anonymizedOpenid: string,
+): OrderRecord {
+  const activityRegistration = order.activityRegistration
+    ? {
+        activityId: order.activityRegistration.activityId,
+        activityTitle: order.activityRegistration.activityTitle,
+        activityCover: order.activityRegistration.activityCover,
+        profileId: '',
+        participantNickname: '已注销用户',
+        wechatName: '',
+        phone: '',
+        profileSnapshot: {
+          nickname: '',
+          gender: 'other' as const,
+          ageRange: '',
+          industry: '',
+          occupation: '',
+          city: '',
+          socialGoal: '',
+          introduction: '',
+        },
+      }
+    : undefined;
+
+  return normalizeOrder({
+    ...order,
+    openid: sanitizeOrderString(anonymizedOpenid),
+    clientRequestId: `deleted-${order.id}`,
+    address: null,
+    remark: '',
+    activityRegistration,
+    prepayId: '',
+    paymentPreparationToken: '',
+    paymentPreparingUntil: '',
+    fulfilledBy: '',
+    wechatShippingError: '',
+    wechatShippingReportToken: '',
+    wechatShippingReportingUntil: '',
+    failureReason: '',
+    lastNotifyId: '',
+    updatedAt: nowIso(),
   });
 }
 

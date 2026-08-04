@@ -36,3 +36,28 @@
   font-size: 40rpx;
   color: $color-text-secondary;
 }
+
+.dangerItem {
+  margin-top: 42rpx;
+  border-color: rgba($color-accent, 0.45);
+}
+
+.titleBlock {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.dangerTitle {
+  color: $color-accent;
+  font-size: 32rpx;
+  font-weight: $font-weight-bold;
+}
+
+.description {
+  color: $color-text-secondary;
+  font-size: 24rpx;
+  line-height: 1.45;
+}

@@ -402,3 +402,17 @@ export function updateCardOrder(cardOrderId: string, input: UpdateCardOrderInput
   persistCardOrders();
   return clone(nextOrder);
 }
+
+export function deleteCardOrdersByOpenid(openid: string) {
+  loadCardOrders();
+  const normalizedOpenid = sanitizeString(openid);
+  if (!normalizedOpenid) return 0;
+
+  const previousLength = memoryStore.cardOrders.length;
+  memoryStore.cardOrders = memoryStore.cardOrders.filter(
+    (item) => item.openid !== normalizedOpenid,
+  );
+  const deleted = previousLength - memoryStore.cardOrders.length;
+  if (deleted > 0) persistCardOrders();
+  return deleted;
+}

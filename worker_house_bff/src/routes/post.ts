@@ -6,12 +6,31 @@ import {
 } from '../cloudClient.js';
 import { authMiddleware, resolveRequestToken } from '../middleware/auth.js';
 import type { CommentRecord, PostRecord } from '../mock/types.js';
+import { getUserByOpenid } from '../data/users.js';
 import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
 import { resolveWxOpenid } from './utils.js';
 
 function parsePage(value: unknown, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function toClientPost(post: PostRecord): PostRecord {
+  return {
+    ...post,
+    authorId: '',
+    authorAvatar: post.isAnonymous ? undefined : post.authorAvatar,
+    authorNickname: post.isAnonymous ? '匿名用户' : post.authorNickname,
+  };
+}
+
+function toClientComment(comment: CommentRecord): CommentRecord {
+  return {
+    ...comment,
+    authorId: '',
+    authorAvatar: comment.isAnonymous ? undefined : comment.authorAvatar,
+    authorNickname: comment.isAnonymous ? '匿名用户' : comment.authorNickname,
+  };
 }
 
 async function fetchPostDetail(id: string) {
@@ -93,7 +112,7 @@ postRouter.get('/', async (request, response) => {
 
     const startIndex = (page - 1) * pageSize;
     response.json({
-      list: list.slice(startIndex, startIndex + pageSize),
+      list: list.slice(startIndex, startIndex + pageSize).map(toClientPost),
       total: list.length,
     });
   } catch (error) {
@@ -102,14 +121,20 @@ postRouter.get('/', async (request, response) => {
 });
 
 postRouter.post('/', wxCloudrunAuth, async (request, response) => {
+  const openid = resolveWxOpenid(request);
+  const user = getUserByOpenid(openid);
+  const isAnonymous = Boolean(request.body?.isAnonymous);
   try {
     const result = await callCloudFunction<{ id: string }>('post', {
       action: 'create',
       data: {
         ...request.body,
-        authorId: request.body?.authorId ?? request.wxUser?.openid,
+        authorId: openid,
+        authorNickname: isAnonymous ? '匿名用户' : (user?.nickname || '微信用户'),
+        authorAvatar: isAnonymous ? undefined : user?.avatar,
+        isAnonymous,
       },
-      openid: request.wxUser?.openid,
+      openid,
       unionid: request.wxUser?.unionid,
     });
 
@@ -124,7 +149,7 @@ postRouter.post('/', wxCloudrunAuth, async (request, response) => {
       return;
     }
 
-    response.json(detail.data.post);
+    response.json(toClientPost(detail.data.post));
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '创建帖子失败' });
   }
@@ -152,7 +177,8 @@ postRouter.get('/mine', wxCloudrunAuth, async (request, response) => {
       .filter((item): item is PostRecord => item !== null && item.authorId === openid)
       .sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime());
 
-    response.json({ data, list: data, total: data.length });
+    const clientData = data.map(toClientPost);
+    response.json({ data: clientData, list: clientData, total: clientData.length });
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '获取我的帖子失败' });
   }
@@ -167,7 +193,10 @@ postRouter.get('/:id', async (request, response) => {
       return;
     }
 
-    response.json(result.data);
+    response.json({
+      post: toClientPost(result.data.post),
+      comments: result.data.comments.map(toClientComment),
+    });
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '获取帖子详情失败' });
   }
@@ -213,7 +242,7 @@ postRouter.patch('/:id/pin', authMiddleware, async (request, response) => {
       return;
     }
 
-    response.json(detail.data.post);
+    response.json(toClientPost(detail.data.post));
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '更新置顶状态失败' });
   }
@@ -221,6 +250,9 @@ postRouter.patch('/:id/pin', authMiddleware, async (request, response) => {
 
 postRouter.post('/:id/comments', wxCloudrunAuth, async (request, response) => {
   const content = String(request.body?.content ?? '').trim();
+  const openid = resolveWxOpenid(request);
+  const user = getUserByOpenid(openid);
+  const isAnonymous = Boolean(request.body?.isAnonymous);
 
   if (!content) {
     response.status(400).json({ message: '评论内容不能为空' });
@@ -230,13 +262,13 @@ postRouter.post('/:id/comments', wxCloudrunAuth, async (request, response) => {
   try {
     const result = await callCloudFunction<Record<string, unknown>>('post', {
       action: 'comment',
-      authorAvatar: request.body?.authorAvatar,
-      authorId: request.body?.authorId ?? request.wxUser?.openid ?? 'wx-user',
-      authorNickname: request.body?.authorNickname ?? '微信用户',
+      authorAvatar: isAnonymous ? undefined : user?.avatar,
+      authorId: openid,
+      authorNickname: isAnonymous ? '匿名用户' : (user?.nickname || '微信用户'),
       content,
       id: String(request.params.id),
-      isAnonymous: Boolean(request.body?.isAnonymous),
-      openid: request.wxUser?.openid,
+      isAnonymous,
+      openid,
       parentId: request.body?.parentId,
       unionid: request.wxUser?.unionid,
     });
@@ -247,7 +279,7 @@ postRouter.post('/:id/comments', wxCloudrunAuth, async (request, response) => {
     }
 
     const comment = normalizeComment(result.data);
-    response.json(comment);
+    response.json(comment ? toClientComment(comment) : null);
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '新增评论失败' });
   }
@@ -269,7 +301,7 @@ postRouter.post('/:id/like', wxCloudrunAuth, async (request, response) => {
     }
 
     const post = normalizePost(result.data);
-    response.json(post);
+    response.json(post ? toClientPost(post) : null);
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '点赞失败' });
   }

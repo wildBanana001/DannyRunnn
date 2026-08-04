@@ -101,6 +101,7 @@ export interface PostRecord {
   title?: string;
   content: string;
   images: string[];
+  imageFileIds?: string[];
   likes: number;
   comments: number;
   commentsCount?: number;

@@ -9,6 +9,7 @@ export interface Post {
   title: string;
   content: string;
   images: string[];
+  imageFileIds?: string[];
   likes: number;
   comments: number;
   commentsCount?: number;
@@ -42,6 +43,7 @@ export interface PostCreateParams {
   title: string;
   content: string;
   images: string[];
+  imageFileIds?: string[];
   isAnonymous: boolean;
   tags: string[];
   color: PostColor;

@@ -300,6 +300,9 @@ export function normalizePost(record: Record<string, unknown> | null | undefined
     title: String(record.title ?? record.content ?? '').trim().slice(0, 18) || '未命名留言',
     content: String(record.content ?? ''),
     images: Array.isArray(record.images) ? record.images.map((item) => String(item)) : [],
+    imageFileIds: Array.isArray(record.imageFileIds)
+      ? record.imageFileIds.map((item) => String(item)).filter(Boolean)
+      : [],
     likes: Number(record.likes ?? 0),
     comments: commentsCount,
     commentsCount,
@@ -486,6 +489,9 @@ function invokeMockCloudFunction<T>(name: CloudFunctionName, event: Record<strin
           title: event.title ? String(event.title) : '',
           content: event.content ? String(event.content) : '',
           images: Array.isArray(event.images) ? event.images.map((item) => String(item)) : undefined,
+          imageFileIds: Array.isArray(event.imageFileIds)
+            ? event.imageFileIds.map((item) => String(item))
+            : undefined,
           isAnonymous: Boolean(event.isAnonymous),
           tags: Array.isArray(event.tags) ? event.tags.map((item) => String(item)) : undefined,
         };
@@ -533,6 +539,12 @@ function invokeMockCloudFunction<T>(name: CloudFunctionName, event: Record<strin
         });
 
         return comment ? success(comment as T) : fail('帖子不存在');
+      }
+
+      if (action === 'deleteAccountData') {
+        const authorId = String(event.openid ?? event.authorId ?? '').trim();
+        if (!authorId) return fail('缺少用户身份') as CloudFunctionResult<T>;
+        return success(mockStore.deleteAccountData(authorId) as T);
       }
 
       return fail(`不支持的 action: ${String(action)}`) as CloudFunctionResult<T>;

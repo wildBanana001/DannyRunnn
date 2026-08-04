@@ -5,6 +5,7 @@ import { comments as mockComments, posts as mockPosts } from '@/data/posts';
 import { posters as mockPosters } from '@/data/posters';
 import { siteConfig as mockSiteConfig } from '@/data/site';
 import { request as apiRequest, getApiMode } from '@/services/request';
+import { useUserStore } from '@/store/userStore';
 import type { Activity } from '@/types';
 import type { Comment, Post, PostCreateParams } from '@/types/post';
 import type { Poster, SiteConfig } from '@/types/site';
@@ -49,6 +50,7 @@ const normalizePost = (post: Partial<Post> & Pick<Post, 'content' | 'authorId' |
   title: buildPostTitle(post.title, post.content),
   content: post.content,
   images: Array.isArray(post.images) ? post.images : [],
+  imageFileIds: Array.isArray(post.imageFileIds) ? post.imageFileIds : [],
   likes: post.likes ?? 0,
   comments: post.commentsCount ?? post.comments ?? 0,
   commentsCount: post.commentsCount ?? post.comments ?? 0,
@@ -66,6 +68,18 @@ const sortByCreatedDesc = <T extends { createdAt: string }>(list: T[]): T[] => {
 };
 
 const isMockMode = () => getApiMode() === 'mock';
+
+const getCurrentPostAuthor = () => {
+  const user = useUserStore.getState().user;
+  return user
+    ? { id: user.openid || user.id, nickname: user.nickname || '微信用户', avatar: user.avatar }
+    : currentUser;
+};
+
+export function resetLocalPostData() {
+  localPosts = clone(mockPosts);
+  localComments = clone(mockComments);
+}
 
 const safeCall = async <T>(
   name: string,
@@ -222,14 +236,15 @@ export async function fetchPostDetail(id: string): Promise<PostDetailResult> {
 }
 
 export async function createWallPost(payload: PostCreateParams): Promise<Post> {
+  const author = getCurrentPostAuthor();
   return safeCall(
     'post',
     {
       action: 'create',
       ...payload,
-      authorId: currentUser.id,
-      authorNickname: currentUser.nickname,
-      authorAvatar: currentUser.avatar
+      authorId: author.id,
+      authorNickname: author.nickname,
+      authorAvatar: author.avatar
     },
     async () => {
       const now = new Date().toISOString();
@@ -237,12 +252,13 @@ export async function createWallPost(payload: PostCreateParams): Promise<Post> {
       const newPost: Post = normalizePost({
         id: nextId,
         _id: nextId,
-        authorId: currentUser.id,
-        authorNickname: payload.isAnonymous ? '匿名用户' : currentUser.nickname,
-        authorAvatar: payload.isAnonymous ? undefined : currentUser.avatar,
+        authorId: author.id,
+        authorNickname: payload.isAnonymous ? '匿名用户' : author.nickname,
+        authorAvatar: payload.isAnonymous ? undefined : author.avatar,
         title: payload.title,
         content: payload.content,
         images: payload.images,
+        imageFileIds: payload.imageFileIds,
         likes: 0,
         comments: 0,
         commentsCount: 0,
@@ -257,12 +273,7 @@ export async function createWallPost(payload: PostCreateParams): Promise<Post> {
       return newPost;
     },
     async () => apiRequest<Post>({
-      data: {
-        ...payload,
-        authorAvatar: currentUser.avatar,
-        authorId: currentUser.id,
-        authorNickname: currentUser.nickname
-      },
+      data: payload,
       method: 'POST',
       path: '/api/posts',
     })
@@ -298,15 +309,16 @@ export async function likeWallPost(id: string, nextLiked: boolean): Promise<Post
 }
 
 export async function commentWallPost(postId: string, content: string): Promise<Comment> {
+  const author = getCurrentPostAuthor();
   return safeCall(
     'post',
     {
       action: 'comment',
       id: postId,
       content,
-      authorId: currentUser.id,
-      authorNickname: currentUser.nickname,
-      authorAvatar: currentUser.avatar
+      authorId: author.id,
+      authorNickname: author.nickname,
+      authorAvatar: author.avatar
     },
     async () => {
       const now = new Date().toISOString();
@@ -314,9 +326,9 @@ export async function commentWallPost(postId: string, content: string): Promise<
         id: `comment-${Date.now()}`,
         _id: `comment-${Date.now()}`,
         postId,
-        authorId: currentUser.id,
-        authorNickname: currentUser.nickname,
-        authorAvatar: currentUser.avatar,
+        authorId: author.id,
+        authorNickname: author.nickname,
+        authorAvatar: author.avatar,
         content,
         likes: 0,
         isLiked: false,
@@ -338,12 +350,7 @@ export async function commentWallPost(postId: string, content: string): Promise<
       return comment;
     },
     async () => apiRequest<Comment>({
-      data: {
-        authorAvatar: currentUser.avatar,
-        authorId: currentUser.id,
-        authorNickname: currentUser.nickname,
-        content,
-      },
+      data: { content },
       method: 'POST',
       path: `/api/posts/${encodeURIComponent(postId)}/comments`,
     })

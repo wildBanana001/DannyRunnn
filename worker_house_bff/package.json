@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "test": "npm run build && node --test dist/data/mysql-orders.integration.test.js dist/data/mysql-orders.test.js dist/data/orders.test.js dist/utils/payment-diagnostics.test.js dist/utils/wechat-order-shipping.test.js dist/utils/wechat-pay.test.js",
+    "test": "npm run build && node --test dist/data/mysql-orders.integration.test.js dist/data/mysql-orders.test.js dist/data/orders.test.js dist/mock/store.test.js dist/utils/payment-diagnostics.test.js dist/utils/wechat-order-shipping.test.js dist/utils/wechat-pay.test.js",
     "check:runtime-deps": "node scripts/check-runtime-dependencies.mjs",
     "build": "npm run check:runtime-deps && tsc && node scripts/copy-runtime-data.mjs",
     "start": "node dist/index.js",

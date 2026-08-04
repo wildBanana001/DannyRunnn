@@ -215,6 +215,7 @@ class MockStore {
       authorAvatar: data.authorAvatar,
       content: data.content,
       images: data.images ?? [],
+      imageFileIds: data.imageFileIds ?? [],
       likes: data.likes ?? 0,
       comments: data.comments ?? 0,
       commentsCount: data.commentsCount ?? data.comments ?? 0,
@@ -313,6 +314,47 @@ class MockStore {
     this.state.posts = this.state.posts.map((item) => (item.id === postId ? nextPost : item));
 
     return clone(record);
+  }
+
+  deleteAccountData(authorId: string) {
+    const normalizedAuthorId = authorId.trim();
+    if (!normalizedAuthorId) {
+      return { commentsDeleted: 0, imageFileIds: [], postsDeleted: 0 };
+    }
+
+    const authoredPosts = this.state.posts.filter((item) => item.authorId === normalizedAuthorId);
+    const authoredPostIds = new Set(authoredPosts.map((item) => item.id));
+    const imageFileIds = authoredPosts.flatMap((item) => item.imageFileIds ?? []);
+    const commentsToDelete = this.state.comments.filter(
+      (item) => item.authorId === normalizedAuthorId || authoredPostIds.has(item.postId),
+    );
+    const affectedPostIds = new Set(
+      commentsToDelete
+        .filter((item) => !authoredPostIds.has(item.postId))
+        .map((item) => item.postId),
+    );
+
+    this.state.comments = this.state.comments.filter(
+      (item) => item.authorId !== normalizedAuthorId && !authoredPostIds.has(item.postId),
+    );
+    this.state.posts = this.state.posts
+      .filter((item) => !authoredPostIds.has(item.id))
+      .map((item) => {
+        if (!affectedPostIds.has(item.id)) return item;
+        const commentsCount = this.state.comments.filter((comment) => comment.postId === item.id).length;
+        return {
+          ...item,
+          comments: commentsCount,
+          commentsCount,
+          updatedAt: now(),
+        };
+      });
+
+    return clone({
+      commentsDeleted: commentsToDelete.length,
+      imageFileIds,
+      postsDeleted: authoredPosts.length,
+    });
   }
 
   getSiteConfig() {

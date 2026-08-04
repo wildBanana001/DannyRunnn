@@ -154,6 +154,14 @@ export function deleteProfile(openid: string, profileId: string) {
   return true;
 }
 
+export function deleteProfilesByOpenid(openid: string) {
+  const normalizedOpenid = sanitizeString(openid);
+  if (!normalizedOpenid) return 0;
+  const previousLength = memoryStore.profiles.length;
+  memoryStore.profiles = memoryStore.profiles.filter((item) => item.openid !== normalizedOpenid);
+  return previousLength - memoryStore.profiles.length;
+}
+
 export function setDefaultProfile(openid: string, profileId: string) {
   const currentProfiles = memoryStore.profiles.filter((item) => item.openid === openid);
   if (!currentProfiles.some((item) => item.id === profileId)) {

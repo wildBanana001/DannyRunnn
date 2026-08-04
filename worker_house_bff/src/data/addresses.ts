@@ -178,3 +178,16 @@ export function deleteAddress(openid: string, id: string) {
   store.data[normalizedOpenid] = userAddresses;
   persistAddresses();
 }
+
+export function deleteAddressesByOpenid(openid: string) {
+  loadAddresses();
+  const normalizedOpenid = sanitizeString(openid);
+  if (!normalizedOpenid) return 0;
+
+  const deleted = store.data[normalizedOpenid]?.length ?? 0;
+  if (Object.prototype.hasOwnProperty.call(store.data, normalizedOpenid)) {
+    delete store.data[normalizedOpenid];
+    persistAddresses();
+  }
+  return deleted;
+}

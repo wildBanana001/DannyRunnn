@@ -119,3 +119,15 @@ export function upsertUser(openid: string, patch: UpsertPatch) {
   persistUsers();
   return { user: clone(next), isNew: false } as const;
 }
+
+export function deleteUserByOpenid(openid: string) {
+  loadUsers();
+  const normalizedOpenid = sanitizeString(openid);
+  if (!normalizedOpenid) return 0;
+
+  const previousLength = userStore.users.length;
+  userStore.users = userStore.users.filter((item) => item.openid !== normalizedOpenid);
+  const deleted = previousLength - userStore.users.length;
+  if (deleted > 0) persistUsers();
+  return deleted;
+}

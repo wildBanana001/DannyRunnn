@@ -296,3 +296,17 @@ export function createRegistration(openid: string, input: CreateRegistrationInpu
 
   return clone(record);
 }
+
+export function deleteRegistrationsByOpenid(openid: string) {
+  loadRegistrations();
+  const normalizedOpenid = sanitizeString(openid);
+  if (!normalizedOpenid) return 0;
+
+  const previousLength = memoryStore.registrations.length;
+  memoryStore.registrations = memoryStore.registrations.filter(
+    (item) => item.openid !== normalizedOpenid,
+  );
+  const deleted = previousLength - memoryStore.registrations.length;
+  if (deleted > 0) persistRegistrations();
+  return deleted;
+}

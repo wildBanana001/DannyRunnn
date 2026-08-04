@@ -3,11 +3,13 @@ import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test, { after } from 'node:test';
 import {
+  AccountOrderDeletionBlockedError,
   ActivityCapacityExceededError,
   claimOrderFulfillmentReport,
   claimOrderPaymentPreparation,
   createActivityOrderWithCapacity,
   createOrder,
+  deleteOrAnonymizeOrdersByOpenid,
   finishOrderPaymentPreparation,
   finishOrderFulfillmentReport,
   getOrderById,
@@ -567,4 +569,181 @@ test('clears a payment preparation lease when an order leaves pending state', as
   });
   assert.equal(staleFinish?.status, 'failed');
   assert.equal(staleFinish?.prepayId, '');
+});
+
+test('deletes disposable orders and irreversibly de-identifies retained payment evidence', async () => {
+  const openid = 'openid-account-delete-complete';
+  const paidOrder = await createOrder({
+    id: 'WH_ACCOUNT_DELETE_PAID_FULFILLED',
+    clientRequestId: 'sensitive-client-request-id',
+    productId: 'cocktail-account-delete',
+    productName: '注销测试鸡尾酒',
+    productImageUrl: '',
+    unitPrice: 1,
+    quantity: 1,
+    amount: 1,
+    address: {
+      name: '需要删除的姓名',
+      phone: '13800138000',
+      province: '广东省',
+      city: '深圳市',
+      district: '南山区',
+      detail: '需要删除的地址',
+    },
+    fulfillmentType: 'delivery',
+    fulfillmentLabel: '快递配送',
+    unitLabel: '杯',
+    openid,
+    remark: '需要删除的备注',
+    status: 'pending',
+    mock: false,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  });
+  await updateOrderStatus(paidOrder.id, 'paid', {
+    transactionId: 'wx-transaction-must-remain',
+    notifyId: 'notify-must-be-removed',
+  });
+  const fulfillmentClaim = await claimOrderFulfillmentReport(
+    paidOrder.id,
+    'admin-openid-must-be-removed',
+    'account-delete-report-token',
+    10_000,
+  );
+  assert.equal(fulfillmentClaim.claimed, true);
+  await finishOrderFulfillmentReport(paidOrder.id, 'account-delete-report-token', { success: true });
+
+  const closedPrepayOrder = await createOrder({
+    id: 'WH_ACCOUNT_DELETE_CLOSED_PREPAY',
+    clientRequestId: 'closed-prepay-sensitive-request',
+    productId: 'cocktail-closed-prepay',
+    productName: '已关闭支付订单',
+    productImageUrl: '',
+    unitPrice: 1,
+    quantity: 1,
+    amount: 1,
+    address: null,
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    openid,
+    status: 'closed',
+    mock: false,
+    prepayId: 'wx-prepay-that-must-be-removed',
+    expiresAt: new Date(Date.now() - 60_000).toISOString(),
+  });
+  const failedOrder = await createOrder({
+    id: 'WH_ACCOUNT_DELETE_FAILED',
+    clientRequestId: 'failed-order-request',
+    productId: 'cocktail-failed',
+    productName: '失败订单',
+    productImageUrl: '',
+    unitPrice: 1,
+    quantity: 1,
+    amount: 1,
+    address: null,
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    openid,
+    status: 'failed',
+    mock: false,
+    expiresAt: new Date(Date.now() - 60_000).toISOString(),
+  });
+  const mockOrder = await createOrder({
+    id: 'WH_ACCOUNT_DELETE_MOCK',
+    clientRequestId: 'mock-order-request',
+    productId: 'cocktail-mock',
+    productName: '模拟订单',
+    productImageUrl: '',
+    unitPrice: 1,
+    quantity: 1,
+    amount: 1,
+    address: null,
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    openid,
+    status: 'paid',
+    mock: true,
+    transactionId: 'mock-transaction',
+    paidAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() - 60_000).toISOString(),
+  });
+
+  const result = await deleteOrAnonymizeOrdersByOpenid(openid);
+  assert.deepEqual(result, { anonymized: 2, deleted: 2 });
+  assert.equal((await getOrdersByOpenid(openid)).length, 0);
+  assert.equal(await getOrderById(failedOrder.id), null);
+  assert.equal(await getOrderById(mockOrder.id), null);
+
+  const retainedPaid = await getOrderById(paidOrder.id);
+  assert.ok(retainedPaid);
+  assert.match(retainedPaid.openid, /^deleted_[a-f0-9]{32}$/);
+  assert.notEqual(retainedPaid.openid, openid);
+  assert.equal(retainedPaid.clientRequestId, `deleted-${paidOrder.id}`);
+  assert.equal(retainedPaid.address, null);
+  assert.equal(retainedPaid.remark, '');
+  assert.equal(retainedPaid.prepayId, '');
+  assert.equal(retainedPaid.fulfilledBy, '');
+  assert.equal(retainedPaid.lastNotifyId, '');
+  assert.equal(retainedPaid.transactionId, 'wx-transaction-must-remain');
+  assert.equal(retainedPaid.amount, 1);
+  assert.equal(retainedPaid.status, 'paid');
+
+  const retainedClosed = await getOrderById(closedPrepayOrder.id);
+  assert.ok(retainedClosed);
+  assert.match(retainedClosed.openid, /^deleted_[a-f0-9]{32}$/);
+  assert.notEqual(retainedClosed.openid, retainedPaid.openid);
+  assert.equal(retainedClosed.prepayId, '');
+  assert.equal(retainedClosed.status, 'closed');
+});
+
+test('blocks account deletion while a real order may still charge or remains unfulfilled', async () => {
+  const pendingOpenid = 'openid-account-delete-pending';
+  const pendingOrder = await createPendingOrder(1, 'WH_ACCOUNT_DELETE_PENDING_PAYMENT');
+  const pendingForTarget = await createOrder({
+    ...pendingOrder,
+    id: 'WH_ACCOUNT_DELETE_PENDING_TARGET',
+    clientRequestId: 'account-delete-pending-target',
+    openid: pendingOpenid,
+  });
+
+  await assert.rejects(
+    deleteOrAnonymizeOrdersByOpenid(pendingOpenid),
+    AccountOrderDeletionBlockedError,
+  );
+  assert.equal((await getOrderById(pendingForTarget.id))?.openid, pendingOpenid);
+
+  await updateOrderStatus(pendingForTarget.id, 'closed', { failureReason: '支付已关闭' });
+  assert.deepEqual(
+    await deleteOrAnonymizeOrdersByOpenid(pendingOpenid),
+    { anonymized: 0, deleted: 1 },
+  );
+
+  const paidOpenid = 'openid-account-delete-unfulfilled';
+  const paidOrder = await createOrder({
+    id: 'WH_ACCOUNT_DELETE_UNFULFILLED',
+    clientRequestId: 'account-delete-unfulfilled',
+    productId: 'cocktail-unfulfilled',
+    productName: '待到店履约订单',
+    productImageUrl: '',
+    unitPrice: 1,
+    quantity: 1,
+    amount: 1,
+    address: null,
+    fulfillmentType: 'onsite',
+    fulfillmentLabel: '到店享用',
+    unitLabel: '杯',
+    openid: paidOpenid,
+    status: 'pending',
+    mock: false,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  });
+  await updateOrderStatus(paidOrder.id, 'paid', { transactionId: 'wx-unfulfilled-payment' });
+
+  await assert.rejects(
+    deleteOrAnonymizeOrdersByOpenid(paidOpenid),
+    AccountOrderDeletionBlockedError,
+  );
+  assert.equal((await getOrderById(paidOrder.id))?.openid, paidOpenid);
 });

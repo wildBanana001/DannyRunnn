@@ -6,13 +6,19 @@ import mysql, {
 } from 'mysql2/promise';
 import { config } from '../config.js';
 import {
+  AccountOrderDeletionBlockedError,
   ActivityCapacityExceededError,
+  anonymizeOrderForAccountDeletion,
   cloneOrder,
+  createAnonymizedOrderOpenid,
   hasActivePaymentPreparation,
   hasActiveWechatShippingReport,
+  isAccountDeletionBlockingOrder,
   normalizeOrder,
   nowIso,
   sanitizeOrderString,
+  shouldRetainOrderAfterAccountDeletion,
+  type AccountOrderDeletionResult,
   type ActivityOrderCapacity,
   type FulfillmentReportClaim,
   type OrderKind,
@@ -511,6 +517,45 @@ export async function getMysqlOrdersByKind(kind: OrderKind) {
     `SELECT payload FROM ${ORDERS_TABLE} WHERE kind = ? ORDER BY created_at DESC`,
     [kind],
   )));
+}
+
+export async function deleteOrAnonymizeMysqlOrdersByOpenid(
+  openid: string,
+): Promise<AccountOrderDeletionResult> {
+  await ensureSchemaReady();
+  const normalizedOpenid = sanitizeOrderString(openid);
+  if (!normalizedOpenid) return { anonymized: 0, deleted: 0 };
+
+  return runTransaction(async (connection) => {
+    const orders = await selectOrders(
+      connection,
+      `SELECT payload FROM ${ORDERS_TABLE} WHERE openid = ? FOR UPDATE`,
+      [normalizedOpenid],
+    );
+    const blockers = orders.filter(isAccountDeletionBlockingOrder);
+    if (blockers.length > 0) {
+      throw new AccountOrderDeletionBlockedError(blockers);
+    }
+
+    const result: AccountOrderDeletionResult = { anonymized: 0, deleted: 0 };
+    for (const order of orders) {
+      if (shouldRetainOrderAfterAccountDeletion(order)) {
+        const anonymized = anonymizeOrderForAccountDeletion(
+          order,
+          createAnonymizedOrderOpenid(),
+        );
+        await replaceOrder(connection, anonymized);
+        result.anonymized += 1;
+      } else {
+        await connection.execute<ResultSetHeader>(
+          `DELETE FROM ${ORDERS_TABLE} WHERE order_id = ?`,
+          [order.id],
+        );
+        result.deleted += 1;
+      }
+    }
+    return result;
+  });
 }
 
 export async function claimMysqlOrderPaymentPreparation(
