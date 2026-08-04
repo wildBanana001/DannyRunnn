@@ -9,7 +9,11 @@ import { getRegistrationByIdUnsafe, listAllRegistrations, updateRegistrationStat
 import { getOrderById, getOrdersByKind, type OrderRecord } from '../data/orders.js';
 import { getSiteConfig, updateSiteConfig } from '../data/siteConfig.js';
 import { openidAdminAuth, resolveAdminOpenid } from '../middleware/openidAdminAuth.js';
-import { confirmShopOrderFulfillment, OrderFulfillmentError } from '../services/order-fulfillment.js';
+import {
+  confirmActivityOrderFulfillment,
+  confirmShopOrderFulfillment,
+  OrderFulfillmentError,
+} from '../services/order-fulfillment.js';
 import type {
   ActivityRecord,
   CardOrder,
@@ -207,11 +211,20 @@ function buildPaymentRegistration(order: OrderRecord | null): Registration | nul
     amountPaid: order.status === 'paid' ? payable : 0,
     paymentOrderStatus: order.status,
     paymentExpiresAt: order.expiresAt,
-    status: order.status === 'paid' ? 'confirmed' : order.status === 'pending' ? 'pending' : 'cancelled',
+    status: order.status === 'paid'
+      ? order.fulfillmentStatus === 'fulfilled' ? 'completed' : 'confirmed'
+      : order.status === 'pending' ? 'pending' : 'cancelled',
     registeredAt: order.createdAt,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     profileSnapshot: snapshot.profileSnapshot,
+    fulfillmentStatus: order.fulfillmentStatus,
+    fulfilledAt: order.fulfilledAt,
+    fulfilledBy: order.fulfilledBy,
+    wechatShippingStatus: order.wechatShippingStatus,
+    wechatShippingReportedAt: order.wechatShippingReportedAt,
+    wechatShippingError: order.wechatShippingError,
+    wechatShippingAttempts: order.wechatShippingAttempts,
   };
 }
 
@@ -496,14 +509,39 @@ adminMiniRouter.get('/registrations/:id', async (request, response) => {
 
 adminMiniRouter.patch('/registrations/:id/status', async (request, response) => {
   const status = normalizeRegistrationStatus(request.body?.status);
-  if (!status || !['confirmed', 'cancelled', 'refunded'].includes(status)) {
+  if (!status || !['confirmed', 'cancelled', 'completed', 'refunded'].includes(status)) {
     response.status(400).json({ message: '状态不合法' });
     return;
   }
 
   const paymentOrder = await getOrderById(String(request.params.id));
   if (paymentOrder?.kind === 'activity') {
-    response.status(409).json({ message: '微信支付报名状态以支付结果为准；退款需接入微信支付退款接口' });
+    if (status !== 'completed') {
+      response.status(409).json({ message: '微信支付报名只能在用户实际到场后核销；取消或退款必须走微信支付退款流程' });
+      return;
+    }
+    try {
+      const fulfilled = await confirmActivityOrderFulfillment(
+        paymentOrder.id,
+        resolveAdminOpenid(request),
+      );
+      const registration = buildPaymentRegistration(fulfilled);
+      if (!registration) {
+        response.status(404).json({ message: '报名记录不存在' });
+        return;
+      }
+      response.json({ data: buildRegistrationDetail(registration) });
+    } catch (error) {
+      if (error instanceof OrderFulfillmentError) {
+        const registration = error.order ? buildPaymentRegistration(error.order) : null;
+        response.status(error.status).json({
+          message: error.message,
+          ...(registration ? { data: buildRegistrationDetail(registration) } : {}),
+        });
+        return;
+      }
+      response.status(500).json({ message: error instanceof Error ? error.message : '活动核销失败' });
+    }
     return;
   }
 

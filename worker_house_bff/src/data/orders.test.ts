@@ -215,6 +215,92 @@ test('stores activity registrations separately from shop orders', async () => {
   assert.equal((await getOrderById(activityOrder.id))?.activityRegistration?.participantNickname, '测试用户');
 });
 
+test('records activity check-in before idempotently reporting WeChat self-pickup fulfillment', async () => {
+  const activityOrder = await createOrder({
+    ...buildCapacityActivityOrder(
+      'WAFULFILLMENT0123456789ABCDEF0123',
+      'activity-fulfillment-test',
+      'openid-activity-fulfillment',
+    ),
+    productName: '活动履约测试',
+  });
+  assert.equal(activityOrder.wechatShippingStatus, 'not_required');
+
+  const paid = await updateOrderStatus(activityOrder.id, 'paid', {
+    transactionId: 'wx-activity-transaction',
+  });
+  assert.equal(paid?.fulfillmentStatus, 'pending');
+  assert.equal(paid?.wechatShippingStatus, 'pending');
+
+  const claim = await claimOrderFulfillmentReport(
+    activityOrder.id,
+    'activity-admin-openid',
+    'activity-report-token-1',
+    10_000,
+  );
+  assert.equal(claim.claimed, true);
+  assert.equal(claim.reportRequired, true);
+  assert.equal(claim.order?.fulfillmentStatus, 'fulfilled');
+  assert.equal(claim.order?.fulfilledBy, 'activity-admin-openid');
+  assert.equal(claim.order?.wechatShippingStatus, 'reporting');
+  const fulfilledAt = claim.order?.fulfilledAt;
+
+  const concurrent = await claimOrderFulfillmentReport(
+    activityOrder.id,
+    'other-activity-admin',
+    'activity-report-token-2',
+    10_000,
+  );
+  assert.equal(concurrent.claimed, false);
+  assert.equal(concurrent.order?.fulfilledAt, fulfilledAt);
+  assert.equal(concurrent.order?.fulfilledBy, 'activity-admin-openid');
+
+  const failed = await finishOrderFulfillmentReport(activityOrder.id, 'activity-report-token-1', {
+    success: false,
+    error: 'temporary activity reporting failure',
+  });
+  assert.equal(failed?.fulfillmentStatus, 'fulfilled');
+  assert.equal(failed?.wechatShippingStatus, 'failed');
+
+  const retry = await claimOrderFulfillmentReport(
+    activityOrder.id,
+    'other-activity-admin',
+    'activity-report-token-3',
+    10_000,
+  );
+  assert.equal(retry.claimed, true);
+  assert.equal(retry.order?.fulfilledAt, fulfilledAt);
+  const reported = await finishOrderFulfillmentReport(activityOrder.id, 'activity-report-token-3', {
+    success: true,
+  });
+  assert.equal(reported?.wechatShippingStatus, 'reported');
+});
+
+test('completes mock activity check-in without requiring a WeChat shipping report', async () => {
+  const mockActivityOrder = await createOrder({
+    ...buildCapacityActivityOrder(
+      'WAMOCKFULFILLMENT123456789ABCDEF01',
+      'activity-mock-fulfillment-test',
+      'openid-activity-mock',
+    ),
+    amount: 1,
+    mock: true,
+    status: 'paid',
+    unitPrice: 1,
+  });
+
+  const claim = await claimOrderFulfillmentReport(
+    mockActivityOrder.id,
+    'activity-admin-openid',
+    'activity-mock-report-token',
+    10_000,
+  );
+  assert.equal(claim.claimed, false);
+  assert.equal(claim.reportRequired, false);
+  assert.equal(claim.order?.fulfillmentStatus, 'fulfilled');
+  assert.equal(claim.order?.wechatShippingStatus, 'not_required');
+});
+
 test('normalizes legacy shop products and only lists enabled products', () => {
   const legacyProduct = normalizeShopProduct({
     id: 'legacy-product',

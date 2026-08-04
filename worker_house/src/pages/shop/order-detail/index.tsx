@@ -5,6 +5,8 @@ import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
+import { ApiRequestError } from '@/services/apiError';
+import { fetchRegistrationDetail } from '@/services/member';
 import {
   confirmShopPayment,
   fetchShopOrder,
@@ -41,6 +43,11 @@ function formatDate(value: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function isMissingShopOrder(error: unknown) {
+  if (error instanceof ApiRequestError) return error.statusCode === 404;
+  return error instanceof Error && error.message === '订单不存在';
+}
+
 function getFulfillmentState(order: ShopOrder) {
   if (order.status !== 'paid') return '完成支付后，可凭本页订单到店享用。';
   if (order.fulfillmentStatus === 'fulfilled') return '门店已确认交付，祝你享用愉快。';
@@ -75,6 +82,19 @@ const ShopOrderDetailPage: React.FC = () => {
       setError('');
       setOrder(await fetchShopOrder(orderId));
     } catch (loadError) {
+      if (isMissingShopOrder(loadError)) {
+        try {
+          const registration = await fetchRegistrationDetail(orderId);
+          if (registration) {
+            await Taro.redirectTo({
+              url: `/pages/content/registration-detail/index?id=${encodeURIComponent(registration.id)}`,
+            });
+            return;
+          }
+        } catch (registrationError) {
+          console.warn('[order-detail] activity order lookup failed', registrationError);
+        }
+      }
       setError(loadError instanceof Error ? loadError.message : '订单加载失败');
     } finally {
       setLoading(false);

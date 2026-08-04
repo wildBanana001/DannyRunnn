@@ -182,7 +182,9 @@ function toActivityRegistration(order) {
     const originalPrice = order.unitPrice / 100;
     const payable = order.amount / 100;
     const amountPaid = order.status === 'paid' ? payable : 0;
-    const status = order.status === 'paid' ? 'confirmed' : order.status === 'pending' ? 'pending' : 'cancelled';
+    const status = order.status === 'paid'
+        ? order.fulfillmentStatus === 'fulfilled' ? 'completed' : 'confirmed'
+        : order.status === 'pending' ? 'pending' : 'cancelled';
     return {
         id: order.id,
         openid: order.openid,
@@ -208,6 +210,10 @@ function toActivityRegistration(order) {
         priceBreakdown: { originalPrice, cardOffset: 0, payable, amountPaid },
         paymentOrderStatus: order.status,
         paymentExpiresAt: order.expiresAt,
+        fulfillmentStatus: order.fulfillmentStatus,
+        fulfilledAt: order.fulfilledAt,
+        wechatShippingStatus: order.wechatShippingStatus,
+        wechatShippingReportedAt: order.wechatShippingReportedAt,
     };
 }
 function toActivityPaymentSession(order) {

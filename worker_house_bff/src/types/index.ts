@@ -198,6 +198,13 @@ export interface Registration {
   cardUsageLogId?: string;
   paymentOrderStatus?: 'pending' | 'paid' | 'failed' | 'closed';
   paymentExpiresAt?: string;
+  fulfillmentStatus?: 'pending' | 'fulfilled';
+  fulfilledAt?: string;
+  fulfilledBy?: string;
+  wechatShippingStatus?: 'not_required' | 'pending' | 'reporting' | 'reported' | 'failed';
+  wechatShippingReportedAt?: string;
+  wechatShippingError?: string;
+  wechatShippingAttempts?: number;
 }
 
 export interface CardUsageLog {

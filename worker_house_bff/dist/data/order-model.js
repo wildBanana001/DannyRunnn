@@ -110,7 +110,7 @@ export function normalizeOrder(item) {
     const amount = Math.max(0, Math.round(sanitizeOrderNumber(item.amount)));
     const fulfillmentType = sanitizeFulfillmentType(item.fulfillmentType, kind === 'activity' || !address ? 'onsite' : 'delivery');
     const fulfillmentStatus = sanitizeFulfillmentStatus(item.fulfillmentStatus);
-    const shippingRequired = kind === 'shop' && status === 'paid' && !mock && amount > 0;
+    const shippingRequired = status === 'paid' && !mock && amount > 0;
     const wechatShippingStatus = sanitizeWechatShippingStatus(item.wechatShippingStatus, shippingRequired ? 'pending' : 'not_required');
     return {
         id: sanitizeOrderString(item.id),

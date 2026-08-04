@@ -117,7 +117,7 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 - 回调会校验签名时间、微信支付公钥 ID、AppID、商户号、订单号、金额和币种，并按通知 ID 幂等处理。
 - `ENABLE_SHOP` 由云托管控制台管理。支付配置与 `/api/shop/readiness` 验证通过后可设置为 `true`；自动部署不会覆盖该值。
 - 首次开启该变量前，先等待新 BFF 版本切换到 100% 流量，避免新旧实例并存期间接收支付订单。
-- 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=mysql`；商城订单已按交易类小程序规范接入订单发货管理，门店实际交付后使用“用户自提”类型上报。
+- 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=mysql`；到店商品和线下活动均按交易类小程序规范接入订单发货管理，并在实际交付或到场核销后使用“用户自提”类型上报。
 
 ### 到店享用履约与微信订单管理
 
@@ -128,9 +128,11 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 3. 点击“确认到店交付”。BFF 原子记录核销人和时间，再调用微信小程序订单发货管理接口，以 `logistics_type=4`（用户自提）上报。
 4. 微信接口失败时，门店交付记录不会丢失；后台会显示错误并提供“重试微信上报”。并发点击、接口超时和重复上报均按订单号幂等处理。
 
+收费线下活动同样不能在支付成功时提前上报。用户实际到场且活动服务开始提供后，管理员进入“报名管理 → 报名详情”，点击“确认到场并核销”；系统才会以 `logistics_type=4` 上报。未到场、已取消或待退款的报名不得核销。长周期活动如超过微信要求的正常发货时限，应通过平台的特殊发货报备处理，不能用提前核销规避。
+
 履约上报使用 `CLOUD_APP_ID`、`CLOUD_APP_SECRET` 和 `WECHAT_PAY_MCH_ID`。`CLOUD_APP_ID` 必须与 `WECHAT_APP_ID` 一致，否则 BFF 会拒绝上报，避免把订单写入错误的小程序。
 
-如需通过微信的“消息跳转路径设置接口”自定义发货服务通知入口，建议使用静态订单列表页 `pages/shop/my-orders/index`。项目同时提供订单详情页 `pages/shop/order-detail/index`；从自有页面或支持动态参数的入口跳转时，推荐传 `orderId=<商户订单号>`，也兼容 `outTradeNo`、`out_trade_no`、`merchantTradeNo`、`merchant_trade_no` 和 `id`。
+微信后台“订单管理 → 订单信息录入”的商品订单详情 path 统一填写 `pages/shop/order-detail/index?orderId=${商品订单号}`。该入口先查询商城订单；若商户订单号属于活动报名，会自动跳转活动报名详情，因此商品和活动无需分别配置。页面必须先随小程序版本提交审核，再回到后台录入 path；开发版或预览版不满足平台校验。从自有页面跳转时也兼容 `outTradeNo`、`out_trade_no`、`merchantTradeNo`、`merchant_trade_no` 和 `id` 参数。
 
 ## 本地启动
 
@@ -169,6 +171,7 @@ npm run migrate-images
 - `GET /api/shop/activity-registrations/:id`：查单并返回服务端确认后的报名状态
 - `POST /api/shop/activity-registrations/:id/retry`：继续支付未过期的报名单
 - 支付通知仍统一使用 `POST /api/shop/orders/notify`；旧的直接报名接口在非 `mock` 模式返回 `410`，不可绕过支付
+- `PATCH /api/admin-mini/registrations/:id/status`（`status=completed`）：管理员确认用户实际到场并核销，同时幂等上报微信“用户自提”履约；同步失败后重复调用即可重试
 
 商城履约管理接口（均需管理员 OpenID 白名单鉴权）：
 

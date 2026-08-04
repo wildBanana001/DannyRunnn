@@ -24,6 +24,30 @@ const statusButtonList: Array<{ label: string; value: RegistrationStatus }> = [
   { label: '标记退款', value: 'refunded' },
 ];
 
+function shippingStatusText(detail: Awaited<ReturnType<typeof fetchAdminRegistrationDetail>>) {
+  if (detail.wechatShippingStatus === 'reported') return '微信履约已同步';
+  if (detail.wechatShippingStatus === 'reporting') return '微信履约同步中';
+  if (detail.wechatShippingStatus === 'failed') return '微信履约同步失败';
+  if (detail.wechatShippingStatus === 'pending') return '待同步微信履约';
+  return detail.fulfillmentStatus === 'fulfilled' ? '本单无需同步微信' : '待到场核销';
+}
+
+function canCompletePaidRegistration(detail: Awaited<ReturnType<typeof fetchAdminRegistrationDetail>>) {
+  if (detail.paymentOrderStatus !== 'paid') return false;
+  if (detail.wechatShippingStatus === 'reported') return false;
+  return detail.fulfillmentStatus !== 'fulfilled'
+    || detail.wechatShippingStatus === 'failed'
+    || detail.wechatShippingStatus === 'pending'
+    || detail.wechatShippingStatus === 'reporting';
+}
+
+function completionActionLabel(detail: Awaited<ReturnType<typeof fetchAdminRegistrationDetail>>) {
+  if (detail.wechatShippingStatus === 'reporting') return '检查 / 重试微信履约';
+  if (detail.wechatShippingStatus === 'failed') return '重试微信履约上报';
+  if (detail.fulfillmentStatus === 'fulfilled') return '继续微信履约上报';
+  return '确认到场并核销';
+}
+
 const AdminRegistrationDetailPage: React.FC = () => {
   const router = useRouter();
   const registrationId = router.params.id?.trim() || '';
@@ -59,14 +83,28 @@ const AdminRegistrationDetailPage: React.FC = () => {
     if (!registrationId) {
       return;
     }
+    if (status === 'completed' && detail?.fulfillmentStatus !== 'fulfilled') {
+      const modal = await Taro.showModal({
+        title: '确认用户已实际到场？',
+        content: `请确认“${detail?.participantNickname || '该用户'}”已经到场，且活动服务已经开始提供。核销后会按“用户自提”同步微信订单履约状态。`,
+        confirmText: '确认核销',
+      });
+      if (!modal.confirm) return;
+    }
     setUpdating(status);
     try {
       const result = await updateAdminRegistrationStatus(registrationId, status);
       setDetail(result);
-      Toast.show(toastId, { content: '状态已更新', icon: 'success' });
+      Toast.show(toastId, {
+        content: status === 'completed'
+          ? result.wechatShippingStatus === 'reported' ? '活动已核销，微信履约已同步' : '活动已核销'
+          : '状态已更新',
+        icon: 'success',
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : '状态更新失败';
       Toast.show(toastId, { content: message, icon: 'fail' });
+      await loadDetail();
     } finally {
       setUpdating('');
     }
@@ -76,7 +114,7 @@ const AdminRegistrationDetailPage: React.FC = () => {
     <ScrollView className={styles.container} scrollY enableFlex>
       <View className={styles.headerCard}>
         <Text className={styles.title}>报名详情</Text>
-        <Text className={styles.description}>查看活动快照、档案快照与价格拆解，并支持直接改状态。</Text>
+        <Text className={styles.description}>查看活动快照、档案快照与价格拆解；用户实际到场后可在这里核销。</Text>
       </View>
 
       {loading || !detail ? (
@@ -116,7 +154,22 @@ const AdminRegistrationDetailPage: React.FC = () => {
           {isWechatPaymentRegistration ? (
             <View className={styles.actionCard}>
               <Text className={styles.sectionTitle}>微信支付报名</Text>
-              <Text className={styles.fieldText}>报名状态以微信支付结果为准。退款接口尚未接入，当前仅支持查看，不能手动改状态。</Text>
+              <Text className={styles.fieldText}>到场核销：{detail.fulfillmentStatus === 'fulfilled' ? `已完成（${(detail.fulfilledAt || '').replace('T', ' ').slice(0, 16)}）` : '待核销'}</Text>
+              <Text className={styles.fieldText}>微信状态：{shippingStatusText(detail)}</Text>
+              {detail.wechatShippingError ? <Text className={styles.noteText}>上次同步失败：{detail.wechatShippingError}</Text> : null}
+              <Text className={styles.helperText}>请在用户实际到场、活动服务开始提供后再核销；不能用核销代替取消或退款。</Text>
+              {canCompletePaidRegistration(detail) ? (
+                <View className={styles.actionRow}>
+                  <Button
+                    type="primary"
+                    loading={updating === 'completed'}
+                    disabled={Boolean(updating)}
+                    onClick={() => void handleUpdateStatus('completed')}
+                  >
+                    {updating === 'completed' ? '处理中…' : completionActionLabel(detail)}
+                  </Button>
+                </View>
+              ) : null}
             </View>
           ) : (
             <View className={styles.actionCard}>

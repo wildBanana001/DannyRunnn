@@ -574,8 +574,7 @@ export async function claimMysqlOrderFulfillmentReport(
     const current = await selectOrderById(connection, orderId, true);
     if (!current) return { claimed: false, order: null, reportRequired: false };
 
-    const reportRequired = current.kind === 'shop'
-      && current.status === 'paid'
+    const reportRequired = current.status === 'paid'
       && !current.mock
       && current.amount > 0;
     const fulfillmentPatch = {
@@ -671,7 +670,6 @@ async function updateLockedOrderStatus(
 
   const updatedAt = nowIso();
   const shouldQueueWechatShipping = status === 'paid'
-    && current.kind === 'shop'
     && !current.mock
     && current.amount > 0
     && current.wechatShippingStatus === 'not_required';

@@ -270,14 +270,12 @@ export async function claimOrderFulfillmentReport(
   if (index === -1) return { claimed: false, order: null, reportRequired: false };
 
   const current = store.orders[index];
-  const reportRequired = current.kind === 'shop'
-    && current.status === 'paid'
+  const reportRequired = current.status === 'paid'
     && !current.mock
     && current.amount > 0;
-  const fulfilledAt = current.fulfilledAt || nowIso();
   const fulfillmentPatch = {
     fulfillmentStatus: 'fulfilled' as const,
-    fulfilledAt,
+    fulfilledAt: current.fulfilledAt || nowIso(),
     fulfilledBy: current.fulfilledBy || normalizedFulfilledBy,
   };
 
@@ -383,7 +381,6 @@ export async function updateOrderStatus(
 
   const updatedAt = nowIso();
   const shouldQueueWechatShipping = status === 'paid'
-    && current.kind === 'shop'
     && !current.mock
     && current.amount > 0
     && current.wechatShippingStatus === 'not_required';

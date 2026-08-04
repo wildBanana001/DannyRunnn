@@ -82,11 +82,13 @@ export function truncateUtf8(value: string, maxBytes: number) {
 }
 
 export function buildWechatSelfPickupShippingPayload(
-  order: Pick<OrderRecord, 'id' | 'openid' | 'productName' | 'quantity'>,
+  order: Pick<OrderRecord, 'id' | 'openid' | 'productName' | 'quantity'>
+    & Partial<Pick<OrderRecord, 'kind'>>,
   uploadTime = new Date().toISOString(),
   mchId = config.wechatPay.mchId,
 ): WechatSelfPickupShippingPayload {
-  const itemDescription = `${order.productName || '到店商品'} x${Math.max(1, order.quantity)}`;
+  const itemName = order.productName || (order.kind === 'activity' ? '线下活动' : '到店商品');
+  const itemDescription = `${order.kind === 'activity' ? '活动报名｜' : ''}${itemName} x${Math.max(1, order.quantity)}`;
   return {
     order_key: {
       order_number_type: 1,

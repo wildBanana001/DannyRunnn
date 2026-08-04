@@ -44,7 +44,8 @@ export function truncateUtf8(value, maxBytes) {
     return result;
 }
 export function buildWechatSelfPickupShippingPayload(order, uploadTime = new Date().toISOString(), mchId = config.wechatPay.mchId) {
-    const itemDescription = `${order.productName || '到店商品'} x${Math.max(1, order.quantity)}`;
+    const itemName = order.productName || (order.kind === 'activity' ? '线下活动' : '到店商品');
+    const itemDescription = `${order.kind === 'activity' ? '活动报名｜' : ''}${itemName} x${Math.max(1, order.quantity)}`;
     return {
         order_key: {
             order_number_type: 1,
