@@ -26,14 +26,32 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const storageFilePath = path.join(currentDir, 'shop.store.json');
 
 /**
- * 内置的 6 款到店鸡尾酒种子数据。
+ * 商城种子数据。当前仅上架瓶装饮用水；已下架商品继续保留，
+ * 以便历史订单仍能展示完整的商品快照和履约信息。
  * 图片托管在 public/images/shop/ 下，通过 /static 路由对外访问。
  */
 const DEFAULT_PRODUCTS: ShopProduct[] = [
   {
+    id: 'bottled-water-550ml',
+    name: '瓶装饮用水（550ml）',
+    price: 1,
+    originalPrice: 1,
+    imageUrl: '/static/images/shop/product-water.jpg',
+    description: '550ml 密封瓶装饮用水，支付成功后可在活动现场到店自取。',
+    tags: ['饮用水', '550ml', '到店自取'],
+    category: '饮品',
+    fulfillmentType: 'pickup',
+    fulfillmentLabel: '到店自取',
+    unitLabel: '瓶',
+    alcoholic: false,
+    abv: 0,
+    volumeMl: 550,
+    enabled: true,
+  },
+  {
     id: 'cocktail-afterwork-sour',
     name: '下班快乐威士忌酸',
-    price: 0.01,
+    price: 49,
     originalPrice: 49,
     imageUrl: '/static/images/shop/cocktail-afterwork-sour.jpg',
     description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。',
@@ -45,12 +63,12 @@ const DEFAULT_PRODUCTS: ShopProduct[] = [
     alcoholic: true,
     abv: 14,
     volumeMl: 180,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'cocktail-mint-mojito',
     name: '薄荷青柠莫吉托',
-    price: 0.01,
+    price: 45,
     originalPrice: 45,
     imageUrl: '/static/images/shop/cocktail-mint-mojito.jpg',
     description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。',
@@ -62,12 +80,12 @@ const DEFAULT_PRODUCTS: ShopProduct[] = [
     alcoholic: true,
     abv: 10,
     volumeMl: 300,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'cocktail-berry-fizz',
     name: '莓果微醺气泡',
-    price: 0.01,
+    price: 52,
     originalPrice: 52,
     imageUrl: '/static/images/shop/cocktail-berry-fizz.jpg',
     description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。',
@@ -79,12 +97,12 @@ const DEFAULT_PRODUCTS: ShopProduct[] = [
     alcoholic: true,
     abv: 8,
     volumeMl: 300,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'cocktail-sunset-highball',
     name: '落日柑橘嗨棒',
-    price: 0.01,
+    price: 48,
     originalPrice: 48,
     imageUrl: '/static/images/shop/cocktail-sunset-highball.jpg',
     description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。',
@@ -96,12 +114,12 @@ const DEFAULT_PRODUCTS: ShopProduct[] = [
     alcoholic: true,
     abv: 9,
     volumeMl: 320,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'cocktail-espresso-martini',
     name: '浓缩咖啡马天尼',
-    price: 0.01,
+    price: 56,
     originalPrice: 56,
     imageUrl: '/static/images/shop/cocktail-espresso-martini.jpg',
     description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。',
@@ -113,12 +131,12 @@ const DEFAULT_PRODUCTS: ShopProduct[] = [
     alcoholic: true,
     abv: 16,
     volumeMl: 180,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'cocktail-elderflower-zero',
     name: '接骨木花零度特调',
-    price: 0.01,
+    price: 39,
     originalPrice: 39,
     imageUrl: '/static/images/shop/cocktail-elderflower-zero.jpg',
     description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。',
@@ -130,7 +148,7 @@ const DEFAULT_PRODUCTS: ShopProduct[] = [
     alcoholic: false,
     abv: 0,
     volumeMl: 300,
-    enabled: true,
+    enabled: false,
   },
 ];
 
@@ -161,7 +179,7 @@ function sanitizeFulfillmentType(value: unknown): ShopFulfillmentType {
 
 function getDefaultFulfillmentLabel(type: ShopFulfillmentType) {
   if (type === 'onsite') return '到店享用';
-  if (type === 'pickup') return '到店自提';
+  if (type === 'pickup') return '到店自取';
   return '快递配送';
 }
 

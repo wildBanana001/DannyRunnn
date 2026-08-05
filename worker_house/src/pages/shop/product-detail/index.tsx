@@ -58,13 +58,13 @@ const ProductDetailPage: React.FC = () => {
   };
 
   if (loading && !product) {
-    return <View className={styles.state} style={viewportStyle}><Text>正在翻开今晚的酒单…</Text></View>;
+    return <View className={styles.state} style={viewportStyle}><Text>正在加载商品…</Text></View>;
   }
 
   if (error || !product) {
     return (
       <View className={styles.state} style={viewportStyle}>
-        <EmptyState title="这杯暂时不在酒单上" description="可能已经下架，也可能是网络开了个小差。" />
+        <EmptyState title="商品暂时不可用" description="可能已经下架，也可能是网络开了个小差。" />
         <View className={styles.retryButton} onClick={loadProduct}><Text>重新加载</Text></View>
       </View>
     );
@@ -76,10 +76,10 @@ const ProductDetailPage: React.FC = () => {
         <SafeImage
           className={styles.coverImage}
           src={resolveShopProductImage(product.id, product.imageUrl)}
-          fallbackSrc={shopProductImages['cocktail-afterwork-sour']}
+          fallbackSrc={shopProductImages['bottled-water-550ml']}
           mode="aspectFill"
         />
-        <Text className={styles.coverCaption}>WORKER HOUSE COCKTAILS</Text>
+        <Text className={styles.coverCaption}>WORKER HOUSE SHOP</Text>
       </View>
 
       <View className={styles.info}>
@@ -97,23 +97,23 @@ const ProductDetailPage: React.FC = () => {
 
         <View className={styles.drinkMeta}>
           <View className={styles.drinkMetaItem}>
-            <Text className={styles.metaLabel}>酒精度</Text>
-            <Text className={styles.metaValue}>{product.alcoholic ? `${product.abv}%` : '无酒精'}</Text>
+            <Text className={styles.metaLabel}>商品类型</Text>
+            <Text className={styles.metaValue}>{product.category || '饮品'}</Text>
           </View>
           <View className={styles.drinkMetaItem}>
             <Text className={styles.metaLabel}>容量</Text>
             <Text className={styles.metaValue}>{product.volumeMl} ml</Text>
           </View>
           <View className={styles.drinkMetaItem}>
-            <Text className={styles.metaLabel}>享用方式</Text>
+            <Text className={styles.metaLabel}>领取方式</Text>
             <Text className={styles.metaValue}>{product.fulfillmentLabel}</Text>
           </View>
         </View>
 
         <View className={styles.metaRow}>
           <View>
-            <Text className={styles.metaLabel}>出品方式</Text>
-            <Text className={styles.metaValue}>现点现做</Text>
+            <Text className={styles.metaLabel}>包装方式</Text>
+            <Text className={styles.metaValue}>密封瓶装</Text>
           </View>
           <View className={styles.quantityControl}>
             <View className={styles.quantityButton} onClick={() => changeQuantity(-1)}><Minus size="16" /></View>
@@ -124,17 +124,13 @@ const ProductDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.promiseCard}>
-        <Text className={styles.promiseTitle}>今晚这杯，认真对待</Text>
-        <Text className={styles.promiseText}>
-          {product.alcoholic
-            ? '现点现做 · 到店后出示订单 · 请勿饮酒后驾车'
-            : '现点现做 · 到店后出示订单 · 无酒精也有完整风味'}
-        </Text>
+        <Text className={styles.promiseTitle}>到店自取说明</Text>
+        <Text className={styles.promiseText}>支付成功后到店出示订单，由工作人员核销后领取；本商品不安排配送。</Text>
       </View>
 
       <View className={styles.footer}>
         <View className={`${styles.buyBtn} ${!product.enabled ? styles.buyBtnDisabled : ''}`} onClick={handleBuy}>
-          <Text className={styles.buyBtnText}>{product.enabled ? '选这杯' : '已下架'}</Text>
+          <Text className={styles.buyBtnText}>{product.enabled ? '立即购买' : '已下架'}</Text>
         </View>
       </View>
     </View>

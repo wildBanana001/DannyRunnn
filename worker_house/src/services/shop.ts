@@ -1,5 +1,4 @@
 import Taro from '@tarojs/taro';
-import { REAL_PAYMENT_TEST_PRICE_YUAN } from '../constants/runtime';
 import type { Address } from './address';
 import { getPaymentApiMode, requestWithMode, type RequestOptions } from './request';
 
@@ -87,16 +86,27 @@ export interface StartShopPaymentInput {
 }
 
 const MOCK_PRODUCTS: ShopProduct[] = [
-  { id: 'cocktail-afterwork-sour', name: '下班快乐威士忌酸', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 49, imageUrl: '', description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。', tags: ['威士忌', '酸甜', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 14, volumeMl: 180, enabled: true },
-  { id: 'cocktail-mint-mojito', name: '薄荷青柠莫吉托', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 45, imageUrl: '', description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。', tags: ['朗姆酒', '清爽', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 10, volumeMl: 300, enabled: true },
-  { id: 'cocktail-berry-fizz', name: '莓果微醺气泡', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 52, imageUrl: '', description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。', tags: ['莓果', '气泡', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 8, volumeMl: 300, enabled: true },
-  { id: 'cocktail-sunset-highball', name: '落日柑橘嗨棒', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 48, imageUrl: '', description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。', tags: ['嗨棒', '柑橘', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 9, volumeMl: 320, enabled: true },
-  { id: 'cocktail-espresso-martini', name: '浓缩咖啡马天尼', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 56, imageUrl: '', description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。', tags: ['咖啡', '醇香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: true, abv: 16, volumeMl: 180, enabled: true },
-  { id: 'cocktail-elderflower-zero', name: '接骨木花零度特调', price: REAL_PAYMENT_TEST_PRICE_YUAN, originalPrice: 39, imageUrl: '', description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。', tags: ['无酒精', '花香', '到店享用'], category: 'cocktail', fulfillmentType: 'onsite', fulfillmentLabel: '到店享用', unitLabel: '杯', alcoholic: false, abv: 0, volumeMl: 300, enabled: true },
+  {
+    id: 'bottled-water-550ml',
+    name: '瓶装饮用水（550ml）',
+    price: 1,
+    originalPrice: 1,
+    imageUrl: '',
+    description: '550ml 密封瓶装饮用水，支付成功后可在活动现场到店自取。',
+    tags: ['饮用水', '550ml', '到店自取'],
+    category: '饮品',
+    fulfillmentType: 'pickup',
+    fulfillmentLabel: '到店自取',
+    unitLabel: '瓶',
+    alcoholic: false,
+    abv: 0,
+    volumeMl: 550,
+    enabled: true,
+  },
 ];
 
 const MOCK_ORDER_STORAGE_KEY = 'worker-house-mock-shop-orders-v2';
-const REAL_PAYMENT_ONLY_MESSAGE = '当前仅支持在微信小程序中进行真实支付测试';
+const REAL_PAYMENT_ONLY_MESSAGE = '当前仅支持在微信小程序中使用微信支付';
 const MOCK_PAYMENT_REJECTED_MESSAGE = '支付服务仍处于模拟模式，请先部署真实微信支付配置';
 
 function shopRequest<T>(options: RequestOptions) {

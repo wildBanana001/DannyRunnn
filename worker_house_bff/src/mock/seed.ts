@@ -70,10 +70,10 @@ const sharedHostAvatar = img.img24;
 const sharedHostDescription = '互联网大厂裸辞后徒手爆改 80m² 社畜快乐屋的 ENFJ 理想主义体验派。';
 const sharedVenueName = '社畜快乐屋·深圳社交化客厅';
 const sharedVenueDescription =
-  '一间把沙发客厅、手作桌、投影幕布、留言墙和猫咪小黑都留给真实相遇的小屋。';
+  '一间配有沙发客厅、手作长桌和投影设备的线下活动空间，可开展主题交流、手作体验与桌游活动。';
 const sharedVenueImages = [img.img29, img.img30, img.img17, img.img34];
 const sharedRefundPolicy =
-  '活动开始前 3 小时可申请保留名额到下次使用；临时取消将收取 50% 手续费。活动现场会拍照记录，如不希望出镜请提前告知主理人。';
+  '活动开始前 24 小时可申请全额退款；开始前 24 小时内可联系主理人改期一次；开始前 3 小时内及活动开始后不支持退款。若活动由主办方取消，将原路全额退款。';
 
 const buildActivityRecord = (activity: ActivityRecord): ActivityRecord => ({
   ...activity,
@@ -84,6 +84,52 @@ const buildActivityRecord = (activity: ActivityRecord): ActivityRecord => ({
       : [activity.cover || activity.coverImage, ...activity.gallery],
   cardEligible: activity.cardEligible ?? false,
 });
+
+type ScheduledActivitySeed = Pick<
+  ActivityRecord,
+  | 'id'
+  | 'title'
+  | 'description'
+  | 'fullDescription'
+  | 'coverImage'
+  | 'gallery'
+  | 'startDate'
+  | 'startTime'
+  | 'endTime'
+  | 'category'
+  | 'tags'
+  | 'requirements'
+  | 'includes'
+  | 'sort'
+>;
+
+const buildScheduledActivity = (activity: ScheduledActivitySeed): ActivityRecord =>
+  buildActivityRecord({
+    ...activity,
+    cover: activity.coverImage,
+    covers: [activity.coverImage, ...activity.gallery],
+    endDate: activity.startDate,
+    location: sharedLocation,
+    address: sharedAddress,
+    price: 148,
+    originalPrice: 148,
+    maxParticipants: 11,
+    currentParticipants: 0,
+    status: 'ongoing',
+    cardEligible: false,
+    hostId: sharedHostId,
+    hostName: sharedHostName,
+    hostAvatar: sharedHostAvatar,
+    hostDescription: sharedHostDescription,
+    venueName: sharedVenueName,
+    venueDescription: sharedVenueDescription,
+    venueImages: sharedVenueImages,
+    refundPolicy: sharedRefundPolicy,
+    signups: [],
+    createdAt: '2026-08-05T02:00:00.000Z',
+    updatedAt: '2026-08-05T02:00:00.000Z',
+    enabled: true,
+  });
 
 export const adminSeedData: AdminRecord[] = [
   {
@@ -152,7 +198,7 @@ export const posterSeedData: PosterRecord[] = [
 export const activitySeedData: ActivityRecord[] = [
   buildActivityRecord({
     id: 'act-001',
-    title: '8.8 周六晚 · deeptalk：人生里的 N 种选择',
+    title: 'Deeptalk｜人生里的 N 种选择',
     description: '聊那些和主流成功叙事不完全一致、却依然诚实的选择。',
     fullDescription:
       '围绕“人生里的 N 种选择”展开的大型聊天局。橙子会分享自己从大厂上班、裸辞到经营社畜快乐屋的经历，也会邀请大家聊聊上班还是考研、轻松还是高薪、喜欢与被喜欢等真实困惑。活动由欢迎仪式、主题提问、开放分享和夸夸 time 组成，让每个选择都被认真听见。',
@@ -166,10 +212,10 @@ export const activitySeedData: ActivityRecord[] = [
     endTime: '23:00',
     location: sharedLocation,
     address: sharedAddress,
-    price: 0.01,
-    originalPrice: 168,
+    price: 148,
+    originalPrice: 148,
     maxParticipants: 11,
-    currentParticipants: 7,
+    currentParticipants: 0,
     status: 'ongoing',
     category: 'deeptalk',
     tags: ['人生选择', '深度社交', '夸夸 time'],
@@ -182,16 +228,16 @@ export const activitySeedData: ActivityRecord[] = [
     venueDescription: sharedVenueDescription,
     venueImages: sharedVenueImages,
     requirements: ['建议准时到场，方便完整参与破冰和欢迎仪式', '想匿名表达也可以，只需要给自己取一个当晚昵称', '如不想出镜或公开分享，可提前和主理人说一声'],
-    includes: ['门票', '小食', '果桶 / 吨吨酒桶畅饮', '社畜周边 1 份', '夸夸环节仪式卡'],
+    includes: ['活动名额', '主题引导与互动材料', '饮品与小食', '夸夸环节仪式卡'],
     refundPolicy: sharedRefundPolicy,
-    createdAt: '2026-04-26T09:30:00Z',
-    updatedAt: '2026-04-26T09:30:00Z',
+    createdAt: '2026-08-05T02:00:00.000Z',
+    updatedAt: '2026-08-05T02:00:00.000Z',
     enabled: true,
     sort: 1,
   }),
   buildActivityRecord({
     id: 'act-002',
-    title: '8.14 周五晚 · deeptalk：幸福的奥义',
+    title: 'Deeptalk｜幸福的奥义',
     description: '从记忆里的幸福瞬间出发，重新定义什么才算“过得不错”。',
     fullDescription:
       '这场 deeptalk 想聊的不是标准答案里的幸福，而是每个人身体最诚实的感受。活动会从“你最近一次感到幸福是什么时候”开始，再延展到工作、关系、家庭与自我照顾。现场会有轻量破冰、幸福时刻卡片、自由分享和互相夸奖环节。',
@@ -205,10 +251,10 @@ export const activitySeedData: ActivityRecord[] = [
     endTime: '23:00',
     location: sharedLocation,
     address: sharedAddress,
-    price: 0.01,
-    originalPrice: 168,
+    price: 148,
+    originalPrice: 148,
     maxParticipants: 11,
-    currentParticipants: 6,
+    currentParticipants: 0,
     status: 'ongoing',
     category: 'deeptalk',
     tags: ['幸福感', '疗愈聊天', '小组分享'],
@@ -221,12 +267,131 @@ export const activitySeedData: ActivityRecord[] = [
     venueDescription: sharedVenueDescription,
     venueImages: sharedVenueImages,
     requirements: ['允许慢热，不需要强行外向', '可以带一个让你想起幸福的物件或照片', '活动会有拍照记录，不方便出镜可提前说明'],
-    includes: ['门票', '小食', '果桶 / 吨吨酒桶畅饮', '社畜周边 1 份', '幸福时刻卡片'],
+    includes: ['活动名额', '主题引导与互动材料', '饮品与小食', '幸福时刻卡片'],
     refundPolicy: sharedRefundPolicy,
-    createdAt: '2026-04-26T09:20:00Z',
-    updatedAt: '2026-04-26T09:20:00Z',
+    createdAt: '2026-08-05T02:00:00.000Z',
+    updatedAt: '2026-08-05T02:00:00.000Z',
     enabled: true,
     sort: 2,
+  }),
+  buildScheduledActivity({
+    id: 'act-20260816-crystal',
+    title: '水晶权杖手作体验',
+    description: '在材料老师指导下完成一支个人水晶权杖，零基础也可参加。',
+    fullDescription:
+      '本场为小班制手作预约活动。老师将介绍材料与工具的安全使用方法，带领参与者完成选材、结构固定、装饰组合与成品包装。活动不要求手作经验，每位参与者可在现场完成并带走一件作品。',
+    coverImage: img.img10,
+    gallery: [img.img11],
+    startDate: '2026-08-16',
+    startTime: '14:30',
+    endTime: '18:00',
+    category: '手作体验',
+    tags: ['水晶手作', '零基础', '小班活动'],
+    requirements: ['建议提前 10 分钟签到', '未成年人需由监护人陪同参加', '对金属或胶水敏感请提前告知'],
+    includes: ['活动名额', '水晶权杖材料包', '工具使用与老师指导', '饮品与小食', '成品包装'],
+    sort: 3,
+  }),
+  buildScheduledActivity({
+    id: 'act-20260822-clay',
+    title: '周末黏土手作体验',
+    description: '制作相框、冰箱贴或小摆件，在轻松的周末完成一件自己的作品。',
+    fullDescription:
+      '活动先进行简短的作品示范和材料说明，再由参与者选择相框、冰箱贴或小摆件方向进行制作。老师会提供配色、造型和粘合指导，现场备有基础工具与材料，完成的作品可当日带走。',
+    coverImage: img.img12,
+    gallery: [img.img14, img.img15],
+    startDate: '2026-08-22',
+    startTime: '14:30',
+    endTime: '18:00',
+    category: '手作体验',
+    tags: ['黏土 DIY', '周末活动', '零基础'],
+    requirements: ['建议穿便于活动的衣服', '活动材料按一人一份准备', '如需制作指定造型可提前留言'],
+    includes: ['活动名额', '黏土与基础配件', '老师现场指导', '饮品与小食', '作品打包'],
+    sort: 4,
+  }),
+  buildScheduledActivity({
+    id: 'act-20260823-letters',
+    title: '手写信与故事分享会',
+    description: '用一封不必寄出的信整理近况，也听见不同人生阶段的真实故事。',
+    fullDescription:
+      '这是一场围绕书写与倾听展开的线下主题活动。主理人会提供写作提示卡和信纸，参与者可选择写给过去的自己、未来的自己或某位重要的人。分享环节遵循自愿原则，不要求公开信件内容。',
+    coverImage: img.img18,
+    gallery: [img.img17, img.img19],
+    startDate: '2026-08-23',
+    startTime: '19:30',
+    endTime: '22:30',
+    category: '主题交流',
+    tags: ['手写信', '故事分享', '自愿表达'],
+    requirements: ['建议准时到场参加活动说明', '分享完全自愿，可只参与书写', '请尊重其他参与者的隐私'],
+    includes: ['活动名额', '信纸信封与提示卡', '主题引导', '饮品与小食'],
+    sort: 5,
+  }),
+  buildScheduledActivity({
+    id: 'act-20260828-reconcile',
+    title: 'Deeptalk｜与自己和解',
+    description: '通过主题提问和书写练习，聊聊内耗、自我期待与生活节奏。',
+    fullDescription:
+      '活动从自我期待、工作压力与关系边界等常见议题切入，通过小组约定、引导提问、个人书写和自愿分享逐步展开。这里不提供心理治疗或诊断，只提供一次平等、尊重且可自由退出表达的主题交流。',
+    coverImage: img.img20,
+    gallery: [img.img21],
+    startDate: '2026-08-28',
+    startTime: '19:30',
+    endTime: '22:30',
+    category: 'deeptalk',
+    tags: ['自我和解', '主题交流', '书写练习'],
+    requirements: ['建议准时参加活动约定说明', '允许沉默或跳过不想回答的问题', '活动不是心理咨询或医疗服务'],
+    includes: ['活动名额', '主题引导与书写材料', '饮品与小食', '活动纪念卡'],
+    sort: 6,
+  }),
+  buildScheduledActivity({
+    id: 'act-20260830-boardgame',
+    title: '周末桌游体验',
+    description: '由主理人带规则和分桌，适合想轻松认识新朋友的桌游新手。',
+    fullDescription:
+      '活动将根据到场人数安排两到三款规则清晰、互动友好的桌游。主理人负责讲解规则、组织分桌与轮换，不需要自带游戏，也不要求有桌游经验。整场以轻松参与为主，不设置现金输赢。',
+    coverImage: img.img22,
+    gallery: [img.img23],
+    startDate: '2026-08-30',
+    startTime: '14:30',
+    endTime: '18:00',
+    category: '桌游体验',
+    tags: ['桌游', '轻社交', '新手友好'],
+    requirements: ['建议提前 10 分钟签到', '请遵守现场规则并尊重其他玩家', '活动不包含任何现金或有价筹码玩法'],
+    includes: ['活动名额', '桌游与规则讲解', '分桌组织', '饮品与小食'],
+    sort: 7,
+  }),
+  buildScheduledActivity({
+    id: 'act-20260905-collage',
+    title: '拼贴手账工作坊',
+    description: '用旧杂志、色纸与文字素材完成一页属于自己的主题拼贴。',
+    fullDescription:
+      '老师会从构图、配色和素材选择开始示范，参与者可围绕近期生活、理想周末或下一阶段计划完成一页主题拼贴。现场提供杂志、纸张、贴纸和基础工具，作品完成后可装入透明保护袋带走。',
+    coverImage: img.img14,
+    gallery: [img.img15, img.img12],
+    startDate: '2026-09-05',
+    startTime: '14:30',
+    endTime: '18:00',
+    category: '手作体验',
+    tags: ['拼贴', '手账', '创意工作坊'],
+    requirements: ['可自带想使用的照片或纸质素材', '现场使用剪刀，请注意工具安全', '活动材料按一人一份准备'],
+    includes: ['活动名额', '拼贴材料与基础工具', '老师示范与指导', '饮品与小食', '作品保护袋'],
+    sort: 8,
+  }),
+  buildScheduledActivity({
+    id: 'act-20260912-newcomer',
+    title: '城市新人主题交流夜',
+    description: '面向刚来到深圳或想拓展生活半径的人，进行一场有主题、有边界的交流。',
+    fullDescription:
+      '活动围绕“来到一座新城市以后”展开，通过双人破冰、小组问题卡和自由交流，聊居住体验、兴趣去处、工作之外的生活与建立支持网络的方法。主理人会明确交流边界，不强制交换私人联系方式。',
+    coverImage: img.img06,
+    gallery: [img.img08, img.img23],
+    startDate: '2026-09-12',
+    startTime: '19:30',
+    endTime: '22:30',
+    category: '主题交流',
+    tags: ['城市新人', '主题交流', '轻社交'],
+    requirements: ['建议准时参加开场说明', '不强制交换联系方式', '请尊重他人的表达边界与隐私'],
+    includes: ['活动名额', '主题问题卡与现场引导', '饮品与小食', '深圳生活清单'],
+    sort: 9,
   }),
   buildActivityRecord({
     id: 'act-003',
@@ -248,7 +413,7 @@ export const activitySeedData: ActivityRecord[] = [
     originalPrice: 198,
     maxParticipants: 11,
     currentParticipants: 5,
-    status: 'ongoing',
+    status: 'ended',
     category: 'workshop',
     tags: ['身心灵', '水晶权杖', '仪式感'],
     cardEligible: false,
@@ -287,7 +452,7 @@ export const activitySeedData: ActivityRecord[] = [
     originalPrice: 188,
     maxParticipants: 11,
     currentParticipants: 8,
-    status: 'ongoing',
+    status: 'ended',
     category: '手作工坊',
     tags: ['黏土 DIY', '轻社交', '治愈手作'],
     cardEligible: false,
@@ -326,7 +491,7 @@ export const activitySeedData: ActivityRecord[] = [
     originalPrice: 128,
     maxParticipants: 11,
     currentParticipants: 9,
-    status: 'ongoing',
+    status: 'ended',
     category: '客厅放映',
     tags: ['《情书》', '电影夜', '520'],
     cardEligible: true,
@@ -365,7 +530,7 @@ export const activitySeedData: ActivityRecord[] = [
     originalPrice: 168,
     maxParticipants: 11,
     currentParticipants: 4,
-    status: 'ongoing',
+    status: 'ended',
     category: 'deeptalk',
     tags: ['自我和解', '情绪表达', '疗愈'],
     cardEligible: true,
@@ -404,7 +569,7 @@ export const activitySeedData: ActivityRecord[] = [
     originalPrice: 128,
     maxParticipants: 11,
     currentParticipants: 8,
-    status: 'ongoing',
+    status: 'ended',
     category: '游戏日',
     tags: ['have fun', '桌游', '去班味'],
     cardEligible: true,

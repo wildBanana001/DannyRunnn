@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Router, type RequestHandler, type Response } from 'express';
 import { config } from '../config.js';
-import { ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS } from '../constants/payment.js';
 import { getActivityById } from '../data/activities.js';
 import { getProductById, listProducts, type ShopFulfillmentType } from '../data/shop.js';
 import {
@@ -485,8 +484,8 @@ shopRouter.get('/products', (_request, response) => {
 
 shopRouter.get('/products/:id', (request, response) => {
   const product = getProductById(String(request.params.id));
-  if (!product) {
-    response.status(404).json({ message: '商品不存在' });
+  if (!product || !product.enabled) {
+    response.status(404).json({ message: '商品不存在或已下架' });
     return;
   }
   response.json(product);
@@ -697,6 +696,23 @@ shopRouter.post('/orders/:id/retry', requireShopEnabled, wxPaymentAuth, asyncHan
     response.json(toPaymentSession(refreshed));
     return;
   }
+  const currentProduct = getProductById(refreshed.productId);
+  const currentAmount = currentProduct
+    ? Math.round(currentProduct.price * 100) * refreshed.quantity
+    : -1;
+  if (refreshed.status === 'pending' && (!currentProduct?.enabled || refreshed.amount !== currentAmount)) {
+    const closed = await closePendingOrderSafely(refreshed, '商品价格或状态已更新', false);
+    if (closed.status === 'paid') {
+      response.json(toPaymentSession(closed));
+      return;
+    }
+    response.status(closed.status === 'pending' ? 503 : 409).json({
+      message: closed.status === 'pending'
+        ? '原订单状态正在确认，请稍后重试'
+        : '商品价格已更新，请重新下单',
+    });
+    return;
+  }
   if (refreshed.status !== 'pending') {
     response.status(409).json({ message: '该订单当前无法继续支付' });
     return;
@@ -786,8 +802,8 @@ shopRouter.post('/activity-registrations/pay', requireShopEnabled, wxPaymentAuth
       return;
     }
 
-    // 测试期统一使用 1 分钱，后续恢复正式价格时只需移除此覆盖值。
-    const amount: number = ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS;
+    // 活动配置是服务端唯一价格来源，客户端不能覆盖支付金额。
+    const amount = Math.round(activity.price * 100);
     if (!Number.isSafeInteger(amount) || amount < 0) {
       response.status(400).json({ message: '活动金额异常' });
       return;
@@ -984,6 +1000,29 @@ shopRouter.post('/activity-registrations/:id/retry', requireShopEnabled, wxPayme
   const refreshed = await refreshWechatOrder(order);
   if (refreshed.status === 'paid') {
     response.json(toActivityPaymentSession(refreshed));
+    return;
+  }
+  const currentActivity = getActivityById(refreshed.productId);
+  const currentAmount = currentActivity ? Math.round(currentActivity.price * 100) : -1;
+  if (
+    refreshed.status === 'pending'
+    && (
+      !currentActivity
+      || currentActivity.enabled === false
+      || currentActivity.status === 'ended'
+      || refreshed.amount !== currentAmount
+    )
+  ) {
+    const closed = await closePendingOrderSafely(refreshed, '活动已结束或价格、状态已更新', false);
+    if (closed.status === 'paid') {
+      response.json(toActivityPaymentSession(closed));
+      return;
+    }
+    response.status(closed.status === 'pending' ? 503 : 409).json({
+      message: closed.status === 'pending'
+        ? '原报名状态正在确认，请稍后重试'
+        : '活动已结束或价格已更新，请重新报名',
+    });
     return;
   }
   if (refreshed.status !== 'pending') {

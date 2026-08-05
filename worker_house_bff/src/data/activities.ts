@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ACTIVITY_PAYMENT_TEST_PRICE_YUAN } from '../constants/payment.js';
 import { activitySeedData } from '../mock/seed.js';
 import type { ActivityRecord, ActivitySignupRecord } from '../types/index.js';
 
@@ -59,13 +58,11 @@ function sortActivities(list: ActivityRecord[]) {
   });
 }
 
-function deriveActivityStatus(startDate: string, endDate: string) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (endDate && endDate < today) {
+function deriveActivityStatus(startDate: string, endDate: string, endTime: string) {
+  const normalizedEndTime = /^\d{2}:\d{2}$/.test(endTime) ? endTime : '23:59';
+  const endTimestamp = Date.parse(`${endDate || startDate}T${normalizedEndTime}:00+08:00`);
+  if (Number.isFinite(endTimestamp) && Date.now() >= endTimestamp) {
     return 'ended' as const;
-  }
-  if (startDate && startDate > today) {
-    return 'ongoing' as const;
   }
   return 'ongoing' as const;
 }
@@ -80,8 +77,9 @@ function normalizeActivityRecord(record: ActivityRecord): ActivityRecord {
   const gallery = Array.from(new Set([...(record.gallery ?? []), ...covers].map((item) => sanitizeString(item)).filter(Boolean)));
   const startDate = sanitizeString(record.startDate) || defaultActivityTemplate.startDate;
   const endDate = sanitizeString(record.endDate) || startDate;
+  const endTime = sanitizeString(record.endTime) || defaultActivityTemplate.endTime;
   const signups = Array.isArray(record.signups) ? clone(record.signups) : [];
-  const status = deriveActivityStatus(startDate, endDate);
+  const status = deriveActivityStatus(startDate, endDate, endTime);
   const configuredPrice = sanitizeNumber(record.price, defaultActivityTemplate.price);
 
   return {
@@ -98,10 +96,10 @@ function normalizeActivityRecord(record: ActivityRecord): ActivityRecord {
     startDate,
     endDate,
     startTime: sanitizeString(record.startTime) || defaultActivityTemplate.startTime,
-    endTime: sanitizeString(record.endTime) || defaultActivityTemplate.endTime,
+    endTime,
     location: sanitizeString(record.location) || defaultActivityTemplate.location,
     address: sanitizeString(record.address) || undefined,
-    price: status === 'ongoing' ? ACTIVITY_PAYMENT_TEST_PRICE_YUAN : configuredPrice,
+    price: configuredPrice,
     originalPrice: sanitizeNumber(record.originalPrice, configuredPrice),
     maxParticipants: Math.max(1, sanitizeNumber(record.maxParticipants, defaultActivityTemplate.maxParticipants)),
     currentParticipants: Math.max(0, sanitizeNumber(record.currentParticipants, 0)),
@@ -190,13 +188,14 @@ loadActivities();
 
 export function listActivities() {
   loadActivities();
-  return clone(activityStore.activities);
+  // 状态按每次读取时的北京时间重新计算，长驻实例跨过结束时间后也会立即下架报名。
+  return clone(sortActivities(activityStore.activities.map((item) => normalizeActivityRecord(item))));
 }
 
 export function getActivityById(activityId: string) {
   loadActivities();
   const record = activityStore.activities.find((item) => item.id === activityId) ?? null;
-  return clone(record);
+  return record ? clone(normalizeActivityRecord(record)) : null;
 }
 
 export function upsertActivity(activityId: string | undefined, input: Partial<ActivityRecord>) {

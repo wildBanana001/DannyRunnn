@@ -1,203 +1,154 @@
 import { Router } from 'express';
-import { callCloudFunction, normalizeActivity } from '../cloudClient.js';
 import { config } from '../config.js';
-import { authMiddleware, resolveRequestToken } from '../middleware/auth.js';
-import type { ActivityRecord } from '../mock/types.js';
+import {
+  deleteActivity,
+  getActivityById,
+  listActivities,
+  registerActivityParticipant,
+  upsertActivity,
+} from '../data/activities.js';
+import { getOrdersByKind } from '../data/orders.js';
+import { authMiddleware } from '../middleware/auth.js';
 import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
+import type { ActivityRecord } from '../types/index.js';
 
 function parsePage(value: unknown, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-async function fetchActivityDetail(id: string) {
-  const detailResult = await callCloudFunction<Record<string, unknown>>('activity', {
-    action: 'get',
-    id,
-  });
+function activityTime(activity: ActivityRecord) {
+  return new Date(`${activity.startDate}T${activity.startTime || '00:00'}:00+08:00`).getTime();
+}
 
-  if (!detailResult.success) {
-    return detailResult;
+function getPublicActivity(activityId: string) {
+  const activity = getActivityById(activityId);
+  return activity && activity.enabled !== false ? toPublicActivity(activity) : null;
+}
+
+function toPublicActivity(activity: ActivityRecord): ActivityRecord {
+  const { signups: _privateSignups, ...publicActivity } = activity;
+  return publicActivity;
+}
+
+async function withPaidRegistrationCounts(activities: ActivityRecord[]) {
+  try {
+    const paidCounts = new Map<string, number>();
+    for (const order of await getOrdersByKind('activity')) {
+      if (order.status !== 'paid') continue;
+      paidCounts.set(order.productId, (paidCounts.get(order.productId) ?? 0) + 1);
+    }
+    return activities.map((activity) => ({
+      ...activity,
+      currentParticipants: activity.currentParticipants + (paidCounts.get(activity.id) ?? 0),
+    }));
+  } catch (error) {
+    console.warn(
+      '[activities] load paid registration counts failed',
+      error instanceof Error ? error.message : error,
+    );
+    return activities;
   }
-
-  const activity = normalizeActivity(detailResult.data);
-  if (!activity) {
-    return { success: false as const, error: '活动不存在' };
-  }
-
-  return { success: true as const, data: activity };
 }
 
 export const activityRouter = Router();
 
+// 公开展示与报名支付共用 BFF 活动目录，避免列表、详情和支付价格来自不同数据源。
 activityRouter.get('/', async (request, response) => {
   const page = parsePage(request.query.page, 1);
-  const pageSize = parsePage(request.query.pageSize, 10);
-  const rawStatus = typeof request.query.status === 'string' ? request.query.status : undefined;
-  const type = typeof request.query.type === 'string' ? request.query.type : undefined;
+  const pageSize = Math.min(parsePage(request.query.pageSize, 10), 100);
+  const rawStatus = typeof request.query.status === 'string' ? request.query.status.trim() : '';
+  const type = typeof request.query.type === 'string' ? request.query.type.trim() : '';
   const status = type === 'past' && !rawStatus ? 'ended' : rawStatus;
   const keyword = typeof request.query.keyword === 'string' ? request.query.keyword.trim().toLowerCase() : '';
 
-  try {
-    const result = await callCloudFunction<Record<string, unknown>[]>('activity', {
-      action: 'list',
-      status,
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
-      return;
-    }
-
-    let list = result.data
-      .map((item) => normalizeActivity(item))
-      .filter((item): item is ActivityRecord => Boolean(item));
-
-    if (status) {
-      list = list.filter((item) => item.status === status);
-    }
-
-    if (keyword) {
-      list = list.filter((item) => item.title.toLowerCase().includes(keyword));
-    }
-
-    list = list.sort(
-      (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
-    );
-
-    const startIndex = (page - 1) * pageSize;
-    response.json({
-      list: list.slice(startIndex, startIndex + pageSize),
-      total: list.length,
-    });
-  } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '获取活动列表失败' });
+  let list = (await withPaidRegistrationCounts(listActivities().map(toPublicActivity)))
+    .filter((item) => item.enabled !== false);
+  if (status) {
+    list = list.filter((item) => item.status === status);
   }
+  if (keyword) {
+    list = list.filter((item) =>
+      [item.title, item.description, ...item.tags].some((value) => value.toLowerCase().includes(keyword)),
+    );
+  }
+
+  list.sort((first, second) =>
+    status === 'ended'
+      ? activityTime(second) - activityTime(first)
+      : activityTime(first) - activityTime(second),
+  );
+
+  const startIndex = (page - 1) * pageSize;
+  response.json({
+    list: list.slice(startIndex, startIndex + pageSize),
+    total: list.length,
+  });
 });
 
-activityRouter.post('/', authMiddleware, async (request, response) => {
-  try {
-    const result = await callCloudFunction<{ id: string }>('activity', {
-      action: 'create',
-      data: request.body,
-      token: resolveRequestToken(request),
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
-      return;
-    }
-
-    const detail = await fetchActivityDetail(result.data.id);
-    if (!detail.success) {
-      response.status(400).json({ message: detail.error });
-      return;
-    }
-
-    response.json(detail.data);
-  } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '创建活动失败' });
-  }
+activityRouter.post('/', authMiddleware, (request, response) => {
+  const record = upsertActivity(undefined, request.body as Partial<ActivityRecord>);
+  response.status(201).json(record);
 });
 
 activityRouter.get('/:id', async (request, response) => {
-  try {
-    const result = await fetchActivityDetail(String(request.params.id));
-
-    if (!result.success) {
-      response.status(404).json({ message: result.error });
-      return;
-    }
-
-    response.json(result.data);
-  } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '获取活动详情失败' });
+  const activity = getPublicActivity(String(request.params.id));
+  if (!activity) {
+    response.status(404).json({ message: '活动不存在或已下架' });
+    return;
   }
+  response.json((await withPaidRegistrationCounts([activity]))[0]);
 });
 
-activityRouter.put('/:id', authMiddleware, async (request, response) => {
-  try {
-    const result = await callCloudFunction<{ id: string }>('activity', {
-      action: 'update',
-      data: request.body,
-      id: String(request.params.id),
-      token: resolveRequestToken(request),
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
-      return;
-    }
-
-    const detail = await fetchActivityDetail(String(request.params.id));
-    if (!detail.success) {
-      response.status(400).json({ message: detail.error });
-      return;
-    }
-
-    response.json(detail.data);
-  } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '更新活动失败' });
+activityRouter.put('/:id', authMiddleware, (request, response) => {
+  const activityId = String(request.params.id);
+  if (!getActivityById(activityId)) {
+    response.status(404).json({ message: '活动不存在' });
+    return;
   }
+  response.json(upsertActivity(activityId, request.body as Partial<ActivityRecord>));
 });
 
-activityRouter.delete('/:id', authMiddleware, async (request, response) => {
-  try {
-    const result = await callCloudFunction<{ id: string }>('activity', {
-      action: 'delete',
-      id: String(request.params.id),
-      token: resolveRequestToken(request),
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
-      return;
-    }
-
-    response.json({ success: true });
-  } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '删除活动失败' });
+activityRouter.delete('/:id', authMiddleware, (request, response) => {
+  if (!deleteActivity(String(request.params.id))) {
+    response.status(404).json({ message: '活动不存在' });
+    return;
   }
+  response.json({ success: true });
 });
 
-activityRouter.post('/:id/signup', wxCloudrunAuth, async (request, response) => {
+activityRouter.post('/:id/signup', wxCloudrunAuth, (request, response) => {
   if (config.cloudMode !== 'mock') {
     response.status(410).json({ message: '活动报名已改为微信支付，请使用活动支付接口' });
     return;
   }
+
   const nickname = String(request.body?.nickname ?? '').trim();
   const phone = String(request.body?.phone ?? '').trim();
   const wechatId = String(request.body?.wechatId ?? '').trim();
-
   if (!nickname || !phone || !wechatId) {
     response.status(400).json({ message: '报名信息不完整' });
     return;
   }
 
-  try {
-    const result = await callCloudFunction<{ id: string }>('activity', {
-      action: 'signup',
-      id: String(request.params.id),
-      nickname,
-      openid: request.wxUser?.openid,
-      phone,
-      unionid: request.wxUser?.unionid,
-      wechatId,
-    });
-
-    if (!result.success) {
-      response.status(400).json({ message: result.error });
-      return;
-    }
-
-    const detail = await fetchActivityDetail(String(request.params.id));
-    if (!detail.success) {
-      response.status(400).json({ message: detail.error });
-      return;
-    }
-
-    response.json(detail.data);
-  } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '活动报名失败' });
+  const activityId = String(request.params.id);
+  const currentActivity = getPublicActivity(activityId);
+  if (!currentActivity || currentActivity.status === 'ended') {
+    response.status(404).json({ message: '活动不存在、已结束或已下架' });
+    return;
   }
+
+  const activity = registerActivityParticipant(activityId, {
+    nickname,
+    openid: request.wxUser?.openid,
+    phone,
+    status: 'confirmed',
+    unionid: request.wxUser?.unionid,
+    wechatId,
+  });
+  if (!activity) {
+    response.status(404).json({ message: '活动不存在' });
+    return;
+  }
+  response.json(toPublicActivity(activity));
 });

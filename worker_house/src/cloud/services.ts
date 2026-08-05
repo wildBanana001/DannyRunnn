@@ -1,5 +1,4 @@
 import { currentUser } from '@/data/users';
-import { REAL_PAYMENT_TEST_PRICE_YUAN } from '@/constants/runtime';
 import { ongoingActivities } from '@/data/activities';
 import { comments as mockComments, posts as mockPosts } from '@/data/posts';
 import { posters as mockPosters } from '@/data/posters';
@@ -35,7 +34,6 @@ let localComments: Comment[] = clone(mockComments);
 
 const normalizeActivity = (activity: Activity): Activity => ({
   ...activity,
-  price: activity.status === 'ended' ? activity.price : REAL_PAYMENT_TEST_PRICE_YUAN,
   cover: activity.cover || activity.coverImage,
   covers: activity.covers && activity.covers.length > 0 ? activity.covers : [activity.cover || activity.coverImage, ...(activity.gallery || [])],
   cardEligible: activity.cardEligible ?? false

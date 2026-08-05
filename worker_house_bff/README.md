@@ -77,7 +77,7 @@ PORT=4000
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
 - `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用仍保留的管理云函数（例如海报管理）所用的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git。帖子接口不再使用该令牌
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
-- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。当前鸡尾酒为不限库存、现点现做；有限名额活动通过 MySQL 行锁与事务原子占位。
+- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。当前仅上架 ¥1 瓶装饮用水，按不限库存的到店自取商品处理；有限名额活动通过 MySQL 行锁与事务原子占位。
 - `SHOP_ORDER_STORAGE`：云托管默认 `mysql`；`file` 只用于本地或临时联调。已确认旧库无真实订单后，线上遗留值 `cloudbase` 会临时兼容为 `mysql` 并输出警告；仍应从云托管服务变量中删除该旧值
 - `MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD`：微信云托管 MySQL 的内网地址、用户名和密码；密码只放服务 Secret，禁止提交到 Git。也支持 `DB_HOST / DB_PORT / DB_USER / DB_PASSWORD` 或完整 `CONNECTION_URI`
 - 生产环境应使用 MySQL 直连服务的内网地址；如果数据库控制台要求 VPC，必须同时在 `worker-house-bff` 服务的网络配置中开启私有网络并选择数据库所在 VPC。仅填写内网地址不能替代网络连通配置，详见 [MySQL 数据库集成](https://docs.cloudbase.net/run/develop/resource-integration/mysql) 与 [直连服务](https://docs.cloudbase.net/database/configuration/db/tdsql/direct-connection)
@@ -111,7 +111,7 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 安全规则：
 
 - `MODE=mock` 始终模拟支付，不会因为本机误配证书而发起真实扣款。
-- 当前联调版本只在微信小程序中允许发起支付；商城 6 款鸡尾酒和所有可报名活动均使用 ¥0.01 真实支付测试价。活动支付金额由 BFF 强制按 1 分创建，不能通过客户端或活动后台价格绕过；联调完成后需统一恢复正式售价。
+- 只允许从微信小程序发起真实支付。商城商品使用各自正式售价，活动报名以 BFF 活动记录中的价格为唯一依据；服务端换算为分后创建支付单，客户端不能覆盖金额。
 - 用户身份与真实支付只接受云托管注入的微信身份，并校验 `X-WX-APPID`；传统 `wechat` BFF 模式在接入服务端签名会话前会返回 `503`，不会信任客户端自报的 OpenID。
 - 非 `mock` 模式缺少任一支付配置时，收费订单返回 `503`；价格为 0 的活动仍可直接完成报名。
 - 前端支付成功只代表收银台返回成功；订单必须以后端主动查单或验签后的支付通知为准。
@@ -120,12 +120,12 @@ WECHAT_PAY_PUBLIC_KEY_ID=
 - 首次开启该变量前，先等待新 BFF 版本切换到 100% 流量，避免新旧实例并存期间接收支付订单。
 - 生产商城和活动报名必须使用 `SHOP_ORDER_STORAGE=mysql`；到店商品和线下活动均按交易类小程序规范接入订单发货管理，并在实际交付或到场核销后使用“用户自提”类型上报。
 
-### 到店享用履约与微信订单管理
+### 到店自取履约与微信订单管理
 
 到店订单不会在支付成功时提前标记为已履约。正确操作顺序是：
 
 1. 用户完成微信支付，订单进入“已支付 / 待交付”。
-2. 用户到店，店员实际交付饮品后进入小程序管理员中心的“商城订单与核销”。
+2. 用户到店，工作人员实际交付商品后进入小程序管理员中心的“商城订单与核销”。
 3. 点击“确认到店交付”。BFF 原子记录核销人和时间，再调用微信小程序订单发货管理接口，以 `logistics_type=4`（用户自提）上报。
 4. 微信接口失败时，门店交付记录不会丢失；后台会显示错误并提供“重试微信上报”。并发点击、接口超时和重复上报均按订单号幂等处理。
 
@@ -179,7 +179,7 @@ npm run migrate-images
 
 活动报名支付接口：
 
-- `POST /api/shop/activity-registrations/pay`：测试期由服务端固定按 ¥0.01 创建报名支付单
+- `POST /api/shop/activity-registrations/pay`：按服务端活动价格创建报名支付单；当前正式活动统一为 ¥148
 - `GET /api/shop/activity-registrations/mine`：读取当前用户的报名记录
 - `GET /api/shop/activity-registrations/:id`：查单并返回服务端确认后的报名状态
 - `POST /api/shop/activity-registrations/:id/retry`：继续支付未过期的报名单

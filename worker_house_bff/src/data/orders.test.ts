@@ -18,8 +18,7 @@ import {
   settleFreeOrder,
   updateOrderStatus,
 } from './orders.js';
-import { getActivityById } from './activities.js';
-import { ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS } from '../constants/payment.js';
+import { getActivityById, listActivities } from './activities.js';
 import { getProductById, listProducts, normalizeShopProduct } from './shop.js';
 import { resolveShopOrderAddress } from '../routes/shop.js';
 
@@ -324,14 +323,34 @@ test('normalizes legacy shop products and only lists enabled products', () => {
   });
   assert.equal(disabledProduct.enabled, false);
   assert.equal(disabledProduct.fulfillmentType, 'pickup');
-  assert.equal(disabledProduct.fulfillmentLabel, '到店自提');
+  assert.equal(disabledProduct.fulfillmentLabel, '到店自取');
 
   const listedProducts = listProducts();
-  assert.equal(listedProducts.length, 6);
-  assert.ok(listedProducts.every((item) => item.enabled));
-  assert.ok(listedProducts.every((item) => item.category === 'cocktail'));
-  assert.ok(listedProducts.every((item) => item.fulfillmentType === 'onsite'));
-  assert.ok(listedProducts.every((item) => item.price === 0.01));
+  assert.equal(listedProducts.length, 1);
+  const [water] = listedProducts;
+  assert.equal(water.id, 'bottled-water-550ml');
+  assert.equal(water.name, '瓶装饮用水（550ml）');
+  assert.equal(water.price, 1);
+  assert.equal(water.originalPrice, 1);
+  assert.equal(Math.round(water.price * 100), 100);
+  assert.equal(water.category, '饮品');
+  assert.equal(water.fulfillmentType, 'pickup');
+  assert.equal(water.fulfillmentLabel, '到店自取');
+  assert.equal(water.unitLabel, '瓶');
+  assert.equal(water.alcoholic, false);
+  assert.equal(water.abv, 0);
+  assert.equal(water.volumeMl, 550);
+  assert.equal(water.enabled, true);
+  for (const productId of [
+    'cocktail-afterwork-sour',
+    'cocktail-mint-mojito',
+    'cocktail-berry-fizz',
+    'cocktail-sunset-highball',
+    'cocktail-espresso-martini',
+    'cocktail-elderflower-zero',
+  ]) {
+    assert.equal(getProductById(productId)?.enabled, false);
+  }
   assert.equal(listedProducts.some((item) => item.id === 'prod-coffee-box'), false);
   assert.equal(getProductById('prod-coffee-box')?.enabled, false);
   assert.equal(getProductById(listedProducts[0].id)?.id, listedProducts[0].id);
@@ -352,12 +371,17 @@ test('requires addresses only for delivery fulfillment', () => {
   assert.equal(resolveShopOrderAddress('pickup', address), null);
 });
 
-test('keeps upcoming activity payment fixtures at one cent', () => {
+test('keeps all upcoming activity fixtures at the formal registration price', () => {
   const firstActivity = getActivityById('act-001');
   const secondActivity = getActivityById('act-002');
-  assert.equal(firstActivity?.price, 0.01);
-  assert.equal(secondActivity?.price, 0.01);
-  assert.equal(ACTIVITY_PAYMENT_TEST_AMOUNT_CENTS, 1);
+  const upcomingActivities = listActivities().filter((item) => item.status === 'ongoing' && item.enabled !== false);
+  assert.equal(firstActivity?.price, 148);
+  assert.equal(secondActivity?.price, 148);
+  assert.equal(Math.round((firstActivity?.price ?? 0) * 100), 14_800);
+  assert.equal(upcomingActivities.length, 9);
+  assert.ok(upcomingActivities.every((item) => item.price === 148));
+  assert.ok(upcomingActivities.every((item) => item.originalPrice === 148));
+  assert.ok(upcomingActivities.every((item) => item.currentParticipants === 0));
   assert.equal(firstActivity?.startDate, '2026-08-08');
   assert.equal(secondActivity?.startDate, '2026-08-14');
 });

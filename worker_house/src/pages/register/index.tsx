@@ -7,7 +7,6 @@ import SafeImage from '@/components/SafeImage';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
-import { REAL_PAYMENT_TEST_PRICE_YUAN } from '@/constants/runtime';
 import { calculateCardDeduction } from '@/data/mock-member';
 import {
   confirmActivityPayment,
@@ -67,7 +66,7 @@ const RegisterPage: React.FC = () => {
   const [successRegistrationId, setSuccessRegistrationId] = useState('');
   const [clientRequestId] = useState(createActivityPaymentClientRequestId);
   const directPaymentEnabled = isDirectActivityPaymentEnabled();
-  const registrationPrice = directPaymentEnabled ? REAL_PAYMENT_TEST_PRICE_YUAN : activity?.price || 0;
+  const registrationPrice = activity?.price || 0;
   const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
 
   const refreshMemberData = useCallback(async () => {

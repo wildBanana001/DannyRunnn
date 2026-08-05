@@ -14,7 +14,7 @@ import {
   updateAdminActivity,
   uploadAdminCoverImage,
 } from '@/services/admin';
-import { REAL_PAYMENT_TEST_PRICE_YUAN } from '@/constants/runtime';
+import { DEFAULT_ACTIVITY_PRICE_YUAN } from '@/constants/runtime';
 import type { Activity } from '@/types';
 import styles from './index.module.scss';
 
@@ -38,7 +38,7 @@ const defaultFormState: ActivityFormState = {
   endDate: '',
   endTime: '',
   maxParticipants: '11',
-  price: String(REAL_PAYMENT_TEST_PRICE_YUAN),
+  price: String(DEFAULT_ACTIVITY_PRICE_YUAN),
   startDate: '',
   startTime: '',
   title: '',
@@ -73,7 +73,7 @@ const AdminActivityEditPage: React.FC = () => {
           endDate: cached.endDate || cached.startDate || '',
           endTime: cached.endTime || cached.startTime || '',
           maxParticipants: String(cached.maxParticipants ?? 11),
-          price: String(cached.price ?? REAL_PAYMENT_TEST_PRICE_YUAN),
+          price: String(cached.price ?? DEFAULT_ACTIVITY_PRICE_YUAN),
           startDate: cached.startDate || '',
           startTime: cached.startTime || '',
           title: cached.title || '',
@@ -94,7 +94,7 @@ const AdminActivityEditPage: React.FC = () => {
           endDate: current.endDate || current.startDate || '',
           endTime: current.endTime || current.startTime || '',
           maxParticipants: String(current.maxParticipants ?? 11),
-          price: String(current.price ?? REAL_PAYMENT_TEST_PRICE_YUAN),
+          price: String(current.price ?? DEFAULT_ACTIVITY_PRICE_YUAN),
           startDate: current.startDate || '',
           startTime: current.startTime || '',
           title: current.title || '',

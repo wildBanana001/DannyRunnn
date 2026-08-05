@@ -57,7 +57,7 @@ export interface MemberOverview {
 
 const isMockMode = () => getApiMode() === 'mock';
 const isRegistrationMockMode = () => getPaymentApiMode() === 'mock';
-const REAL_PAYMENT_ONLY_MESSAGE = '当前仅支持在微信小程序中进行真实支付测试';
+const REAL_PAYMENT_ONLY_MESSAGE = '当前仅支持在微信小程序中使用微信支付';
 const MOCK_PAYMENT_REJECTED_MESSAGE = '支付服务仍处于模拟模式，请先部署真实微信支付配置';
 
 const registrationRequest = <T>(options: RequestOptions) => (

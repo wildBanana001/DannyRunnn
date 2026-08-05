@@ -1,4 +1,5 @@
 export const shopProductImages: Record<string, string> = {
+  'bottled-water-550ml': require('./product-water.jpg'),
   'cocktail-afterwork-sour': require('./cocktail-afterwork-sour.jpg'),
   'cocktail-mint-mojito': require('./cocktail-mint-mojito.jpg'),
   'cocktail-berry-fizz': require('./cocktail-berry-fizz.jpg'),
@@ -14,5 +15,5 @@ export const shopProductImages: Record<string, string> = {
 };
 
 export function resolveShopProductImage(productId: string, remoteImage = '') {
-  return shopProductImages[productId] || remoteImage || shopProductImages['cocktail-afterwork-sour'];
+  return shopProductImages[productId] || remoteImage || shopProductImages['bottled-water-550ml'];
 }

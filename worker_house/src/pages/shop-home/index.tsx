@@ -44,9 +44,9 @@ const ShopHomePage: React.FC = () => {
     <View className={styles.container} style={viewportStyle}>
       <View className={styles.header}>
         <View>
-          <Text className={styles.eyebrow}>WORKER HOUSE COCKTAILS</Text>
-          <Text className={styles.title}>今晚喝一杯</Text>
-          <Text className={styles.subtitle}>下班以后，认真放松</Text>
+          <Text className={styles.eyebrow}>WORKER HOUSE SHOP</Text>
+          <Text className={styles.title}>活动现场补给</Text>
+          <Text className={styles.subtitle}>简单补水，轻松参与</Text>
         </View>
         <View className={styles.ordersEntry} onClick={() => Taro.navigateTo({ url: '/pages/shop/my-orders/index' })}>
           <Order className={styles.ordersEntryIcon} size="18" />
@@ -57,23 +57,23 @@ const ShopHomePage: React.FC = () => {
 
       <ScrollView scrollY className={styles.scroll}>
         <View className={styles.notice}>
-          <Text className={styles.noticeTitle}>今日酒单</Text>
-          <Text className={styles.noticeText}>现点现做 · 到店享用 · 不提供配送</Text>
+          <Text className={styles.noticeTitle}>在售商品</Text>
+          <Text className={styles.noticeText}>瓶装饮用水 · 到店自取 · 不提供配送</Text>
         </View>
 
         {loading && products.length === 0 ? (
-          <View className={styles.state}><Text>正在准备今晚的酒单…</Text></View>
+          <View className={styles.state}><Text>正在准备商品…</Text></View>
         ) : null}
 
         {error && products.length === 0 ? (
           <View className={styles.errorState}>
-            <EmptyState title="酒单暂时走神了" description="稍后再来看看，或者点下面重新加载。" />
+            <EmptyState title="商品暂时加载失败" description="稍后再来看看，或者点下面重新加载。" />
             <View className={styles.retryButton} onClick={loadProducts}><Text>重新加载</Text></View>
           </View>
         ) : null}
 
         {!loading && !error && products.length === 0 ? (
-          <EmptyState title="今日酒单准备中" description="调酒师正在认真准备，晚点再来看看。" />
+          <EmptyState title="商品准备中" description="稍后再来看看。" />
         ) : null}
 
         {products.length > 0 ? (
@@ -84,7 +84,7 @@ const ShopHomePage: React.FC = () => {
                   <SafeImage
                     className={styles.coverImage}
                     src={resolveShopProductImage(item.id, item.imageUrl)}
-                    fallbackSrc={shopProductImages['cocktail-afterwork-sour']}
+                    fallbackSrc={shopProductImages['bottled-water-550ml']}
                     mode="aspectFill"
                     lazyLoad
                   />
@@ -97,7 +97,7 @@ const ShopHomePage: React.FC = () => {
                     <Text className={styles.originalPrice}>¥{formatPrice(item.originalPrice)}</Text>
                   ) : null}
                 </View>
-                <Text className={styles.fulfillmentNote}>现点现做 · 到店享用</Text>
+                <Text className={styles.fulfillmentNote}>{item.fulfillmentLabel} · 不提供配送</Text>
               </View>
             ))}
           </View>

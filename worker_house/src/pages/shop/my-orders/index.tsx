@@ -126,8 +126,8 @@ const MyOrdersPage: React.FC = () => {
 
         {isLoggedIn && !loading && !error && orders.length === 0 ? (
           <View className={styles.state}>
-            <EmptyState title="还没有酒单订单" description="看看今晚的特调，选一杯到店慢慢喝。" />
-            <View className={styles.primaryButton} onClick={() => Taro.switchTab({ url: '/pages/shop-home/index' })}><Text>去看看酒单</Text></View>
+            <EmptyState title="还没有商城订单" description="商城目前上架瓶装饮用水，可在活动现场到店自取。" />
+            <View className={styles.primaryButton} onClick={() => Taro.switchTab({ url: '/pages/shop-home/index' })}><Text>去看看商品</Text></View>
           </View>
         ) : null}
 
@@ -151,7 +151,7 @@ const MyOrdersPage: React.FC = () => {
                     <SafeImage
                       className={styles.thumbImage}
                       src={resolveShopProductImage(item.productId, item.productImageUrl)}
-                      fallbackSrc={shopProductImages['prod-coffee-box']}
+                      fallbackSrc={shopProductImages['bottled-water-550ml']}
                       mode="aspectFill"
                     />
                   </View>

@@ -49,9 +49,15 @@ function isMissingShopOrder(error: unknown) {
 }
 
 function getFulfillmentState(order: ShopOrder) {
-  if (order.status !== 'paid') return '完成支付后，可凭本页订单到店享用。';
-  if (order.fulfillmentStatus === 'fulfilled') return '门店已确认交付，祝你享用愉快。';
-  return '待到店享用；到店后向店员出示本页订单号。';
+  if (order.fulfillmentType === 'delivery') {
+    if (order.status !== 'paid') return '完成支付后，订单将按收货地址安排配送。';
+    if (order.fulfillmentStatus === 'fulfilled') return '订单已确认交付。';
+    return '订单待安排配送，请留意后续状态。';
+  }
+  const fulfillmentLabel = order.fulfillmentLabel || (order.fulfillmentType === 'pickup' ? '到店自取' : '到店享用');
+  if (order.status !== 'paid') return `完成支付后，可凭本页订单${fulfillmentLabel}。`;
+  if (order.fulfillmentStatus === 'fulfilled') return '门店已确认交付。';
+  return `待${fulfillmentLabel}；到店后向工作人员出示本页订单号。`;
 }
 
 function getWechatShippingState(order: ShopOrder) {
@@ -154,7 +160,7 @@ const ShopOrderDetailPage: React.FC = () => {
         <SafeImage
           className={styles.productImage}
           src={resolveShopProductImage(order.productId, order.productImageUrl)}
-          fallbackSrc={shopProductImages['prod-coffee-box']}
+          fallbackSrc={shopProductImages['bottled-water-550ml']}
           mode="aspectFill"
         />
         <View className={styles.productInfo}>

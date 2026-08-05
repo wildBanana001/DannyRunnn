@@ -36,7 +36,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, className, onClic
         <View className={styles.footer}>
           <View className={styles.priceSection}>
             <Text className={styles.price}>{formatPrice(activity.price)}</Text>
-            {activity.originalPrice ? (
+            {activity.originalPrice && activity.originalPrice > activity.price ? (
               <Text className={styles.originalPrice}>
                 {formatPrice(activity.originalPrice)}
               </Text>

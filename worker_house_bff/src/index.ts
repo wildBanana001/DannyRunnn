@@ -51,7 +51,13 @@ function isRequestRuntimeReady(path: string, method: string) {
     && config.shopOrderStorage === 'mysql'
     && method === 'GET'
     && (path === '/admin-mini/registrations' || path.startsWith('/admin-mini/registrations/'));
-  return accountDeletionReady || communityReady || paymentStorageReady || paymentRegistrationAdminRead;
+  const bundledActivityRead = method === 'GET'
+    && (path === '/activities' || path.startsWith('/activities/'));
+  return accountDeletionReady
+    || communityReady
+    || paymentStorageReady
+    || paymentRegistrationAdminRead
+    || bundledActivityRead;
 }
 
 function buildHealthPayload() {

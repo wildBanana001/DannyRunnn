@@ -206,11 +206,11 @@ const OrderConfirmPage: React.FC = () => {
         </View>
       ) : (
         <View className={styles.section}>
-          <Text className={styles.sectionTitle}>享用方式</Text>
+          <Text className={styles.sectionTitle}>领取方式</Text>
           <View className={styles.fulfillmentCard}>
             <View className={styles.fulfillmentBadge}><Text>店</Text></View>
             <View className={styles.fulfillmentContent}>
-              <Text className={styles.fulfillmentTitle}>{product.fulfillmentLabel || '到店享用'}</Text>
+              <Text className={styles.fulfillmentTitle}>{product.fulfillmentLabel || '到店自取'}</Text>
               <Text className={styles.fulfillmentText}>无需填写收货地址，{isFree ? '领取' : '支付'}成功后到店出示订单</Text>
             </View>
           </View>
@@ -223,7 +223,7 @@ const OrderConfirmPage: React.FC = () => {
           <SafeImage
             className={styles.productThumb}
             src={resolveShopProductImage(product.id, product.imageUrl)}
-            fallbackSrc={shopProductImages['prod-coffee-box']}
+            fallbackSrc={shopProductImages['bottled-water-550ml']}
             mode="aspectFill"
           />
           <View className={styles.productInfo}>
@@ -253,7 +253,7 @@ const OrderConfirmPage: React.FC = () => {
         <Text className={styles.paymentNoticeText}>
           {requiresAddress
             ? `${isFree ? '领取' : '支付'}成功后，系统会确认订单状态并按所选地址安排配送。`
-            : `${isFree ? '领取' : '支付'}成功后，系统会确认订单状态；本订单仅用于到店享用，不会安排配送。`}
+            : `${isFree ? '领取' : '支付'}成功后，系统会确认订单状态；本订单为${product.fulfillmentLabel || '到店自取'}，不会安排配送。`}
         </Text>
       </View>
 
