@@ -20,6 +20,7 @@ import { shopRouter } from './routes/shop.js';
 import { siteRouter } from './routes/site.js';
 import { storiesRouter, adminMiniStoriesRouter } from './routes/stories.js';
 import { adminUploadRouter, userUploadRouter } from './routes/upload.js';
+import { isMysqlBackedAdminOrderRequest } from './utils/admin-order-runtime.js';
 import { getWechatPayConfigurationStatus } from './utils/wechat-pay.js';
 
 const app = express();
@@ -47,17 +48,16 @@ function isRequestRuntimeReady(path: string, method: string) {
   );
   const paymentStorageReady = config.shopOrderStorage === 'mysql'
     && (path === '/shop' || path.startsWith('/shop/'));
-  const paymentRegistrationAdminRead = config.enableShop
+  const paymentAdminOrderReady = config.enableShop
     && config.shopOrderStorage === 'mysql'
-    && method === 'GET'
-    && (path === '/admin-mini/registrations' || path.startsWith('/admin-mini/registrations/'));
+    && isMysqlBackedAdminOrderRequest(path, method);
   const bundledActivityRead = method === 'GET'
     && (path === '/activities' || path.startsWith('/activities/'));
   const bundledSiteConfigRead = method === 'GET' && path === '/site-config';
   return accountDeletionReady
     || communityReady
     || paymentStorageReady
-    || paymentRegistrationAdminRead
+    || paymentAdminOrderReady
     || bundledActivityRead
     || bundledSiteConfigRead;
 }
