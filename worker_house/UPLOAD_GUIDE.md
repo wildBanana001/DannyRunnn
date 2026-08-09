@@ -24,9 +24,8 @@
 可选 GitHub Variables：
 
 - `WECHAT_MINIPROGRAM_ROBOT`：`1` 到 `30`，默认 `1`。
-- `TARO_APP_API_MODE`：默认 `mock`；BFF 与持久化数据源就绪后改为 `cloudrun`。
 
-支付模式、云环境 ID 和云托管服务名已固定在 `src/constants/runtime.ts`，不再依赖 GitHub Variables。
+CI 上传的开发版已固定使用 `TARO_APP_API_MODE=cloudrun`。支付模式、云环境 ID 和云托管服务名也已固定，不再依赖 GitHub Variables，避免真实微信登录被错误构建成 mock 身份。
 
 自动化只上传开发版本并生成预览码，不会自动提交审核、切换体验版或发布正式版。
 
@@ -51,7 +50,7 @@
    ```
 2. 执行构建命令：
    ```bash
-   npm run build:weapp
+   TARO_APP_API_MODE=cloudrun npm run build:weapp
    ```
 3. 开发者工具会自动监听 `worker_house/dist/` 目录的变化。如果工具未自动刷新，可以手动点击工具栏顶部的 **"编译"** 按钮。
 

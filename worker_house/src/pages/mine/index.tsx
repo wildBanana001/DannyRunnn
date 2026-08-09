@@ -92,8 +92,16 @@ const MinePage: React.FC = () => {
       return;
     }
 
-    await refreshWxMe();
-    const openid = useUserStore.getState().user?.openid?.trim();
+    let openid = '';
+    try {
+      const identity = await fetchAdminIdentity();
+      openid = identity.openid.trim();
+    } catch (error) {
+      console.warn('[mine] admin openid load failed', error);
+      Taro.showToast({ title: '管理员 ID 获取失败，请稍后重试', icon: 'none' });
+      return;
+    }
+
     if (!openid) {
       Taro.showToast({ title: '暂时无法获取 OpenID，请稍后重试', icon: 'none' });
       return;
@@ -120,7 +128,7 @@ const MinePage: React.FC = () => {
       console.warn('[mine] copy openid failed', error);
       Taro.showToast({ title: '复制失败，请长按 ID 手动复制', icon: 'none' });
     }
-  }, [refreshWxMe]);
+  }, []);
 
   useTabItemTap(() => {
     const now = Date.now();
