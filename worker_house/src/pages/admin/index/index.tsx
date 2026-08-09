@@ -48,6 +48,11 @@ const menuItems = [
     url: '/pages/admin/card-packages/index',
   },
   {
+    title: '留言墙管理',
+    description: '管理留言内容，支持删除与置顶',
+    url: '/pages/admin/posts/index',
+  },
+  {
     title: '海报管理',
     description: '维护海报内容，支持上架、下架与编辑',
     url: '/pages/admin/posters/index',

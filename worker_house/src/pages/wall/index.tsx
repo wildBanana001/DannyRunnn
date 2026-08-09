@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { Edit, Search } from '@nutui/icons-react-taro';
 import { commentWallPost, fetchPostDetail, fetchPostList } from '@/cloud/services';
+import CommunityWallUnavailable from '@/components/CommunityWallUnavailable';
 import Pressable from '@/components/Pressable';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
+import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { Comment, Post } from '@/types/post';
 import { estimatePostHeight, getFixedTilt, matchPostKeyword } from '@/utils/helpers';
 import NoteCard from './components/NoteCard';
@@ -27,22 +29,34 @@ const WallPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const hasLoadedPostsRef = useRef(false);
+  const wallFeature = useCommunityWallFeature();
   const { style: enterStyle } = useEnterAnimation();
   const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 56, reserveH5TabBar: true });
 
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     try {
       const list = await fetchPostList();
       setPosts(list);
     } catch (error) {
       console.warn('[wall] 加载留言失败', error);
       Taro.showToast({ title: '留言加载失败，请稍后重试', icon: 'none' });
+    } finally {
+      hasLoadedPostsRef.current = true;
     }
-  };
+  }, []);
 
   useDidShow(() => {
-    void loadPosts();
+    if (wallFeature.enabled && hasLoadedPostsRef.current) {
+      void loadPosts();
+    }
   });
+
+  useEffect(() => {
+    if (!wallFeature.loading && wallFeature.enabled && !hasLoadedPostsRef.current) {
+      void loadPosts();
+    }
+  }, [loadPosts, wallFeature.enabled, wallFeature.loading]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -130,6 +144,10 @@ const WallPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (wallFeature.loading || !wallFeature.enabled) {
+    return <CommunityWallUnavailable loading={wallFeature.loading} />;
+  }
 
   return (
     <View className={styles.container} style={viewportStyle}>

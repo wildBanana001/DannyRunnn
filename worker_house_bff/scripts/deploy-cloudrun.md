@@ -59,7 +59,7 @@ CLOUD_APP_SECRET=<通过云托管 Secret 配置>
 CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 ```
 
-`ENABLE_SHOP` 不属于上面的部署清单；请在云托管服务变量中单独维护。支付、管理员与 MySQL 密码必须继续放在云托管 Secret 中，不得写入 Git。支付配置及订单存储 readiness 验证通过后，才在服务变量中把 `ENABLE_SHOP` 设置为 `true`；开关关闭期间支付回调与已有订单查询仍保持可用。有限名额的活动会在 MySQL 事务内原子占位。
+`ENABLE_SHOP` 与 `ENABLE_COMMUNITY_WALL` 不属于上面的部署清单；请在云托管服务变量中单独维护，避免自动部署覆盖运行时开关。支付、管理员与 MySQL 密码必须继续放在云托管 Secret 中，不得写入 Git。支付配置及订单存储 readiness 验证通过后，才在服务变量中把 `ENABLE_SHOP` 设置为 `true`；开关关闭期间支付回调与已有订单查询仍保持可用。留言墙只有在 `ENABLE_COMMUNITY_WALL=true` 时才会出现在小程序中，默认关闭。有限名额的活动会在 MySQL 事务内原子占位。
 
 `MYSQL_ADDRESS` 必须使用生产内网地址。若云开发 MySQL 控制台提示该实例需要 VPC，请在 `worker-house-bff` 的“服务设置 → 网络配置”中开启私有网络，并选择数据库所在 VPC；单独设置环境变量不会打通网络。参考 CloudBase 官方的 [MySQL 数据库集成](https://docs.cloudbase.net/run/develop/resource-integration/mysql) 和 [直连服务](https://docs.cloudbase.net/database/configuration/db/tdsql/direct-connection)。
 
@@ -67,7 +67,7 @@ CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 
 首次启用时必须等新版本完成部署并切换到 100% 流量，再设置 `ENABLE_SHOP=true`；不要在新旧实例分别写 CloudBase 与 MySQL 的滚动阶段提前开单。若旧版已经产生支付订单，应先暂停新单与支付回调，完成历史订单迁移和核对。
 
-本项目的 `container.config.json` 不声明 `ENABLE_SHOP`，该开关由云托管服务变量管理，自动部署不会覆盖控制台设置。支付联调期间，当前上架的瓶装饮用水和 6 款到店享用酒水统一为 ¥0.01，均按不限库存商品处理；如果后续新增限量商品，应先为商品补充独立的事务预占。
+本项目的 `container.config.json` 不声明 `ENABLE_SHOP` 或 `ENABLE_COMMUNITY_WALL`，两个开关都由云托管服务变量管理，自动部署不会覆盖控制台设置。支付联调期间，当前上架的瓶装饮用水和 6 款到店享用酒水统一为 ¥0.01，均按不限库存商品处理；如果后续新增限量商品，应先为商品补充独立的事务预占。
 
 ## 验证
 
@@ -77,6 +77,7 @@ CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
 4. `GET /api/health` 在持久化数据源未就绪时预期返回 HTTP `503` 和 `configuration_required`；这不代表容器启动失败。
 5. 开启支付后，`GET /api/shop/readiness` 应返回 `ready=true`；小程序支付模式已在 `src/constants/runtime.ts` 固定为 `cloudrun`。
 6. 连续请求数次 `GET /api/shop/readiness`，确认 `orderStorage.ready` 始终为 `true`；若反复出现 `ECONNRESET`，优先核对数据库实例状态、生产内网地址以及服务的 VPC 网络配置。
+7. `GET /api/site-config` 应返回与服务变量一致的 `communityWallEnabled`；设置 `ENABLE_COMMUNITY_WALL=true` 后重新进入首页即可看到留言墙入口。
 
 ## 手动备用部署
 

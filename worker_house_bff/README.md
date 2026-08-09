@@ -60,6 +60,7 @@ ADMIN_TOKEN=mock-admin-token
 ADMIN_OPENID_WHITELIST=
 CLOUD_ADMIN_SERVICE_TOKEN=
 ALLOW_EPHEMERAL_CLOUDRUN_DATA=false
+ENABLE_COMMUNITY_WALL=false
 SHOP_ORDER_STORAGE=mysql
 MYSQL_ADDRESS=内网地址:3306
 MYSQL_USERNAME=
@@ -77,6 +78,7 @@ PORT=4000
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
 - `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用仍保留的管理云函数（例如海报管理）所用的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git。帖子接口不再使用该令牌
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
+- `ENABLE_COMMUNITY_WALL`：留言墙展示开关，只有显式设置为 `true` 时，小程序才展示首页和“我的”页入口；默认关闭。该值由 `GET /api/site-config` 下发，修改服务变量后无需修改小程序代码
 - `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。支付联调期间，当前上架的瓶装饮用水和 6 款到店享用酒水统一为 ¥0.01，均按不限库存商品处理；有限名额活动通过 MySQL 行锁与事务原子占位。
 - `SHOP_ORDER_STORAGE`：云托管默认 `mysql`；`file` 只用于本地或临时联调。已确认旧库无真实订单后，线上遗留值 `cloudbase` 会临时兼容为 `mysql` 并输出警告；仍应从云托管服务变量中删除该旧值
 - `MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD`：微信云托管 MySQL 的内网地址、用户名和密码；密码只放服务 Secret，禁止提交到 Git。也支持 `DB_HOST / DB_PORT / DB_USER / DB_PASSWORD` 或完整 `CONNECTION_URI`
@@ -184,6 +186,12 @@ npm run migrate-images
 - `src/data/shop.store.json` 是唯一商品目录数据源。修改并部署 BFF 即可更新商城，无需修改或重新发布小程序
 - `enabled=false` 的商品会保留在服务端供历史订单对账，但不会出现在商城列表中；支付金额始终以服务端当前价格为准
 - `imageUrl` 可使用 HTTPS / `cloud://` 地址，也可使用 BFF `public/images/shop/` 下的 `/static/images/shop/...` 相对路径
+- 原酒单的 6 款特调均保存在 `src/data/shop.store.json`，以 `category=cocktail` 分组展示；上下架和内容更新只需部署 BFF
+
+远程功能开关：
+
+- `GET /api/site-config`：公开下发 `communityWallEnabled`；响应禁用缓存，生产环境即使关闭临时文件存储也可读取
+- `communityWallEnabled=false` 时，小程序隐藏留言墙入口，并拦截留言墙、发布、详情和“我的留言”页面
 
 活动报名支付接口：
 

@@ -29,7 +29,7 @@ function readPort(value?: string) {
   return Number.isFinite(port) && port > 0 ? port : 4000;
 }
 
-function readBoolean(value?: string) {
+export function readBoolean(value?: string) {
   return value?.trim().toLowerCase() === 'true';
 }
 
@@ -75,6 +75,7 @@ function readMysqlAddress(value?: string) {
 }
 
 const cloudMode = readCloudMode(process.env.MODE?.trim() || process.env.CLOUD_MODE?.trim());
+const enableCommunityWallValue = process.env.ENABLE_COMMUNITY_WALL?.trim();
 const enableShopValue = process.env.ENABLE_SHOP?.trim();
 const mysqlAddress = readMysqlAddress(process.env.MYSQL_ADDRESS);
 const shopOrderStorageValue = process.env.SHOP_ORDER_STORAGE?.trim();
@@ -92,6 +93,7 @@ export const config = {
   cloudAdminServiceToken: process.env.CLOUD_ADMIN_SERVICE_TOKEN?.trim() || '',
   cloudEnvId: process.env.CLOUD_ENV_ID?.trim() || '',
   cloudMode,
+  enableCommunityWall: enableCommunityWallValue ? readBoolean(enableCommunityWallValue) : false,
   enableShop: enableShopValue ? readBoolean(enableShopValue) : cloudMode === 'mock',
   mysql: {
     autoMigrate: readBoolean(process.env.MYSQL_AUTO_MIGRATE),

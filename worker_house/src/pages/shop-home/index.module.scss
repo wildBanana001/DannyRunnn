@@ -104,11 +104,39 @@ $shop-accent: $color-brand;
   color: rgba(255, 248, 233, 0.72);
 }
 
+.catalogSection {
+  margin-top: 34rpx;
+}
+
+.sectionHeading {
+  margin: 0 32rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 2rpx solid $color-text-primary;
+}
+
+.sectionTitle,
+.sectionDescription {
+  display: block;
+}
+
+.sectionTitle {
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 38rpx;
+  font-weight: $font-weight-bold;
+}
+
+.sectionDescription {
+  margin-top: 6rpx;
+  color: $color-text-secondary;
+  font-size: 21rpx;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 52rpx 24rpx;
-  padding: 34rpx 32rpx;
+  padding: 24rpx 32rpx 34rpx;
 }
 
 .card {

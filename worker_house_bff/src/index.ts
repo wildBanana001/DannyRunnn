@@ -53,11 +53,13 @@ function isRequestRuntimeReady(path: string, method: string) {
     && (path === '/admin-mini/registrations' || path.startsWith('/admin-mini/registrations/'));
   const bundledActivityRead = method === 'GET'
     && (path === '/activities' || path.startsWith('/activities/'));
+  const bundledSiteConfigRead = method === 'GET' && path === '/site-config';
   return accountDeletionReady
     || communityReady
     || paymentStorageReady
     || paymentRegistrationAdminRead
-    || bundledActivityRead;
+    || bundledActivityRead
+    || bundledSiteConfigRead;
 }
 
 function buildHealthPayload() {
@@ -66,6 +68,7 @@ function buildHealthPayload() {
     mode: config.cloudMode,
     community: {
       storage: hasWechatCloudConfig() ? 'cloudbase' : 'configuration_required',
+      wallEnabled: config.enableCommunityWall,
     },
     persistence: config.cloudMode === 'cloudrun'
       ? config.shopOrderStorage === 'mysql'
@@ -119,7 +122,11 @@ app.use('/api', (request, response, next) => {
 });
 
 app.get('/api/site-config', (_request, response) => {
-  response.json(getCommunitySiteConfig());
+  response.setHeader('Cache-Control', 'no-store');
+  response.json({
+    ...getCommunitySiteConfig(),
+    communityWallEnabled: config.enableCommunityWall,
+  });
 });
 
 app.use('/api/auth', authRouter);

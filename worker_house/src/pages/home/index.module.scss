@@ -127,6 +127,58 @@
   height: 153rpx;
 }
 
+.wallEntry {
+  display: flex;
+  width: 100%;
+  margin-top: 30rpx;
+  padding: 24rpx 28rpx;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  border: 2rpx solid $color-text-primary;
+  background: $color-accent-secondary;
+}
+
+.wallEntryCopy,
+.wallEntryEyebrow,
+.wallEntryTitle,
+.wallEntryDescription {
+  display: block;
+}
+
+.wallEntryCopy {
+  flex: 1;
+  min-width: 0;
+}
+
+.wallEntryEyebrow {
+  color: $color-brand;
+  font-size: 18rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 3rpx;
+}
+
+.wallEntryTitle {
+  margin-top: 6rpx;
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 34rpx;
+  font-weight: $font-weight-bold;
+}
+
+.wallEntryDescription {
+  margin-top: 8rpx;
+  color: $color-text-secondary;
+  font-size: 22rpx;
+  line-height: 1.55;
+}
+
+.wallEntryArrow {
+  flex-shrink: 0;
+  margin-left: 24rpx;
+  color: $color-brand;
+}
+
 .section {
   margin-top: 104rpx;
 }

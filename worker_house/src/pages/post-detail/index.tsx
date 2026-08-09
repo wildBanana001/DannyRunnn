@@ -2,16 +2,19 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Input, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
+import CommunityWallUnavailable from '@/components/CommunityWallUnavailable';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import avatarFallback from '@/assets/illustrations/avatar-frame.png';
 import { commentWallPost, fetchPostDetail } from '@/cloud/services';
+import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { Comment, Post } from '@/types/post';
 import { formatDateTime, getPostCommentCount, getRelativeTime } from '@/utils/helpers';
 import styles from './index.module.scss';
 
 const PostDetailPage: React.FC = () => {
+  const wallFeature = useCommunityWallFeature();
   const router = useRouter();
   const postId = router.params.id?.trim() || '';
   const [post, setPost] = useState<Post | null>(null);
@@ -48,8 +51,10 @@ const PostDetailPage: React.FC = () => {
   }, [postId]);
 
   useEffect(() => {
-    void loadPost();
-  }, [loadPost]);
+    if (!wallFeature.loading && wallFeature.enabled) {
+      void loadPost();
+    }
+  }, [loadPost, wallFeature.enabled, wallFeature.loading]);
 
   const handleLike = () => {
     Taro.showToast({ title: '已收藏', icon: 'none' });
@@ -78,6 +83,10 @@ const PostDetailPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (wallFeature.loading || !wallFeature.enabled) {
+    return <CommunityWallUnavailable loading={wallFeature.loading} />;
+  }
 
   if (loading) {
     return (

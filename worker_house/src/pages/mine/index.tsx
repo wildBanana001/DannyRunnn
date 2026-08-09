@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
-import { ArrowRight, Articles, Coupon, Location, Order, Setting } from '@nutui/icons-react-taro';
+import { ArrowRight, Articles, Coupon, Edit, Location, Order, Setting } from '@nutui/icons-react-taro';
 import WxLoginModal from '@/components/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
 import { siteConfig } from '@/data/site';
 import { checkMiniAdmin } from '@/services/admin';
 import { fetchMemberOverview, type MemberOverview } from '@/services/member';
 import { getApiMode } from '@/services/request';
+import { useSiteConfig } from '@/shared/siteConfig';
 import { useUserStore } from '@/store/userStore';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import avatarFrame from '@/assets/illustrations/avatar-frame.png';
@@ -15,11 +16,13 @@ import defaultAvatar from '@/assets/home/hero-cover.jpg';
 import styles from './index.module.scss';
 
 const menuItems = [
-  { key: 'registrations', icon: Order, title: '我的报名', description: '查看报名与支付快照', url: '/pages/content/my-registrations/index' },
-  { key: 'profiles', icon: Articles, title: '我的档案', description: '新建、编辑、设默认社畜档案', url: '/pages/my-profiles/index' },
-  { key: 'cards', icon: Coupon, title: '社畜次卡', description: '看余量、买次卡、查使用记录', url: '/pages/my-cards/index' },
-  { key: 'addresses', icon: Location, title: '地址管理', description: '管理收件地址和默认信息', url: '/pages/my-addresses/index' },
-  { key: 'settings', icon: Setting, title: '设置', description: '清缓存、关于我们、退出登录', url: '/pages/settings/index' }
+  { key: 'wall', icon: Edit, title: '留言墙', description: '看看大家留下的便利贴', url: '/pages/wall/index', requiresLogin: false, wallOnly: true },
+  { key: 'posts', icon: Edit, title: '我的留言', description: '回看自己留在墙上的内容', url: '/pages/content/my-posts/index', requiresLogin: true, wallOnly: true },
+  { key: 'registrations', icon: Order, title: '我的报名', description: '查看报名与支付快照', url: '/pages/content/my-registrations/index', requiresLogin: true, wallOnly: false },
+  { key: 'profiles', icon: Articles, title: '我的档案', description: '新建、编辑、设默认社畜档案', url: '/pages/my-profiles/index', requiresLogin: true, wallOnly: false },
+  { key: 'cards', icon: Coupon, title: '社畜次卡', description: '看余量、买次卡、查使用记录', url: '/pages/my-cards/index', requiresLogin: true, wallOnly: false },
+  { key: 'addresses', icon: Location, title: '地址管理', description: '管理收件地址和默认信息', url: '/pages/my-addresses/index', requiresLogin: true, wallOnly: false },
+  { key: 'settings', icon: Setting, title: '设置', description: '清缓存、关于我们、退出登录', url: '/pages/settings/index', requiresLogin: true, wallOnly: false }
 ] as const;
 
 const defaultOverview: MemberOverview = {
@@ -33,6 +36,7 @@ const MinePage: React.FC = () => {
   const [overview, setOverview] = useState<MemberOverview>(defaultOverview);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const sharedSiteConfig = useSiteConfig();
   const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 50, reserveH5TabBar: true });
 
   useDidShow(() => {
@@ -66,12 +70,12 @@ const MinePage: React.FC = () => {
       });
   });
 
-  const handleMenuClick = (url: string) => {
-    if (!isLoggedIn) {
+  const handleMenuClick = (item: (typeof menuItems)[number]) => {
+    if (item.requiresLogin && !isLoggedIn) {
       Taro.showToast({ title: '请先登录再查看', icon: 'none' });
       return;
     }
-    Taro.navigateTo({ url });
+    Taro.navigateTo({ url: item.url });
   };
 
   const handleOpenAdmin = () => {
@@ -125,10 +129,10 @@ const MinePage: React.FC = () => {
       </View>
 
       <View className={styles.menuList}>
-        {menuItems.map((item) => {
+        {menuItems.filter((item) => !item.wallOnly || sharedSiteConfig.communityWallEnabled).map((item) => {
           const MenuIcon = item.icon;
           return (
-            <View key={item.key} className={styles.menuItem} onClick={() => handleMenuClick(item.url)}>
+            <View key={item.key} className={styles.menuItem} onClick={() => handleMenuClick(item)}>
               <View className={styles.menuMeta}>
                 <MenuIcon className={styles.menuIcon} size="21" />
                 <View>

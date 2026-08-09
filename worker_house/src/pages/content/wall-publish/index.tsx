@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Image, Input, Switch, Text, Textarea, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import Button from '@/components/Button';
+import CommunityWallUnavailable from '@/components/CommunityWallUnavailable';
 import { createWallPost } from '@/cloud/services';
 import { uploadPostImage } from '@/services/upload';
+import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { PostColor } from '@/types/post';
 import styles from './index.module.scss';
 
@@ -28,6 +30,7 @@ interface LocalImage {
 const MAX_IMAGES = 9;
 
 const WallPublishPage: React.FC = () => {
+  const wallFeature = useCommunityWallFeature();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedColor, setSelectedColor] = useState<PostColor>('yellow');
@@ -148,6 +151,10 @@ const WallPublishPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (wallFeature.loading || !wallFeature.enabled) {
+    return <CommunityWallUnavailable loading={wallFeature.loading} />;
+  }
 
   return (
     <View className={styles.container}>

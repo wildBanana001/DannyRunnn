@@ -7,13 +7,25 @@ import type { CardPackage } from '@/types';
 let siteConfigCache: SiteConfigRecord | null = null;
 let siteConfigCacheTime = 0;
 let siteConfigGeneration = 0;
+let siteConfigRequest: Promise<SiteConfigRecord> | null = null;
 const siteConfigListeners = new Set<(config: SiteConfigRecord) => void>();
-const TTL = 15 * 60 * 1000;
+const SITE_CONFIG_TTL = 60 * 1000;
+const CARD_PACKAGES_TTL = 15 * 60 * 1000;
+
+function requestSiteConfig() {
+  if (!siteConfigRequest) {
+    siteConfigRequest = fetchCommunitySiteConfig().finally(() => {
+      siteConfigRequest = null;
+    });
+  }
+  return siteConfigRequest;
+}
 
 export function clearSiteConfigCache() {
   siteConfigGeneration += 1;
   siteConfigCache = null;
   siteConfigCacheTime = 0;
+  siteConfigRequest = null;
   Taro.removeStorageSync('worker-house-site-config');
   siteConfigListeners.forEach((listener) => listener(defaultSiteConfigRecord));
 }
@@ -29,13 +41,13 @@ export function useSiteConfig() {
   }, []);
 
   const loadConfig = async () => {
-    if (siteConfigCache && Date.now() - siteConfigCacheTime < TTL) {
+    if (siteConfigCache && Date.now() - siteConfigCacheTime < SITE_CONFIG_TTL) {
       setConfig(siteConfigCache);
       return;
     }
     const generation = siteConfigGeneration;
     try {
-      const data = await fetchCommunitySiteConfig();
+      const data = await requestSiteConfig();
       if (generation !== siteConfigGeneration) return;
       siteConfigCache = data;
       siteConfigCacheTime = Date.now();
@@ -58,6 +70,14 @@ export function useSiteConfig() {
   return config;
 }
 
+export function useCommunityWallFeature() {
+  const config = useSiteConfig();
+  return {
+    enabled: config.communityWallEnabled,
+    loading: siteConfigCache === null,
+  };
+}
+
 let cardPackagesCache: CardPackage[] | null = null;
 let cardPackagesCacheTime = 0;
 
@@ -65,7 +85,7 @@ export function useCardPackages() {
   const [packages, setPackages] = useState<CardPackage[]>(cardPackagesCache || []);
 
   const loadPackages = async () => {
-    if (cardPackagesCache && Date.now() - cardPackagesCacheTime < TTL) {
+    if (cardPackagesCache && Date.now() - cardPackagesCacheTime < CARD_PACKAGES_TTL) {
       setPackages(cardPackagesCache);
       return;
     }

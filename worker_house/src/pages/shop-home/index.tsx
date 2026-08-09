@@ -12,6 +12,37 @@ function formatPrice(price: number) {
   return price.toFixed(2).replace(/\.00$/, '');
 }
 
+interface ProductGridProps {
+  products: ShopProduct[];
+  onSelect: (id: string) => void;
+}
+
+const ProductGrid: React.FC<ProductGridProps> = ({ products, onSelect }) => (
+  <View className={styles.grid}>
+    {products.map((item, index) => (
+      <View key={item.id} className={styles.card} onClick={() => onSelect(item.id)}>
+        <View className={`${styles.cover} ${index % 2 === 0 ? styles.coverWarm : styles.coverCool}`}>
+          <ShopProductImage
+            className={styles.coverImage}
+            src={item.imageUrl}
+            mode="aspectFill"
+            lazyLoad
+          />
+          {item.tags[0] ? <Text className={styles.tag}>{item.tags[0]}</Text> : null}
+        </View>
+        <Text className={styles.cardTitle}>{item.name}</Text>
+        <View className={styles.priceRow}>
+          <Text className={styles.cardPrice}>¥{formatPrice(item.price)}</Text>
+          {item.originalPrice > item.price ? (
+            <Text className={styles.originalPrice}>¥{formatPrice(item.originalPrice)}</Text>
+          ) : null}
+        </View>
+        <Text className={styles.fulfillmentNote}>{item.fulfillmentLabel}</Text>
+      </View>
+    ))}
+  </View>
+);
+
 const ShopHomePage: React.FC = () => {
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +69,9 @@ const ShopHomePage: React.FC = () => {
   const goDetail = (id: string) => {
     Taro.navigateTo({ url: `/pages/shop/product-detail/index?id=${encodeURIComponent(id)}` });
   };
+
+  const wineMenuProducts = products.filter((item) => item.category.toLowerCase() === 'cocktail');
+  const otherProducts = products.filter((item) => item.category.toLowerCase() !== 'cocktail');
 
   return (
     <View className={styles.container} style={viewportStyle}>
@@ -75,29 +109,23 @@ const ShopHomePage: React.FC = () => {
           <EmptyState title="商品准备中" description="稍后再来看看。" />
         ) : null}
 
-        {products.length > 0 ? (
-          <View className={styles.grid}>
-            {products.map((item, index) => (
-              <View key={item.id} className={styles.card} onClick={() => goDetail(item.id)}>
-                <View className={`${styles.cover} ${index % 2 === 0 ? styles.coverWarm : styles.coverCool}`}>
-                  <ShopProductImage
-                    className={styles.coverImage}
-                    src={item.imageUrl}
-                    mode="aspectFill"
-                    lazyLoad
-                  />
-                  {item.tags[0] ? <Text className={styles.tag}>{item.tags[0]}</Text> : null}
-                </View>
-                <Text className={styles.cardTitle}>{item.name}</Text>
-                <View className={styles.priceRow}>
-                  <Text className={styles.cardPrice}>¥{formatPrice(item.price)}</Text>
-                  {item.originalPrice > item.price ? (
-                    <Text className={styles.originalPrice}>¥{formatPrice(item.originalPrice)}</Text>
-                  ) : null}
-                </View>
-                <Text className={styles.fulfillmentNote}>{item.fulfillmentLabel}</Text>
-              </View>
-            ))}
+        {wineMenuProducts.length > 0 ? (
+          <View className={styles.catalogSection}>
+            <View className={styles.sectionHeading}>
+              <Text className={styles.sectionTitle}>酒单</Text>
+              <Text className={styles.sectionDescription}>酒款、价格和上下架状态均由服务端实时下发</Text>
+            </View>
+            <ProductGrid products={wineMenuProducts} onSelect={goDetail} />
+          </View>
+        ) : null}
+
+        {otherProducts.length > 0 ? (
+          <View className={styles.catalogSection}>
+            <View className={styles.sectionHeading}>
+              <Text className={styles.sectionTitle}>其他在售</Text>
+              <Text className={styles.sectionDescription}>饮品与周边按服务端配置展示</Text>
+            </View>
+            <ProductGrid products={otherProducts} onSelect={goDetail} />
           </View>
         ) : null}
         <View className={styles.bottomSpacing} />

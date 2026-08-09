@@ -1,4 +1,4 @@
-import { getApiMode, request } from './request';
+import { getPaymentApiMode, request, requestWithMode } from './request';
 
 export interface HomeOwnerCard {
   id: string;
@@ -8,6 +8,7 @@ export interface HomeOwnerCard {
 }
 
 export interface SiteConfigRecord {
+  communityWallEnabled: boolean;
   communityQrcode: string;
   contactWechat: string;
   heroSlogan: string;
@@ -40,6 +41,7 @@ const defaultHomeOwners: HomeOwnerCard[] = [
 ];
 
 export const defaultSiteConfigRecord: SiteConfigRecord = {
+  communityWallEnabled: false,
   communityQrcode: '',
   contactWechat: 'DannyRunnn',
   heroSlogan: '真实聚点',
@@ -91,6 +93,7 @@ function normalizeOwnerCards(value: unknown, fallback: HomeOwnerCard[]): HomeOwn
 
 function normalizeSiteConfigRecord(record?: Partial<SiteConfigRecord> | null): SiteConfigRecord {
   return {
+    communityWallEnabled: record?.communityWallEnabled === true,
     communityQrcode: typeof record?.communityQrcode === 'string' ? record.communityQrcode : defaultSiteConfigRecord.communityQrcode,
     contactWechat: typeof record?.contactWechat === 'string' && record.contactWechat.trim()
       ? record.contactWechat.trim()
@@ -127,12 +130,13 @@ function normalizeSiteConfigRecord(record?: Partial<SiteConfigRecord> | null): S
 }
 
 export async function fetchCommunitySiteConfig(): Promise<SiteConfigRecord> {
-  if (getApiMode() === 'mock') {
+  const apiMode = getPaymentApiMode();
+  if (apiMode === 'mock') {
     return defaultSiteConfigRecord;
   }
 
   try {
-    const result = await request<SiteConfigRecord>({
+    const result = await requestWithMode<SiteConfigRecord>(apiMode, {
       path: '/api/site-config',
     });
     return normalizeSiteConfigRecord(result);

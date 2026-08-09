@@ -1,0 +1,16 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  display: flex;
+  min-height: var(--app-window-height, 100vh);
+  padding: 96rpx 32rpx;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  background: $color-oat;
+}
+
+.loadingText {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}

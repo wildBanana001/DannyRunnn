@@ -1,18 +1,24 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
+import CommunityWallUnavailable from '@/components/CommunityWallUnavailable';
 import EmptyState from '@/components/EmptyState';
 import { fetchMyPosts } from '@/services/post';
+import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { Post } from '@/types/post';
 import { formatDateTime, getPostCommentCount, getPostExcerpt } from '@/utils/helpers';
 import styles from './index.module.scss';
 
 const MyPostsPage: React.FC = () => {
+  const wallFeature = useCommunityWallFeature();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const loadingRef = useRef(false);
 
   const loadData = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setIsLoading(true);
     setErrorMessage('');
 
@@ -23,13 +29,26 @@ const MyPostsPage: React.FC = () => {
       console.warn('[my-posts] load failed', error);
       setErrorMessage('帖子加载失败，请稍后重试');
     } finally {
+      loadingRef.current = false;
       setIsLoading(false);
     }
   }, []);
 
   useDidShow(() => {
-    void loadData();
+    if (wallFeature.enabled) {
+      void loadData();
+    }
   });
+
+  useEffect(() => {
+    if (!wallFeature.loading && wallFeature.enabled && isLoading && posts.length === 0) {
+      void loadData();
+    }
+  }, [isLoading, loadData, posts.length, wallFeature.enabled, wallFeature.loading]);
+
+  if (wallFeature.loading || !wallFeature.enabled) {
+    return <CommunityWallUnavailable loading={wallFeature.loading} />;
+  }
 
   if (isLoading && posts.length === 0) {
     return (

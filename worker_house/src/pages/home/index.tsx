@@ -253,6 +253,16 @@ const HomePage: React.FC = () => {
                 <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.actionImage} src={HOME_ASSETS.text.joinCommunity} />
               </Pressable>
             </View>
+            {sharedSiteConfig.communityWallEnabled ? (
+              <Pressable className={styles.wallEntry} onClick={() => Taro.navigateTo({ url: '/pages/wall/index' })}>
+                <View className={styles.wallEntryCopy}>
+                  <Text className={styles.wallEntryEyebrow}>COMMUNITY WALL</Text>
+                  <Text className={styles.wallEntryTitle}>去留言墙坐坐</Text>
+                  <Text className={styles.wallEntryDescription}>看看大家今天留下了什么，也可以写下自己的心情。</Text>
+                </View>
+                <ArrowRight className={styles.wallEntryArrow} size="20" />
+              </Pressable>
+            ) : null}
           </View>
 
           <View className={`${styles.section} ${styles.moreSection}`}>

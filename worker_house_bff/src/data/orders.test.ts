@@ -342,17 +342,21 @@ test('normalizes legacy shop products and only lists enabled catalog products', 
   assert.equal(water.abv, 0);
   assert.equal(water.volumeMl, 550);
   assert.equal(water.enabled, true);
-  for (const productId of [
-    'cocktail-afterwork-sour',
-    'cocktail-mint-mojito',
-    'cocktail-berry-fizz',
-    'cocktail-sunset-highball',
-    'cocktail-espresso-martini',
-    'cocktail-elderflower-zero',
-  ]) {
-    assert.equal(getProductById(productId)?.enabled, true);
-    assert.equal(getProductById(productId)?.price, 0.01);
-    assert.equal(getProductById(productId)?.originalPrice, 0.01);
+  const originalWineMenu = [
+    ['cocktail-afterwork-sour', '下班快乐威士忌酸'],
+    ['cocktail-mint-mojito', '薄荷青柠莫吉托'],
+    ['cocktail-berry-fizz', '莓果微醺气泡'],
+    ['cocktail-sunset-highball', '落日柑橘嗨棒'],
+    ['cocktail-espresso-martini', '浓缩咖啡马天尼'],
+    ['cocktail-elderflower-zero', '接骨木花零度特调'],
+  ] as const;
+  for (const [productId, productName] of originalWineMenu) {
+    const product = getProductById(productId);
+    assert.equal(product?.name, productName);
+    assert.equal(product?.category, 'cocktail');
+    assert.equal(product?.enabled, true);
+    assert.equal(product?.price, 0.01);
+    assert.equal(product?.originalPrice, 0.01);
     assert.equal(listedProducts.some((item) => item.id === productId), true);
   }
   assert.equal(listedProducts.some((item) => item.id === 'prod-coffee-box'), false);
