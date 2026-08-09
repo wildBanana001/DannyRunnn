@@ -331,9 +331,9 @@ test('normalizes legacy shop products and only lists enabled catalog products', 
   assert.ok(water);
   assert.equal(water.id, 'bottled-water-550ml');
   assert.equal(water.name, '瓶装饮用水（550ml）');
-  assert.equal(water.price, 1);
-  assert.equal(water.originalPrice, 1);
-  assert.equal(Math.round(water.price * 100), 100);
+  assert.equal(water.price, 0.01);
+  assert.equal(water.originalPrice, 0.01);
+  assert.equal(Math.round(water.price * 100), 1);
   assert.equal(water.category, '饮品');
   assert.equal(water.fulfillmentType, 'pickup');
   assert.equal(water.fulfillmentLabel, '到店自取');
@@ -351,6 +351,8 @@ test('normalizes legacy shop products and only lists enabled catalog products', 
     'cocktail-elderflower-zero',
   ]) {
     assert.equal(getProductById(productId)?.enabled, true);
+    assert.equal(getProductById(productId)?.price, 0.01);
+    assert.equal(getProductById(productId)?.originalPrice, 0.01);
     assert.equal(listedProducts.some((item) => item.id === productId), true);
   }
   assert.equal(listedProducts.some((item) => item.id === 'prod-coffee-box'), false);
@@ -373,7 +375,7 @@ test('requires addresses only for delivery fulfillment', () => {
   assert.equal(resolveShopOrderAddress('pickup', address), null);
 });
 
-test('keeps all published formal activity fixtures at the formal registration price', () => {
+test('keeps all published formal activity fixtures at the one-cent payment test price', () => {
   const formalActivityIds = [
     'act-001',
     'act-002',
@@ -388,12 +390,12 @@ test('keeps all published formal activity fixtures at the formal registration pr
   const firstActivity = getActivityById('act-001');
   const secondActivity = getActivityById('act-002');
   const formalActivities = formalActivityIds.map((activityId) => getActivityById(activityId));
-  assert.equal(firstActivity?.price, 148);
-  assert.equal(secondActivity?.price, 148);
-  assert.equal(Math.round((firstActivity?.price ?? 0) * 100), 14_800);
+  assert.equal(firstActivity?.price, 0.01);
+  assert.equal(secondActivity?.price, 0.01);
+  assert.equal(Math.round((firstActivity?.price ?? 0) * 100), 1);
   assert.ok(formalActivities.every((item) => item !== null));
-  assert.ok(formalActivities.every((item) => item?.price === 148));
-  assert.ok(formalActivities.every((item) => item?.originalPrice === 148));
+  assert.ok(formalActivities.every((item) => item?.price === 0.01));
+  assert.ok(formalActivities.every((item) => item?.originalPrice === 0.01));
   assert.ok(formalActivities.every((item) => item?.currentParticipants === 0));
   assert.equal(firstActivity?.startDate, '2026-08-08');
   assert.equal(secondActivity?.startDate, '2026-08-14');
