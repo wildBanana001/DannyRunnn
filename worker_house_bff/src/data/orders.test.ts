@@ -18,7 +18,7 @@ import {
   settleFreeOrder,
   updateOrderStatus,
 } from './orders.js';
-import { getActivityById, listActivities } from './activities.js';
+import { getActivityById } from './activities.js';
 import { getProductById, listProducts, normalizeShopProduct } from './shop.js';
 import { resolveShopOrderAddress } from '../routes/shop.js';
 
@@ -302,7 +302,7 @@ test('completes mock activity check-in without requiring a WeChat shipping repor
   assert.equal(claim.order?.wechatShippingStatus, 'not_required');
 });
 
-test('normalizes legacy shop products and only lists enabled products', () => {
+test('normalizes legacy shop products and only lists enabled catalog products', () => {
   const legacyProduct = normalizeShopProduct({
     id: 'legacy-product',
     name: '历史商品',
@@ -326,8 +326,9 @@ test('normalizes legacy shop products and only lists enabled products', () => {
   assert.equal(disabledProduct.fulfillmentLabel, '到店自取');
 
   const listedProducts = listProducts();
-  assert.equal(listedProducts.length, 1);
-  const [water] = listedProducts;
+  assert.equal(listedProducts.length, 7);
+  const water = listedProducts.find((item) => item.id === 'bottled-water-550ml');
+  assert.ok(water);
   assert.equal(water.id, 'bottled-water-550ml');
   assert.equal(water.name, '瓶装饮用水（550ml）');
   assert.equal(water.price, 1);
@@ -349,7 +350,8 @@ test('normalizes legacy shop products and only lists enabled products', () => {
     'cocktail-espresso-martini',
     'cocktail-elderflower-zero',
   ]) {
-    assert.equal(getProductById(productId)?.enabled, false);
+    assert.equal(getProductById(productId)?.enabled, true);
+    assert.equal(listedProducts.some((item) => item.id === productId), true);
   }
   assert.equal(listedProducts.some((item) => item.id === 'prod-coffee-box'), false);
   assert.equal(getProductById('prod-coffee-box')?.enabled, false);
@@ -371,17 +373,28 @@ test('requires addresses only for delivery fulfillment', () => {
   assert.equal(resolveShopOrderAddress('pickup', address), null);
 });
 
-test('keeps all upcoming activity fixtures at the formal registration price', () => {
+test('keeps all published formal activity fixtures at the formal registration price', () => {
+  const formalActivityIds = [
+    'act-001',
+    'act-002',
+    'act-20260816-crystal',
+    'act-20260822-clay',
+    'act-20260823-letters',
+    'act-20260828-reconcile',
+    'act-20260830-boardgame',
+    'act-20260905-collage',
+    'act-20260912-newcomer',
+  ];
   const firstActivity = getActivityById('act-001');
   const secondActivity = getActivityById('act-002');
-  const upcomingActivities = listActivities().filter((item) => item.status === 'ongoing' && item.enabled !== false);
+  const formalActivities = formalActivityIds.map((activityId) => getActivityById(activityId));
   assert.equal(firstActivity?.price, 148);
   assert.equal(secondActivity?.price, 148);
   assert.equal(Math.round((firstActivity?.price ?? 0) * 100), 14_800);
-  assert.equal(upcomingActivities.length, 9);
-  assert.ok(upcomingActivities.every((item) => item.price === 148));
-  assert.ok(upcomingActivities.every((item) => item.originalPrice === 148));
-  assert.ok(upcomingActivities.every((item) => item.currentParticipants === 0));
+  assert.ok(formalActivities.every((item) => item !== null));
+  assert.ok(formalActivities.every((item) => item?.price === 148));
+  assert.ok(formalActivities.every((item) => item?.originalPrice === 148));
+  assert.ok(formalActivities.every((item) => item?.currentParticipants === 0));
   assert.equal(firstActivity?.startDate, '2026-08-08');
   assert.equal(secondActivity?.startDate, '2026-08-14');
 });

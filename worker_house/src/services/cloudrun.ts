@@ -76,3 +76,33 @@ export async function cloudrunRequest<T>(options: CloudrunRequestOptions): Promi
     Taro.hideNavigationBarLoading();
   }
 }
+
+export async function cloudrunBinaryRequest(path: string): Promise<ArrayBuffer> {
+  if (process.env.TARO_ENV !== 'weapp') {
+    throw new Error('当前环境不支持微信云托管资源请求');
+  }
+
+  const response = await getCloudApi().callContainer({
+    config: { env: cloudEnvId },
+    header: {
+      'X-WX-SERVICE': cloudrunService,
+    },
+    method: 'GET',
+    path: normalizePath(path),
+    responseType: 'arraybuffer',
+  });
+
+  if ((response as any).statusCode >= 400) {
+    throw createApiRequestError(
+      Number((response as any).statusCode) || 0,
+      (response as any).data,
+      getResponseErrorMessage(response),
+    );
+  }
+
+  const data = (response as any).data;
+  if (!(data instanceof ArrayBuffer) || data.byteLength === 0) {
+    throw new Error('商品图片响应格式异常');
+  }
+  return data;
+}

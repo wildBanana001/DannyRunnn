@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Image, type ImageProps } from '@tarojs/components';
 import defaultFallback from '@/assets/home/hero-cover.jpg';
 
-interface SafeImageProps extends Omit<ImageProps, 'src' | 'onError'> {
+export interface SafeImageProps extends Omit<ImageProps, 'src' | 'onError'> {
   src?: string;
   fallbackSrc?: string;
   fallbackDelayMs?: number;

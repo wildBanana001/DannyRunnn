@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,140 +23,16 @@ export interface ShopProduct {
 }
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
+// 单一商品目录：构建时原样复制到 dist/data，不再于 TypeScript 中维护重复商品。
 const storageFilePath = path.join(currentDir, 'shop.store.json');
-
-/**
- * 商城种子数据。当前仅上架瓶装饮用水；已下架商品继续保留，
- * 以便历史订单仍能展示完整的商品快照和履约信息。
- * 图片托管在 public/images/shop/ 下，通过 /static 路由对外访问。
- */
-const DEFAULT_PRODUCTS: ShopProduct[] = [
-  {
-    id: 'bottled-water-550ml',
-    name: '瓶装饮用水（550ml）',
-    price: 1,
-    originalPrice: 1,
-    imageUrl: '/static/images/shop/product-water.jpg',
-    description: '550ml 密封瓶装饮用水，支付成功后可在活动现场到店自取。',
-    tags: ['饮用水', '550ml', '到店自取'],
-    category: '饮品',
-    fulfillmentType: 'pickup',
-    fulfillmentLabel: '到店自取',
-    unitLabel: '瓶',
-    alcoholic: false,
-    abv: 0,
-    volumeMl: 550,
-    enabled: true,
-  },
-  {
-    id: 'cocktail-afterwork-sour',
-    name: '下班快乐威士忌酸',
-    price: 49,
-    originalPrice: 49,
-    imageUrl: '/static/images/shop/cocktail-afterwork-sour.jpg',
-    description: '威士忌与新鲜柠檬的明亮酸甜，给忙碌一天一个轻松收尾。',
-    tags: ['威士忌', '酸甜', '到店享用'],
-    category: 'cocktail',
-    fulfillmentType: 'onsite',
-    fulfillmentLabel: '到店享用',
-    unitLabel: '杯',
-    alcoholic: true,
-    abv: 14,
-    volumeMl: 180,
-    enabled: false,
-  },
-  {
-    id: 'cocktail-mint-mojito',
-    name: '薄荷青柠莫吉托',
-    price: 45,
-    originalPrice: 45,
-    imageUrl: '/static/images/shop/cocktail-mint-mojito.jpg',
-    description: '清新薄荷、青柠与气泡交织，入口轻盈，适合慢慢放松。',
-    tags: ['朗姆酒', '清爽', '到店享用'],
-    category: 'cocktail',
-    fulfillmentType: 'onsite',
-    fulfillmentLabel: '到店享用',
-    unitLabel: '杯',
-    alcoholic: true,
-    abv: 10,
-    volumeMl: 300,
-    enabled: false,
-  },
-  {
-    id: 'cocktail-berry-fizz',
-    name: '莓果微醺气泡',
-    price: 52,
-    originalPrice: 52,
-    imageUrl: '/static/images/shop/cocktail-berry-fizz.jpg',
-    description: '酸甜莓果搭配细腻气泡，果香饱满，口感轻快。',
-    tags: ['莓果', '气泡', '到店享用'],
-    category: 'cocktail',
-    fulfillmentType: 'onsite',
-    fulfillmentLabel: '到店享用',
-    unitLabel: '杯',
-    alcoholic: true,
-    abv: 8,
-    volumeMl: 300,
-    enabled: false,
-  },
-  {
-    id: 'cocktail-sunset-highball',
-    name: '落日柑橘嗨棒',
-    price: 48,
-    originalPrice: 48,
-    imageUrl: '/static/images/shop/cocktail-sunset-highball.jpg',
-    description: '清爽嗨棒融入柑橘香气，像落日一样明亮又温柔。',
-    tags: ['嗨棒', '柑橘', '到店享用'],
-    category: 'cocktail',
-    fulfillmentType: 'onsite',
-    fulfillmentLabel: '到店享用',
-    unitLabel: '杯',
-    alcoholic: true,
-    abv: 9,
-    volumeMl: 320,
-    enabled: false,
-  },
-  {
-    id: 'cocktail-espresso-martini',
-    name: '浓缩咖啡马天尼',
-    price: 56,
-    originalPrice: 56,
-    imageUrl: '/static/images/shop/cocktail-espresso-martini.jpg',
-    description: '浓缩咖啡的醇苦与酒香平衡，绵密泡沫带来顺滑尾韵。',
-    tags: ['咖啡', '醇香', '到店享用'],
-    category: 'cocktail',
-    fulfillmentType: 'onsite',
-    fulfillmentLabel: '到店享用',
-    unitLabel: '杯',
-    alcoholic: true,
-    abv: 16,
-    volumeMl: 180,
-    enabled: false,
-  },
-  {
-    id: 'cocktail-elderflower-zero',
-    name: '接骨木花零度特调',
-    price: 39,
-    originalPrice: 39,
-    imageUrl: '/static/images/shop/cocktail-elderflower-zero.jpg',
-    description: '接骨木花、青柠与气泡水调出的无酒精花香特饮，清爽无负担。',
-    tags: ['无酒精', '花香', '到店享用'],
-    category: 'cocktail',
-    fulfillmentType: 'onsite',
-    fulfillmentLabel: '到店享用',
-    unitLabel: '杯',
-    alcoholic: false,
-    abv: 0,
-    volumeMl: 300,
-    enabled: false,
-  },
-];
 
 interface ShopStoreState {
   products: ShopProduct[];
+  loaded: boolean;
 }
 
 const store: ShopStoreState = {
+  loaded: false,
   products: [],
 };
 
@@ -204,36 +80,36 @@ export function normalizeShopProduct(item: Partial<ShopProduct>): ShopProduct {
   };
 }
 
-function persistProducts() {
-  mkdirSync(path.dirname(storageFilePath), { recursive: true });
-  writeFileSync(storageFilePath, JSON.stringify(store.products, null, 2), 'utf-8');
-}
-
 function loadProducts() {
-  if (store.products.length > 0) {
+  if (store.loaded) {
     return;
   }
 
-  if (!existsSync(storageFilePath)) {
-    // 首次运行：写入种子数据。
-    store.products = clone(DEFAULT_PRODUCTS);
-    persistProducts();
-    return;
-  }
+  store.loaded = true;
 
   try {
     const rawContent = readFileSync(storageFilePath, 'utf-8');
     const parsed = JSON.parse(rawContent) as ShopProduct[];
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      store.products = parsed.map((item) => normalizeShopProduct(item));
-    } else {
-      store.products = clone(DEFAULT_PRODUCTS);
-      persistProducts();
+    if (!Array.isArray(parsed)) {
+      throw new Error('商城商品目录必须是数组');
     }
+
+    const products = parsed.map((item) => normalizeShopProduct(item));
+    const invalidProduct = products.find((item) => !item.id || !item.name || item.price < 0 || item.originalPrice < 0);
+    if (invalidProduct) {
+      throw new Error(`商品字段不完整：id=${invalidProduct.id || '<empty>'}`);
+    }
+
+    const productIds = new Set(products.map((item) => item.id));
+    if (productIds.size !== products.length) {
+      throw new Error('商品 ID 不能重复');
+    }
+
+    store.products = products;
   } catch (error) {
     console.error('[shop store] load error', error);
-    store.products = clone(DEFAULT_PRODUCTS);
-    persistProducts();
+    // 目录损坏时安全失败，不使用隐藏在代码中的过期商品或价格。
+    store.products = [];
   }
 }
 

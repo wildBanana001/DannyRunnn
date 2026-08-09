@@ -77,7 +77,7 @@ PORT=4000
 - `ADMIN_TOKEN`：管理端固定令牌，用于后台写接口鉴权
 - `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用仍保留的管理云函数（例如海报管理）所用的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git。帖子接口不再使用该令牌
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
-- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。当前仅上架 ¥1 瓶装饮用水，按不限库存的到店自取商品处理；有限名额活动通过 MySQL 行锁与事务原子占位。
+- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。当前上架 ¥1 瓶装饮用水和 6 款到店享用酒水，均按不限库存商品处理；有限名额活动通过 MySQL 行锁与事务原子占位。
 - `SHOP_ORDER_STORAGE`：云托管默认 `mysql`；`file` 只用于本地或临时联调。已确认旧库无真实订单后，线上遗留值 `cloudbase` 会临时兼容为 `mysql` 并输出警告；仍应从云托管服务变量中删除该旧值
 - `MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD`：微信云托管 MySQL 的内网地址、用户名和密码；密码只放服务 Secret，禁止提交到 Git。也支持 `DB_HOST / DB_PORT / DB_USER / DB_PASSWORD` 或完整 `CONNECTION_URI`
 - 生产环境应使用 MySQL 直连服务的内网地址；如果数据库控制台要求 VPC，必须同时在 `worker-house-bff` 服务的网络配置中开启私有网络并选择数据库所在 VPC。仅填写内网地址不能替代网络连通配置，详见 [MySQL 数据库集成](https://docs.cloudbase.net/run/develop/resource-integration/mysql) 与 [直连服务](https://docs.cloudbase.net/database/configuration/db/tdsql/direct-connection)
@@ -176,6 +176,14 @@ npm run migrate-images
 - `GET /api/health`：检查业务运行配置；云托管未接入持久化数据源时返回 `503 configuration_required`
 - `GET /api/shop/readiness`：检查商城/活动支付、订单库及微信履约上报配置；不会调用微信支付或产生扣款
 - `POST /api/shop/readiness/verify`：需管理端令牌，调用微信支付官方安全回显接口验证双向签名；不会创建交易
+
+商城商品目录：
+
+- `GET /api/shop/products`：下发当前上架商品；商品名称、价格、图片、描述、标签、酒精度、容量和履约方式都由服务端返回
+- `GET /api/shop/products/:id`：下发单个上架商品，商品下架后返回 `404`
+- `src/data/shop.store.json` 是唯一商品目录数据源。修改并部署 BFF 即可更新商城，无需修改或重新发布小程序
+- `enabled=false` 的商品会保留在服务端供历史订单对账，但不会出现在商城列表中；支付金额始终以服务端当前价格为准
+- `imageUrl` 可使用 HTTPS / `cloud://` 地址，也可使用 BFF `public/images/shop/` 下的 `/static/images/shop/...` 相对路径
 
 活动报名支付接口：
 

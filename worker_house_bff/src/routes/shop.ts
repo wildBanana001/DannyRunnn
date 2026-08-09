@@ -479,6 +479,7 @@ async function prepareRealPayment(order: OrderRecord): Promise<OrderRecord> {
 
 shopRouter.get('/products', (_request, response) => {
   const products = listProducts();
+  response.set('Cache-Control', 'no-store');
   response.json({ list: products, total: products.length });
 });
 
@@ -488,6 +489,7 @@ shopRouter.get('/products/:id', (request, response) => {
     response.status(404).json({ message: '商品不存在或已下架' });
     return;
   }
+  response.set('Cache-Control', 'no-store');
   response.json(product);
 });
 

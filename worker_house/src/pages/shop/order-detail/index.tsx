@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
-import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import EmptyState from '@/components/EmptyState';
-import SafeImage from '@/components/SafeImage';
+import ShopProductImage from '@/components/ShopProductImage';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { ApiRequestError } from '@/services/apiError';
 import { fetchRegistrationDetail } from '@/services/member';
@@ -65,7 +64,7 @@ function getWechatShippingState(order: ShopOrder) {
   if (order.wechatShippingStatus === 'reported') return '微信订单履约状态已同步';
   if (order.wechatShippingStatus === 'reporting') return '微信订单履约状态同步中';
   if (order.wechatShippingStatus === 'failed') return '交付记录已保存，微信状态等待管理员重试同步';
-  return '实际到店交付后同步微信订单履约状态';
+  return '实际交付后同步微信订单履约状态';
 }
 
 const ShopOrderDetailPage: React.FC = () => {
@@ -157,10 +156,9 @@ const ShopOrderDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.productCard}>
-        <SafeImage
+        <ShopProductImage
           className={styles.productImage}
-          src={resolveShopProductImage(order.productId, order.productImageUrl)}
-          fallbackSrc={shopProductImages['bottled-water-550ml']}
+          src={order.productImageUrl}
           mode="aspectFill"
         />
         <View className={styles.productInfo}>

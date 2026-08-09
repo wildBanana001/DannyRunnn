@@ -2,9 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import { Add, ArrowRight, Minus, Plus } from '@nutui/icons-react-taro';
-import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
-import SafeImage from '@/components/SafeImage';
+import ShopProductImage from '@/components/ShopProductImage';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchAddresses, type Address } from '@/services/address';
@@ -220,10 +219,9 @@ const OrderConfirmPage: React.FC = () => {
       <View className={styles.section}>
         <Text className={styles.sectionTitle}>商品清单</Text>
         <View className={styles.productRow}>
-          <SafeImage
+          <ShopProductImage
             className={styles.productThumb}
-            src={resolveShopProductImage(product.id, product.imageUrl)}
-            fallbackSrc={shopProductImages['bottled-water-550ml']}
+            src={product.imageUrl}
             mode="aspectFill"
           />
           <View className={styles.productInfo}>

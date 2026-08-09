@@ -2,9 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import { Minus, Plus } from '@nutui/icons-react-taro';
-import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import EmptyState from '@/components/EmptyState';
-import SafeImage from '@/components/SafeImage';
+import ShopProductImage from '@/components/ShopProductImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchShopProduct, type ShopProduct } from '@/services/shop';
 import styles from './index.module.scss';
@@ -70,13 +69,17 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
+  const showsAlcoholMetadata = product.alcoholic
+    || product.abv > 0
+    || product.category.toLowerCase() === 'cocktail'
+    || product.tags.some((tag) => tag.includes('酒精'));
+
   return (
     <View className={styles.container} style={viewportStyle}>
       <View className={styles.cover}>
-        <SafeImage
+        <ShopProductImage
           className={styles.coverImage}
-          src={resolveShopProductImage(product.id, product.imageUrl)}
-          fallbackSrc={shopProductImages['bottled-water-550ml']}
+          src={product.imageUrl}
           mode="aspectFill"
         />
         <Text className={styles.coverCaption}>WORKER HOUSE SHOP</Text>
@@ -97,13 +100,17 @@ const ProductDetailPage: React.FC = () => {
 
         <View className={styles.drinkMeta}>
           <View className={styles.drinkMetaItem}>
-            <Text className={styles.metaLabel}>商品类型</Text>
-            <Text className={styles.metaValue}>{product.category || '饮品'}</Text>
+            <Text className={styles.metaLabel}>{showsAlcoholMetadata ? '酒精度' : '商品类型'}</Text>
+            <Text className={styles.metaValue}>
+              {showsAlcoholMetadata ? (product.alcoholic ? `${product.abv}%` : '无酒精') : (product.category || '商品')}
+            </Text>
           </View>
-          <View className={styles.drinkMetaItem}>
-            <Text className={styles.metaLabel}>容量</Text>
-            <Text className={styles.metaValue}>{product.volumeMl} ml</Text>
-          </View>
+          {product.volumeMl > 0 ? (
+            <View className={styles.drinkMetaItem}>
+              <Text className={styles.metaLabel}>容量</Text>
+              <Text className={styles.metaValue}>{product.volumeMl} ml</Text>
+            </View>
+          ) : null}
           <View className={styles.drinkMetaItem}>
             <Text className={styles.metaLabel}>领取方式</Text>
             <Text className={styles.metaValue}>{product.fulfillmentLabel}</Text>
@@ -112,8 +119,8 @@ const ProductDetailPage: React.FC = () => {
 
         <View className={styles.metaRow}>
           <View>
-            <Text className={styles.metaLabel}>包装方式</Text>
-            <Text className={styles.metaValue}>密封瓶装</Text>
+            <Text className={styles.metaLabel}>购买单位</Text>
+            <Text className={styles.metaValue}>{product.unitLabel}</Text>
           </View>
           <View className={styles.quantityControl}>
             <View className={styles.quantityButton} onClick={() => changeQuantity(-1)}><Minus size="16" /></View>
@@ -124,8 +131,12 @@ const ProductDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.promiseCard}>
-        <Text className={styles.promiseTitle}>到店自取说明</Text>
-        <Text className={styles.promiseText}>支付成功后到店出示订单，由工作人员核销后领取；本商品不安排配送。</Text>
+        <Text className={styles.promiseTitle}>{product.fulfillmentLabel}说明</Text>
+        <Text className={styles.promiseText}>
+          {product.fulfillmentType === 'delivery'
+            ? '支付成功后将按订单中的收货地址安排配送。'
+            : `支付成功后到店出示订单，由工作人员确认后${product.fulfillmentLabel}。`}
+        </Text>
       </View>
 
       <View className={styles.footer}>

@@ -1,6 +1,7 @@
 import Taro from '@tarojs/taro';
 import type { Address } from './address';
-import { getPaymentApiMode, requestWithMode, type RequestOptions } from './request';
+import { cloudrunBinaryRequest } from './cloudrun';
+import { getApiMode, getPaymentApiMode, requestWithMode, type ApiMode, type RequestOptions } from './request';
 
 export type ShopOrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
 export type ShopFulfillmentType = 'delivery' | 'pickup' | 'onsite';
@@ -85,32 +86,18 @@ export interface StartShopPaymentInput {
   clientRequestId: string;
 }
 
-const MOCK_PRODUCTS: ShopProduct[] = [
-  {
-    id: 'bottled-water-550ml',
-    name: '瓶装饮用水（550ml）',
-    price: 1,
-    originalPrice: 1,
-    imageUrl: '',
-    description: '550ml 密封瓶装饮用水，支付成功后可在活动现场到店自取。',
-    tags: ['饮用水', '550ml', '到店自取'],
-    category: '饮品',
-    fulfillmentType: 'pickup',
-    fulfillmentLabel: '到店自取',
-    unitLabel: '瓶',
-    alcoholic: false,
-    abv: 0,
-    volumeMl: 550,
-    enabled: true,
-  },
-];
-
 const MOCK_ORDER_STORAGE_KEY = 'worker-house-mock-shop-orders-v2';
 const REAL_PAYMENT_ONLY_MESSAGE = '当前仅支持在微信小程序中使用微信支付';
 const MOCK_PAYMENT_REJECTED_MESSAGE = '支付服务仍处于模拟模式，请先部署真实微信支付配置';
+const shopImageCache = new Map<string, Promise<string>>();
+
+function getShopApiMode(): ApiMode {
+  const paymentMode = getPaymentApiMode();
+  return paymentMode === 'mock' ? getApiMode() : paymentMode;
+}
 
 function shopRequest<T>(options: RequestOptions) {
-  return requestWithMode<T>(getPaymentApiMode(), options);
+  return requestWithMode<T>(getShopApiMode(), options);
 }
 
 function clone<T>(value: T): T {
@@ -129,15 +116,77 @@ function normalizeAddress(address: Address | ShopAddressSnapshot): ShopAddressSn
 }
 
 function resolveAssetUrl(imageUrl: string): string {
-  if (!imageUrl || /^https?:\/\//i.test(imageUrl)) {
+  if (!imageUrl || /^(?:https?:|cloud:|wxfile:|data:|blob:)/i.test(imageUrl)) {
     return imageUrl;
   }
 
   const explicitBase = process.env.TARO_APP_SHOP_ASSET_BASE_URL?.trim();
-  const bffBase = getPaymentApiMode() === 'bff' ? process.env.TARO_APP_BFF_BASE_URL?.trim() : '';
+  const bffBase = getShopApiMode() === 'bff' ? process.env.TARO_APP_BFF_BASE_URL?.trim() : '';
   const base = (explicitBase || bffBase || '').replace(/\/$/, '');
   const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
   return base ? `${base}${path}` : '';
+}
+
+export function resolveShopProductImageUrl(imageUrl: string): string {
+  return resolveAssetUrl(imageUrl?.trim() || '');
+}
+
+function hashShopImagePath(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function getShopImageExtension(imageUrl: string) {
+  const pathname = imageUrl.split(/[?#]/, 1)[0].toLowerCase();
+  const extension = pathname.match(/\.(?:jpe?g|png|webp|gif)$/)?.[0];
+  return extension || '.jpg';
+}
+
+function writeShopImageFile(imageUrl: string, data: ArrayBuffer) {
+  const filePath = `${Taro.env.USER_DATA_PATH}/worker-house-shop-${hashShopImagePath(imageUrl)}${getShopImageExtension(imageUrl)}`;
+  return new Promise<string>((resolve, reject) => {
+    Taro.getFileSystemManager().writeFile({
+      data,
+      fail: reject,
+      filePath,
+      success: () => resolve(filePath),
+    });
+  });
+}
+
+export async function loadShopProductImage(imageUrl: string): Promise<string> {
+  const normalizedUrl = imageUrl?.trim() || '';
+  const directlyUsableUrl = resolveShopProductImageUrl(normalizedUrl);
+  if (directlyUsableUrl || !normalizedUrl) {
+    return directlyUsableUrl;
+  }
+
+  const cloudrunPath = normalizedUrl.startsWith('/') ? normalizedUrl : `/${normalizedUrl}`;
+  const resourcePath = cloudrunPath.split(/[?#]/, 1)[0];
+  if (
+    process.env.TARO_ENV !== 'weapp'
+    || getShopApiMode() !== 'cloudrun'
+    || !resourcePath.startsWith('/static/images/shop/')
+    || resourcePath.includes('..')
+  ) {
+    return '';
+  }
+
+  const cached = shopImageCache.get(normalizedUrl);
+  if (cached) return cached;
+
+  const pending = cloudrunBinaryRequest(cloudrunPath)
+    .then((data) => writeShopImageFile(normalizedUrl, data))
+    .catch((error) => {
+      shopImageCache.delete(normalizedUrl);
+      throw error;
+    });
+  shopImageCache.set(normalizedUrl, pending);
+  return pending;
 }
 
 function normalizeProduct(product: ShopProduct): ShopProduct {
@@ -151,7 +200,7 @@ function normalizeProduct(product: ShopProduct): ShopProduct {
     abv: Math.max(0, Number(product.abv) || 0),
     volumeMl: Math.max(0, Number(product.volumeMl) || 0),
     enabled: product.enabled !== false,
-    imageUrl: resolveAssetUrl(product.imageUrl),
+    imageUrl: product.imageUrl?.trim() || '',
   };
 }
 
@@ -170,7 +219,7 @@ function normalizeOrder(order: ShopOrder): ShopOrder {
     wechatShippingStatus,
     wechatShippingReportedAt: order.wechatShippingReportedAt || '',
     unitLabel: order.unitLabel?.trim() || '件',
-    productImageUrl: resolveAssetUrl(order.productImageUrl),
+    productImageUrl: order.productImageUrl?.trim() || '',
   };
 }
 
@@ -202,23 +251,11 @@ export function isPaymentCancelled(error: unknown): boolean {
 }
 
 export async function fetchShopProducts(): Promise<ShopProduct[]> {
-  if (getPaymentApiMode() === 'mock') {
-    return clone(MOCK_PRODUCTS);
-  }
-
   const result = await shopRequest<{ list: ShopProduct[] }>({ path: '/api/shop/products' });
   return (result.list || []).map(normalizeProduct);
 }
 
 export async function fetchShopProduct(productId: string): Promise<ShopProduct> {
-  if (getPaymentApiMode() === 'mock') {
-    const product = MOCK_PRODUCTS.find((item) => item.id === productId);
-    if (!product) {
-      throw new Error('商品不存在');
-    }
-    return clone(product);
-  }
-
   const result = await shopRequest<ShopProduct>({ path: `/api/shop/products/${encodeURIComponent(productId)}` });
   return normalizeProduct(result);
 }

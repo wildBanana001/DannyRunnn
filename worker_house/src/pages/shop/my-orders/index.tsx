@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View, type ITouchEvent } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
-import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
 import WxLoginModal from '@/components/WxLoginModal/WxLoginModal';
 import EmptyState from '@/components/EmptyState';
-import SafeImage from '@/components/SafeImage';
+import ShopProductImage from '@/components/ShopProductImage';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import {
   confirmShopPayment,
@@ -126,7 +125,7 @@ const MyOrdersPage: React.FC = () => {
 
         {isLoggedIn && !loading && !error && orders.length === 0 ? (
           <View className={styles.state}>
-            <EmptyState title="还没有商城订单" description="商城目前上架瓶装饮用水，可在活动现场到店自取。" />
+            <EmptyState title="还没有商城订单" description="去商城看看当前在售商品吧。" />
             <View className={styles.primaryButton} onClick={() => Taro.switchTab({ url: '/pages/shop-home/index' })}><Text>去看看商品</Text></View>
           </View>
         ) : null}
@@ -148,10 +147,9 @@ const MyOrdersPage: React.FC = () => {
                 </View>
                 <View className={styles.cardBody}>
                   <View className={styles.thumb}>
-                    <SafeImage
+                    <ShopProductImage
                       className={styles.thumbImage}
-                      src={resolveShopProductImage(item.productId, item.productImageUrl)}
-                      fallbackSrc={shopProductImages['bottled-water-550ml']}
+                      src={item.productImageUrl}
                       mode="aspectFill"
                     />
                   </View>
@@ -163,7 +161,7 @@ const MyOrdersPage: React.FC = () => {
                 </View>
                 <View className={styles.cardFooter}>
                   <Text className={styles.address}>
-                    {item.fulfillmentStatus === 'fulfilled' ? '已完成到店交付' : getFulfillmentText(item)}
+                    {item.fulfillmentStatus === 'fulfilled' ? '已完成交付' : getFulfillmentText(item)}
                   </Text>
                   {item.status === 'pending' ? (
                     <View className={styles.payButton} onClick={(event) => handleRetry(event, item.id)}>

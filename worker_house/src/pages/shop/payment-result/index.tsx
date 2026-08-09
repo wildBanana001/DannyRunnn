@@ -8,6 +8,7 @@ import {
   isPaymentCancelled,
   launchShopPayment,
   retryShopPayment,
+  type ShopOrder,
   type ShopOrderStatus,
 } from '@/services/shop';
 import styles from './index.module.scss';
@@ -15,7 +16,7 @@ import styles from './index.module.scss';
 type ResultStatus = 'success' | 'pending' | 'fail';
 
 const COPY: Record<ResultStatus, { icon: string; title: string; subtitle: string }> = {
-  success: { icon: '✓', title: '支付成功', subtitle: '订单已经确认，到店后出示订单即可。' },
+  success: { icon: '✓', title: '支付成功', subtitle: '订单已经确认，可在订单详情查看履约进度。' },
   pending: { icon: '…', title: '等待支付确认', subtitle: '取消支付或回调延迟都不会丢单，可以继续支付或稍后查看。' },
   fail: { icon: '!', title: '支付未完成', subtitle: '订单没有完成支付，请稍后重试。' },
 };
@@ -24,6 +25,12 @@ function mapOrderStatus(status: ShopOrderStatus): ResultStatus {
   if (status === 'paid') return 'success';
   if (status === 'pending') return 'pending';
   return 'fail';
+}
+
+function getCompletionSubtitle(order: ShopOrder) {
+  return order.fulfillmentType === 'delivery'
+    ? '订单已经确认，将按收货地址安排配送。'
+    : `订单已经确认，${order.fulfillmentLabel}时出示订单即可。`;
 }
 
 const PaymentResultPage: React.FC = () => {
@@ -36,6 +43,7 @@ const PaymentResultPage: React.FC = () => {
       : 'fail';
   const [status, setStatus] = useState<ResultStatus>(initialStatus);
   const [isFree, setIsFree] = useState(false);
+  const [completionSubtitle, setCompletionSubtitle] = useState(COPY.success.subtitle);
   const [checking, setChecking] = useState(Boolean(orderId));
   const [retrying, setRetrying] = useState(false);
   const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
@@ -47,6 +55,7 @@ const PaymentResultPage: React.FC = () => {
       const order = await fetchShopOrder(orderId);
       setStatus(mapOrderStatus(order.status));
       setIsFree(order.amount <= 0);
+      setCompletionSubtitle(getCompletionSubtitle(order));
     } catch (error) {
       console.warn('[shop] refresh payment status failed', error);
     } finally {
@@ -67,6 +76,7 @@ const PaymentResultPage: React.FC = () => {
       const order = await confirmShopPayment(orderId);
       setStatus(mapOrderStatus(order.status));
       setIsFree(order.amount <= 0);
+      setCompletionSubtitle(getCompletionSubtitle(order));
     } catch (error) {
       if (!isPaymentCancelled(error)) {
         showPaymentError(error, '支付重试失败');
@@ -78,11 +88,13 @@ const PaymentResultPage: React.FC = () => {
 
   const copy = isFree
     ? status === 'success'
-      ? { icon: '✓', title: '领取成功', subtitle: '订单已经确认，到店后出示订单即可。' }
+      ? { icon: '✓', title: '领取成功', subtitle: completionSubtitle }
       : status === 'pending'
         ? { icon: '…', title: '等待领取确认', subtitle: '订单仍在确认中，可以继续领取或稍后查看。' }
         : { icon: '!', title: '领取未完成', subtitle: '订单没有完成确认，请稍后重试。' }
-    : COPY[status];
+    : status === 'success'
+      ? { ...COPY.success, subtitle: completionSubtitle }
+      : COPY[status];
 
   return (
     <View className={styles.container}>

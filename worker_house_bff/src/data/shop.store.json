@@ -31,7 +31,7 @@
     "alcoholic": true,
     "abv": 14,
     "volumeMl": 180,
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "cocktail-mint-mojito",
@@ -48,7 +48,7 @@
     "alcoholic": true,
     "abv": 10,
     "volumeMl": 300,
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "cocktail-berry-fizz",
@@ -65,7 +65,7 @@
     "alcoholic": true,
     "abv": 8,
     "volumeMl": 300,
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "cocktail-sunset-highball",
@@ -82,7 +82,7 @@
     "alcoholic": true,
     "abv": 9,
     "volumeMl": 320,
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "cocktail-espresso-martini",
@@ -99,7 +99,7 @@
     "alcoholic": true,
     "abv": 16,
     "volumeMl": 180,
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "cocktail-elderflower-zero",
@@ -116,7 +116,7 @@
     "alcoholic": false,
     "abv": 0,
     "volumeMl": 300,
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "prod-coffee-box",

@@ -3,8 +3,7 @@ import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { ArrowRight, Order } from '@nutui/icons-react-taro';
 import EmptyState from '@/components/EmptyState';
-import SafeImage from '@/components/SafeImage';
-import { resolveShopProductImage, shopProductImages } from '@/assets/shop';
+import ShopProductImage from '@/components/ShopProductImage';
 import { fetchShopProducts, type ShopProduct } from '@/services/shop';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import styles from './index.module.scss';
@@ -45,8 +44,8 @@ const ShopHomePage: React.FC = () => {
       <View className={styles.header}>
         <View>
           <Text className={styles.eyebrow}>WORKER HOUSE SHOP</Text>
-          <Text className={styles.title}>活动现场补给</Text>
-          <Text className={styles.subtitle}>简单补水，轻松参与</Text>
+          <Text className={styles.title}>当期好物</Text>
+          <Text className={styles.subtitle}>好物与饮品，随时更新</Text>
         </View>
         <View className={styles.ordersEntry} onClick={() => Taro.navigateTo({ url: '/pages/shop/my-orders/index' })}>
           <Order className={styles.ordersEntryIcon} size="18" />
@@ -58,7 +57,7 @@ const ShopHomePage: React.FC = () => {
       <ScrollView scrollY className={styles.scroll}>
         <View className={styles.notice}>
           <Text className={styles.noticeTitle}>在售商品</Text>
-          <Text className={styles.noticeText}>瓶装饮用水 · 到店自取 · 不提供配送</Text>
+          <Text className={styles.noticeText}>商品信息与价格以当前页面为准</Text>
         </View>
 
         {loading && products.length === 0 ? (
@@ -81,10 +80,9 @@ const ShopHomePage: React.FC = () => {
             {products.map((item, index) => (
               <View key={item.id} className={styles.card} onClick={() => goDetail(item.id)}>
                 <View className={`${styles.cover} ${index % 2 === 0 ? styles.coverWarm : styles.coverCool}`}>
-                  <SafeImage
+                  <ShopProductImage
                     className={styles.coverImage}
-                    src={resolveShopProductImage(item.id, item.imageUrl)}
-                    fallbackSrc={shopProductImages['bottled-water-550ml']}
+                    src={item.imageUrl}
                     mode="aspectFill"
                     lazyLoad
                   />
@@ -97,7 +95,7 @@ const ShopHomePage: React.FC = () => {
                     <Text className={styles.originalPrice}>¥{formatPrice(item.originalPrice)}</Text>
                   ) : null}
                 </View>
-                <Text className={styles.fulfillmentNote}>{item.fulfillmentLabel} · 不提供配送</Text>
+                <Text className={styles.fulfillmentNote}>{item.fulfillmentLabel}</Text>
               </View>
             ))}
           </View>
