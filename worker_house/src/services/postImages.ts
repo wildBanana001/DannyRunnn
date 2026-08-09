@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro';
 import { initCloud } from '@/cloud';
+import legacyWallImageFallback from '@/assets/home/hero-cover.jpg';
 import type { Post } from '@/types/post';
 
 declare const wx: any;
@@ -22,7 +23,6 @@ interface DownloadFileResult {
 const TEMP_URL_BATCH_SIZE = 50;
 const TEMP_URL_CACHE_TTL = 5 * 60 * 1000;
 const LEGACY_IMAGE_ORIGIN = 'https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la';
-const LEGACY_FILE_ID_ROOT = 'cloud://cloudbase-d9ga2lft53663059b.636c-cloudbase-d9ga2lft53663059b-1426048919';
 const tempFileUrlCache = new Map<string, CachedFileUrl>();
 const previewFilePathCache = new Map<string, CachedFileUrl>();
 const pendingFileUrlRequests = new Map<string, Promise<string>>();
@@ -40,24 +40,21 @@ function normalizeUrls(value?: string[]) {
     .filter(Boolean);
 }
 
-function inferLegacyCloudFileID(imageUrl: string) {
-  if (imageUrl.startsWith('cloud://')) return imageUrl;
-  if (!imageUrl.startsWith(`${LEGACY_IMAGE_ORIGIN}/worker-house/`)) return '';
+function replaceLegacyPostImageUrls(post: Post) {
+  const originalImages = normalizeUrls(post.images);
+  const images = originalImages.map((imageUrl) => (
+    imageUrl.startsWith(`${LEGACY_IMAGE_ORIGIN}/worker-house/`)
+      ? legacyWallImageFallback
+      : imageUrl
+  ));
 
-  const path = imageUrl
-    .slice(LEGACY_IMAGE_ORIGIN.length)
-    .split(/[?#]/, 1)[0]
-    .replace(/^\/+/, '');
-  return path ? `${LEGACY_FILE_ID_ROOT}/${path}` : '';
+  return images.some((imageUrl, index) => imageUrl !== originalImages[index])
+    ? { ...post, images }
+    : post;
 }
 
 function getPostCloudFileIDs(post: Post) {
-  const explicitFileIDs = normalizeUrls(post.imageFileIds).filter((item) => item.startsWith('cloud://'));
-  if (explicitFileIDs.length > 0) return explicitFileIDs;
-
-  return normalizeUrls(post.images)
-    .map((imageUrl) => inferLegacyCloudFileID(imageUrl))
-    .filter(Boolean);
+  return normalizeUrls(post.imageFileIds).filter((item) => item.startsWith('cloud://'));
 }
 
 function getCachedFileUrl(fileID: string) {
@@ -190,14 +187,16 @@ function applyResolvedPostImageUrls(post: Post, resolvedFileUrls: Map<string, st
 }
 
 export async function resolvePostImageUrls(post: Post): Promise<Post> {
-  const resolvedFileUrls = await resolveCloudFileUrls(getPostCloudFileIDs(post));
-  return applyResolvedPostImageUrls(post, resolvedFileUrls);
+  const normalizedPost = replaceLegacyPostImageUrls(post);
+  const resolvedFileUrls = await resolveCloudFileUrls(getPostCloudFileIDs(normalizedPost));
+  return applyResolvedPostImageUrls(normalizedPost, resolvedFileUrls);
 }
 
 export async function resolvePostListImageUrls(posts: Post[]) {
-  const fileIDs = posts.flatMap((post) => getPostCloudFileIDs(post));
+  const normalizedPosts = posts.map((post) => replaceLegacyPostImageUrls(post));
+  const fileIDs = normalizedPosts.flatMap((post) => getPostCloudFileIDs(post));
   const resolvedFileUrls = await resolveCloudFileUrls(fileIDs);
-  return posts.map((post) => applyResolvedPostImageUrls(post, resolvedFileUrls));
+  return normalizedPosts.map((post) => applyResolvedPostImageUrls(post, resolvedFileUrls));
 }
 
 export async function resolvePostDisplayImageUrls(post: Post): Promise<Post> {

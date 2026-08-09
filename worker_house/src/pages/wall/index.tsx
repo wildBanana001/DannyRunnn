@@ -7,7 +7,6 @@ import CommunityWallUnavailable from '@/components/CommunityWallUnavailable';
 import Pressable from '@/components/Pressable';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
-import { resolvePostDisplayImageUrls } from '@/services/postImages';
 import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { Comment, Post } from '@/types/post';
 import { estimatePostHeight, getFixedTilt, matchPostKeyword } from '@/utils/helpers';
@@ -100,10 +99,7 @@ const WallPage: React.FC = () => {
     setCommentText('');
 
     try {
-      const [postDetail, displayPost] = await Promise.all([
-        fetchPostDetail(post.id),
-        resolvePostDisplayImageUrls(post),
-      ]);
+      const postDetail = await fetchPostDetail(post.id);
       setDetail((current) => {
         if (current?.post.id !== post.id) return current;
 
@@ -111,9 +107,9 @@ const WallPage: React.FC = () => {
           comments: postDetail.comments,
           post: {
             ...postDetail.post,
-            images: displayPost.images.length > 0 ? displayPost.images : current.post.images,
-            imageFileIds: displayPost.imageFileIds?.length
-              ? displayPost.imageFileIds
+            images: current.post.images.length > 0 ? current.post.images : postDetail.post.images,
+            imageFileIds: current.post.imageFileIds?.length
+              ? current.post.imageFileIds
               : postDetail.post.imageFileIds,
           },
         };

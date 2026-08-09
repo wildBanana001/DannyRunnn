@@ -4,6 +4,7 @@ import { Heart } from '@nutui/icons-react-taro';
 import Button from '@/components/Button';
 import BottomSheet from '@/components/BottomSheet';
 import SafeImage from '@/components/SafeImage';
+import wallImageFallback from '@/assets/home/hero-cover.jpg';
 import { previewPostImage } from '@/services/postImages';
 import type { Comment, Post } from '@/types/post';
 import { formatDateTime, getPostCommentCount } from '@/utils/helpers';
@@ -79,6 +80,8 @@ const PostModal: React.FC<PostModalProps> = ({
                   key={`${currentPost.id}-image-${index}`}
                   className={styles.image}
                   src={image}
+                  fallbackSrc={wallImageFallback}
+                  fallbackDelayMs={1800}
                   mode="aspectFill"
                   onClick={() => void previewPostImage(currentPost, index)}
                 />

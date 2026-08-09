@@ -7,8 +7,9 @@ import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import avatarFallback from '@/assets/illustrations/avatar-frame.png';
+import wallImageFallback from '@/assets/home/hero-cover.jpg';
 import { commentWallPost, fetchPostDetail } from '@/cloud/services';
-import { previewPostImage, resolvePostDisplayImageUrls } from '@/services/postImages';
+import { previewPostImage } from '@/services/postImages';
 import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { Comment, Post } from '@/types/post';
 import { formatDateTime, getPostCommentCount, getRelativeTime } from '@/utils/helpers';
@@ -40,7 +41,7 @@ const PostDetailPage: React.FC = () => {
       if (result.post.id !== postId) {
         throw new Error('帖子信息不匹配');
       }
-      setPost(await resolvePostDisplayImageUrls(result.post));
+      setPost(result.post);
       setComments(result.comments);
     } catch (error) {
       setPost(null);
@@ -135,6 +136,8 @@ const PostDetailPage: React.FC = () => {
                 key={`${post.id}-image-${index}`}
                 className={styles.image}
                 src={image}
+                fallbackSrc={wallImageFallback}
+                fallbackDelayMs={1800}
                 mode="aspectFill"
                 onClick={() => void previewPostImage(post, index)}
               />
