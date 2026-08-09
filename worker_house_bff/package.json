@@ -10,8 +10,7 @@
     "build": "npm run check:runtime-deps && tsc && node scripts/copy-runtime-data.mjs",
     "start": "node dist/index.js",
     "migrate:orders": "npm run build && node dist/scripts/migrate-orders.js",
-    "migrate-images": "tsx scripts/migrate-images.ts",
-    "seed:past-activities": "tsx scripts/seed-past-activities.ts"
+    "migrate-images": "tsx scripts/migrate-images.ts"
   },
   "dependencies": {
     "axios": "^1.19.0",

@@ -25,26 +25,13 @@
     "userWechatName": "linkaifeng.kfc",
     "cardType": "5 次体验卡",
     "totalCount": 5,
-    "usedCount": 1,
-    "remainingCount": 4,
+    "usedCount": 0,
+    "remainingCount": 5,
     "amount": 599,
     "purchasedAt": "2026-04-18T10:00:00Z",
     "status": "active",
     "expiresAt": "2027-04-18T10:00:00Z",
-    "usageLogs": [
-      {
-        "id": "usage-001",
-        "registrationId": "reg-001",
-        "activityId": "act-001",
-        "activityTitle": "山野疗愈瑜伽 retreat",
-        "usedAt": "2026-04-22T12:00:00Z",
-        "deductionCount": 1,
-        "deductionAmount": 148,
-        "operatorName": "系统",
-        "status": "used",
-        "note": "创建报名时自动抵扣"
-      }
-    ],
+    "usageLogs": [],
     "perUseMaxOffset": 148,
     "adjustLogs": []
   }
