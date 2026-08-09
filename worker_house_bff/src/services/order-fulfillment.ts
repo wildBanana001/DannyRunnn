@@ -3,11 +3,34 @@ import {
   claimOrderFulfillmentReport,
   finishOrderFulfillmentReport,
   getOrderById,
+  getOrdersByKind,
   type OrderRecord,
 } from '../data/orders.js';
 import { uploadWechatSelfPickupShippingInfo } from '../utils/wechat-order-shipping.js';
 
 const SHIPPING_REPORT_LEASE_MILLISECONDS = 30_000;
+
+export type AdminFulfillmentTaskAction = 'fulfill' | 'retry';
+
+export interface AdminFulfillmentTask {
+  action: AdminFulfillmentTaskAction;
+  amount: number;
+  createdAt: string;
+  fulfillmentLabel: string;
+  fulfillmentStatus: OrderRecord['fulfillmentStatus'];
+  id: string;
+  kind: OrderRecord['kind'];
+  paidAt: string;
+  participantContact: string;
+  participantName: string;
+  quantity: number;
+  remark: string;
+  title: string;
+  unitLabel: string;
+  wechatShippingAttempts: number;
+  wechatShippingError: string;
+  wechatShippingStatus: OrderRecord['wechatShippingStatus'];
+}
 
 export class OrderFulfillmentError extends Error {
   readonly code: string;
@@ -21,6 +44,73 @@ export class OrderFulfillmentError extends Error {
     this.order = order;
     this.status = status;
   }
+}
+
+function supportsOnsiteFulfillment(order: OrderRecord) {
+  return order.kind === 'activity'
+    ? order.fulfillmentType === 'onsite'
+    : order.fulfillmentType === 'onsite' || order.fulfillmentType === 'pickup';
+}
+
+export function isOutstandingFulfillmentTask(order: OrderRecord) {
+  if (order.status !== 'paid' || !supportsOnsiteFulfillment(order)) {
+    return false;
+  }
+
+  if (order.fulfillmentStatus !== 'fulfilled') {
+    return true;
+  }
+
+  return order.wechatShippingStatus !== 'reported'
+    && order.wechatShippingStatus !== 'not_required';
+}
+
+export function toAdminFulfillmentTask(order: OrderRecord): AdminFulfillmentTask {
+  const activityRegistration = order.activityRegistration;
+  const participantName = activityRegistration?.participantNickname
+    || order.address?.name
+    || '到店用户';
+  const participantContact = [
+    activityRegistration?.wechatName,
+    activityRegistration?.phone,
+    order.address?.phone,
+  ].filter(Boolean).join(' · ');
+
+  return {
+    action: order.fulfillmentStatus === 'fulfilled' ? 'retry' : 'fulfill',
+    amount: order.amount,
+    createdAt: order.createdAt,
+    fulfillmentLabel: order.fulfillmentLabel,
+    fulfillmentStatus: order.fulfillmentStatus,
+    id: order.id,
+    kind: order.kind,
+    paidAt: order.paidAt,
+    participantContact,
+    participantName,
+    quantity: order.quantity,
+    remark: order.remark,
+    title: activityRegistration?.activityTitle || order.productName,
+    unitLabel: order.unitLabel,
+    wechatShippingAttempts: order.wechatShippingAttempts,
+    wechatShippingError: order.wechatShippingError,
+    wechatShippingStatus: order.wechatShippingStatus,
+  };
+}
+
+export async function listAdminFulfillmentTasks() {
+  const [shopOrders, activityOrders] = await Promise.all([
+    getOrdersByKind('shop'),
+    getOrdersByKind('activity'),
+  ]);
+
+  return [...shopOrders, ...activityOrders]
+    .filter(isOutstandingFulfillmentTask)
+    .sort((first, second) => {
+      const firstTime = new Date(first.paidAt || first.createdAt).getTime();
+      const secondTime = new Date(second.paidAt || second.createdAt).getTime();
+      return secondTime - firstTime;
+    })
+    .map(toAdminFulfillmentTask);
 }
 
 function assertPaidFulfillableOrder(
@@ -97,4 +187,14 @@ export function confirmShopOrderFulfillment(orderId: string, adminOpenid: string
 
 export function confirmActivityOrderFulfillment(orderId: string, adminOpenid: string) {
   return confirmOrderFulfillment(orderId, adminOpenid, 'activity');
+}
+
+export function confirmAdminFulfillmentTask(
+  kind: OrderRecord['kind'],
+  orderId: string,
+  adminOpenid: string,
+) {
+  return kind === 'activity'
+    ? confirmActivityOrderFulfillment(orderId, adminOpenid)
+    : confirmShopOrderFulfillment(orderId, adminOpenid);
 }

@@ -1,0 +1,264 @@
+@use '@/styles/variables.scss' as *;
+
+.page,
+.container,
+.statePage {
+  height: var(--app-window-height, 100vh);
+  min-height: var(--app-window-height, 100vh);
+  background: $color-oat;
+}
+
+.page {
+  position: relative;
+  overflow: hidden;
+}
+
+.statePage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  box-sizing: border-box;
+}
+
+.stateText {
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+}
+
+.header {
+  padding: var(--app-header-top, calc(env(safe-area-inset-top) + 40rpx)) 32rpx 28rpx;
+  border-bottom: 2rpx solid $color-text-primary;
+}
+
+.eyebrow,
+.title,
+.description,
+.summaryValue,
+.summaryLabel,
+.taskTitle,
+.participantName,
+.metaText,
+.detailLabel,
+.detailValue,
+.remark,
+.errorTitle,
+.errorText,
+.orderId,
+.paidAt {
+  display: block;
+}
+
+.eyebrow {
+  color: $color-brand;
+  font-size: 18rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 0.18em;
+}
+
+.title {
+  margin-top: 10rpx;
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 52rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.description {
+  margin-top: 14rpx;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  line-height: 1.75;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24rpx;
+}
+
+.summaryText {
+  display: flex;
+  align-items: baseline;
+}
+
+.summaryValue {
+  color: $color-text-primary;
+  font-size: 40rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.summaryLabel {
+  margin-left: 10rpx;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}
+
+.taskList {
+  padding: 28rpx 24rpx 0;
+}
+
+.taskCard {
+  @include paper-card($color-white);
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+.cardHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.kindBadge {
+  padding: 8rpx 16rpx;
+  border: 2rpx solid $color-text-primary;
+  background: $color-note-pink;
+  color: $color-text-primary;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+}
+
+.retryBadge {
+  background: #ffe3d9;
+  color: #a4351c;
+}
+
+.paidAt {
+  flex: 1;
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+  text-align: right;
+}
+
+.taskTitle {
+  margin-top: 24rpx;
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 34rpx;
+  font-weight: $font-weight-heavy;
+  line-height: 1.35;
+}
+
+.participantName {
+  margin-top: 18rpx;
+  color: $color-text-primary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+}
+
+.metaText,
+.remark {
+  margin-top: 8rpx;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  line-height: 1.6;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  margin: 24rpx 0;
+}
+
+.detailItem {
+  padding: 16rpx 12rpx;
+  border: 2rpx solid $color-divider;
+  background: $color-oat;
+}
+
+.detailLabel {
+  color: $color-text-secondary;
+  font-size: 20rpx;
+}
+
+.detailValue {
+  margin-top: 8rpx;
+  color: $color-text-primary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+}
+
+.errorBox {
+  padding: 18rpx;
+  margin: 20rpx 0;
+  border: 2rpx solid #bd4f36;
+  background: #fff1ec;
+}
+
+.errorTitle {
+  color: #98361f;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+}
+
+.errorText {
+  margin-top: 8rpx;
+  color: #7e3c2d;
+  font-size: $font-size-xs;
+  line-height: 1.55;
+}
+
+.orderId {
+  margin: 24rpx 0 16rpx;
+  color: $color-text-secondary;
+  font-size: 20rpx;
+  word-break: break-all;
+}
+
+.emptyWrap {
+  padding: 40rpx 24rpx;
+}
+
+.bottomSpacing {
+  height: calc(var(--app-safe-bottom, env(safe-area-inset-bottom)) + 40rpx);
+}
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx;
+  box-sizing: border-box;
+  background: rgba(30, 27, 24, 0.52);
+}
+
+.confirmModal {
+  @include paper-card($color-white);
+  width: 100%;
+  max-width: 620rpx;
+  padding: 36rpx 32rpx 30rpx;
+  box-sizing: border-box;
+}
+
+.confirmTitle,
+.confirmText {
+  display: block;
+}
+
+.confirmTitle {
+  color: $color-text-primary;
+  font-family: $font-family-hand;
+  font-size: 38rpx;
+  font-weight: $font-weight-heavy;
+}
+
+.confirmText {
+  margin-top: 18rpx;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  line-height: 1.75;
+}
+
+.confirmActions {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-top: 30rpx;
+}

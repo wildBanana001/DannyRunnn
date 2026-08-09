@@ -10,9 +10,12 @@ import { getOrderById, getOrdersByKind, type OrderRecord } from '../data/orders.
 import { getSiteConfig, updateSiteConfig } from '../data/siteConfig.js';
 import { openidAdminAuth, resolveAdminOpenid } from '../middleware/openidAdminAuth.js';
 import {
+  confirmAdminFulfillmentTask,
   confirmActivityOrderFulfillment,
   confirmShopOrderFulfillment,
+  listAdminFulfillmentTasks,
   OrderFulfillmentError,
+  toAdminFulfillmentTask,
 } from '../services/order-fulfillment.js';
 import {
   deleteCommunityPost,
@@ -434,6 +437,45 @@ adminMiniRouter.get('/shop-orders', async (request, response) => {
     response.json(buildPagedResult(orders.map(toAdminShopOrder), page, pageSize));
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '读取商城订单失败' });
+  }
+});
+
+adminMiniRouter.get('/fulfillment-tasks', async (_request, response) => {
+  try {
+    const tasks = await listAdminFulfillmentTasks();
+    response.json({
+      data: tasks,
+      list: tasks,
+      total: tasks.length,
+    });
+  } catch (error) {
+    response.status(500).json({ message: error instanceof Error ? error.message : '读取待核销订单失败' });
+  }
+});
+
+adminMiniRouter.post('/fulfillment-tasks/:kind/:id/complete', async (request, response) => {
+  const kind = sanitizeString(request.params.kind);
+  if (kind !== 'shop' && kind !== 'activity') {
+    response.status(400).json({ message: '核销订单类型不合法' });
+    return;
+  }
+
+  try {
+    const order = await confirmAdminFulfillmentTask(
+      kind,
+      String(request.params.id),
+      resolveAdminOpenid(request),
+    );
+    response.json({ data: toAdminFulfillmentTask(order) });
+  } catch (error) {
+    if (error instanceof OrderFulfillmentError) {
+      response.status(error.status).json({
+        message: error.message,
+        ...(error.order ? { data: toAdminFulfillmentTask(error.order) } : {}),
+      });
+      return;
+    }
+    response.status(500).json({ message: error instanceof Error ? error.message : '订单核销失败' });
   }
 });
 

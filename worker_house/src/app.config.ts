@@ -25,6 +25,7 @@ export default defineAppConfig({
         'story-webview/index',
         'origin-detail/index',
         'activity-detail/index',
+        'admin-fulfillments/index',
         'my-registrations/index',
         'my-posts/index',
         'registration-detail/index'

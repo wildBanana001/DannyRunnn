@@ -57,9 +57,12 @@ CLOUD_ENV_ID=<云开发环境 ID>
 CLOUD_APP_ID=<小程序 AppID>
 CLOUD_APP_SECRET=<通过云托管 Secret 配置>
 CLOUD_ADMIN_SERVICE_TOKEN=<通过云托管 Secret 配置>
+ADMIN_OPENID_WHITELIST=<管理员 OpenID；多人用英文逗号分隔>
 ```
 
 `ENABLE_SHOP` 与 `ENABLE_COMMUNITY_WALL` 不属于上面的部署清单；请在云托管服务变量中单独维护，避免自动部署覆盖运行时开关。支付、管理员与 MySQL 密码必须继续放在云托管 Secret 中，不得写入 Git。支付配置及订单存储 readiness 验证通过后，才在服务变量中把 `ENABLE_SHOP` 设置为 `true`；开关关闭期间支付回调与已有订单查询仍保持可用。留言墙只有在 `ENABLE_COMMUNITY_WALL=true` 时才会出现在小程序中，默认关闭。有限名额的活动会在 MySQL 事务内原子占位。
+
+管理员 OpenID 的获取方式：登录小程序，在“我的”页面 1.2 秒内连续点击底部“我的”Tab 三次，点击“复制 ID”。把复制结果写入 `ADMIN_OPENID_WHITELIST` 后需要发布新版本或重启服务；白名单在进程启动时读取。未进入白名单的账号不会看到“待核销订单”，即使手工输入页面路径也会被服务端拒绝。
 
 `MYSQL_ADDRESS` 必须使用生产内网地址。若云开发 MySQL 控制台提示该实例需要 VPC，请在 `worker-house-bff` 的“服务设置 → 网络配置”中开启私有网络，并选择数据库所在 VPC；单独设置环境变量不会打通网络。参考 CloudBase 官方的 [MySQL 数据库集成](https://docs.cloudbase.net/run/develop/resource-integration/mysql) 和 [直连服务](https://docs.cloudbase.net/database/configuration/db/tdsql/direct-connection)。
 

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
-import Taro, { useDidShow } from '@tarojs/taro';
+import Taro, { useDidShow, useTabItemTap } from '@tarojs/taro';
 import { ArrowRight, Articles, Coupon, Edit, Location, Order, Setting } from '@nutui/icons-react-taro';
 import WxLoginModal from '@/components/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
 import { siteConfig } from '@/data/site';
 import { fetchMemberOverview, type MemberOverview } from '@/services/member';
+import { fetchAdminIdentity } from '@/services/adminFulfillment';
 import { useSiteConfig } from '@/shared/siteConfig';
 import { useUserStore } from '@/store/userStore';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
@@ -23,6 +24,20 @@ const menuItems = [
   { key: 'settings', icon: Setting, title: '设置', description: '清缓存、关于我们、退出登录', url: '/pages/settings/index', requiresLogin: true, wallOnly: false }
 ] as const;
 
+const adminMenuItem = {
+  key: 'admin-fulfillments',
+  icon: Order,
+  title: '待核销订单',
+  description: '管理员专用 · 到店核销并自动同步微信',
+  url: '/pages/content/admin-fulfillments/index',
+  requiresLogin: true,
+  wallOnly: false,
+} as const;
+
+type MineMenuItem = (typeof menuItems)[number] | typeof adminMenuItem;
+
+const MINE_TAB_REVEAL_WINDOW_MS = 1200;
+
 const defaultOverview: MemberOverview = {
   registrationsCount: 0,
   remainingCardTimes: 0,
@@ -33,33 +48,116 @@ const MinePage: React.FC = () => {
   const { user, isLoggedIn, refreshWxMe } = useUserStore();
   const [overview, setOverview] = useState<MemberOverview>(defaultOverview);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const mineTabTapRef = useRef({ count: 0, startedAt: 0 });
   const sharedSiteConfig = useSiteConfig();
   const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 50, reserveH5TabBar: true });
 
-  useDidShow(() => {
+  const loadMineData = useCallback(async () => {
     const loggedIn = useUserStore.getState().isLoggedIn;
     if (!loggedIn) {
       setOverview(defaultOverview);
+      setIsAdmin(false);
       return;
     }
 
-    // 登录态下进入页面时刷新一次后端用户信息（非阻塞）
-    refreshWxMe();
+    void refreshWxMe();
+    const [overviewResult, adminResult] = await Promise.allSettled([
+      fetchMemberOverview(),
+      fetchAdminIdentity(),
+    ]);
 
-    fetchMemberOverview()
-      .then((result) => setOverview(result))
-      .catch((error) => {
-        console.warn('[mine] overview load failed', error);
-      });
+    if (overviewResult.status === 'fulfilled') {
+      setOverview(overviewResult.value);
+    } else {
+      console.warn('[mine] overview load failed', overviewResult.reason);
+    }
+
+    if (adminResult.status === 'fulfilled') {
+      setIsAdmin(adminResult.value.isAdmin);
+    } else {
+      setIsAdmin(false);
+      console.warn('[mine] admin identity load failed', adminResult.reason);
+    }
+  }, [refreshWxMe]);
+
+  useDidShow(() => {
+    void loadMineData();
   });
 
-  const handleMenuClick = (item: (typeof menuItems)[number]) => {
+  const revealCurrentOpenid = useCallback(async () => {
+    if (!useUserStore.getState().isLoggedIn) {
+      Taro.showToast({ title: '请先登录后获取管理员 ID', icon: 'none' });
+      setLoginModalVisible(true);
+      return;
+    }
+
+    await refreshWxMe();
+    const openid = useUserStore.getState().user?.openid?.trim();
+    if (!openid) {
+      Taro.showToast({ title: '暂时无法获取 OpenID，请稍后重试', icon: 'none' });
+      return;
+    }
+
+    let result: Taro.showModal.SuccessCallbackResult;
+    try {
+      result = await Taro.showModal({
+        title: '当前小程序管理员 ID',
+        content: `${openid}\n\n这是当前微信账号在本小程序中的 OpenID，可复制后加入服务端管理员白名单。`,
+        confirmText: '复制 ID',
+        cancelText: '关闭',
+      });
+    } catch {
+      // H5 关闭原生确认框时会 reject；用户取消不需要额外提示。
+      return;
+    }
+    if (!result.confirm) return;
+
+    try {
+      await Taro.setClipboardData({ data: openid });
+      Taro.showToast({ title: '管理员 ID 已复制', icon: 'success' });
+    } catch (error) {
+      console.warn('[mine] copy openid failed', error);
+      Taro.showToast({ title: '复制失败，请长按 ID 手动复制', icon: 'none' });
+    }
+  }, [refreshWxMe]);
+
+  useTabItemTap(() => {
+    const now = Date.now();
+    const tapState = mineTabTapRef.current;
+    if (!tapState.startedAt || now - tapState.startedAt > MINE_TAB_REVEAL_WINDOW_MS) {
+      mineTabTapRef.current = { count: 1, startedAt: now };
+      return;
+    }
+
+    const nextCount = tapState.count + 1;
+    if (nextCount < 3) {
+      mineTabTapRef.current = { ...tapState, count: nextCount };
+      return;
+    }
+
+    mineTabTapRef.current = { count: 0, startedAt: 0 };
+    void revealCurrentOpenid();
+  });
+
+  const handleMenuClick = (item: MineMenuItem) => {
     if (item.requiresLogin && !isLoggedIn) {
       Taro.showToast({ title: '请先登录再查看', icon: 'none' });
       return;
     }
     Taro.navigateTo({ url: item.url });
   };
+
+  const visibleMenuItems = menuItems.reduce<MineMenuItem[]>((items, item) => {
+    if (item.wallOnly && !sharedSiteConfig.communityWallEnabled) {
+      return items;
+    }
+    items.push(item);
+    if (item.key === 'registrations' && isAdmin) {
+      items.push(adminMenuItem);
+    }
+    return items;
+  }, []);
 
   return (
     <ScrollView className={styles.container} style={viewportStyle} scrollY enableFlex>
@@ -108,7 +206,7 @@ const MinePage: React.FC = () => {
       </View>
 
       <View className={styles.menuList}>
-        {menuItems.filter((item) => !item.wallOnly || sharedSiteConfig.communityWallEnabled).map((item) => {
+        {visibleMenuItems.map((item) => {
           const MenuIcon = item.icon;
           return (
             <View key={item.key} className={styles.menuItem} onClick={() => handleMenuClick(item)}>
@@ -129,7 +227,10 @@ const MinePage: React.FC = () => {
       <WxLoginModal
         visible={loginModalVisible}
         onClose={() => setLoginModalVisible(false)}
-        onSuccess={() => setLoginModalVisible(false)}
+        onSuccess={() => {
+          setLoginModalVisible(false);
+          void loadMineData();
+        }}
       />
     </ScrollView>
   );
