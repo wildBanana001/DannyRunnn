@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import { initCloud } from '../cloud';
 import { cloudEnvId, cloudrunService } from '../cloud/config';
 import { createApiRequestError } from './apiError';
 
@@ -48,6 +49,9 @@ export async function cloudrunRequest<T>(options: CloudrunRequestOptions): Promi
     throw new Error('当前环境不支持微信云托管调用');
   }
 
+  // Page lifecycle hooks can run before App's passive effect. Initialize here as
+  // well so the first site-config request cannot race wx.cloud.init().
+  initCloud();
   const cloud = getCloudApi();
 
   Taro.showNavigationBarLoading();
@@ -82,6 +86,7 @@ export async function cloudrunBinaryRequest(path: string): Promise<ArrayBuffer> 
     throw new Error('当前环境不支持微信云托管资源请求');
   }
 
+  initCloud();
   const response = await getCloudApi().callContainer({
     config: { env: cloudEnvId },
     header: {
