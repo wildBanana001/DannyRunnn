@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, ScrollView, Text, View } from '@tarojs/components';
+import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
+import activityCoverFallback from '@/assets/home/hero-cover.jpg';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import {
   confirmActivityPayment,
@@ -106,7 +108,13 @@ const RegistrationDetailPage: React.FC = () => {
     <>
       <ScrollView className={styles.container} scrollY enableFlex>
         <View className={styles.heroCard}>
-          <Image className={styles.cover} src={activityCover} mode="aspectFill" />
+          <SafeImage
+            className={styles.cover}
+            src={activityCover}
+            fallbackSrc={activityCoverFallback}
+            fallbackDelayMs={1800}
+            mode="aspectFill"
+          />
           <View className={styles.heroBody}>
             <View className={styles.statusBadge} style={{ color: statusColor, backgroundColor: `${statusColor}18` }}>
               <Text>{getRegistrationStatusText(detail.status)}</Text>

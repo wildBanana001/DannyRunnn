@@ -1,15 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, Swiper, SwiperItem, Text, View } from '@tarojs/components';
-import Taro, { useRouter } from '@tarojs/taro';
+import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
 import avatarFallback from '@/assets/illustrations/avatar-frame.png';
-import type { Activity } from '@/types';
+import { fetchRegistrations } from '@/services/member';
+import type { Activity, Registration } from '@/types';
 import { formatDate, formatPrice, getActivityStatusText } from '@/utils/helpers';
 import styles from './index.module.scss';
+
+const REGISTERED_STATUSES = new Set<Registration['status']>(['paid', 'confirmed', 'completed']);
 
 const ActivityDetailPage: React.FC = () => {
   const router = useRouter();
@@ -17,6 +20,8 @@ const ActivityDetailPage: React.FC = () => {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [registrationLoading, setRegistrationLoading] = useState(true);
+  const [existingRegistration, setExistingRegistration] = useState<Registration | null>(null);
   const viewportStyle = useViewportLayout();
 
   const loadActivity = useCallback(async () => {
@@ -46,6 +51,32 @@ const ActivityDetailPage: React.FC = () => {
   useEffect(() => {
     void loadActivity();
   }, [loadActivity]);
+
+  const loadRegistrationState = useCallback(async () => {
+    if (!activityId) {
+      setExistingRegistration(null);
+      setRegistrationLoading(false);
+      return;
+    }
+
+    setRegistrationLoading(true);
+    try {
+      const registrations = await fetchRegistrations();
+      const activityRegistrations = registrations.filter((item) => item.activityId === activityId);
+      const registered = activityRegistrations.find((item) => REGISTERED_STATUSES.has(item.status));
+      const pending = activityRegistrations.find((item) => item.status === 'pending');
+      setExistingRegistration(registered ?? pending ?? null);
+    } catch (error) {
+      console.warn('[activity-detail] load registration state failed', error);
+      setExistingRegistration(null);
+    } finally {
+      setRegistrationLoading(false);
+    }
+  }, [activityId]);
+
+  useDidShow(() => {
+    void loadRegistrationState();
+  });
 
   const heroImages = useMemo(() => {
     if (!activity) return [];
@@ -92,7 +123,20 @@ const ActivityDetailPage: React.FC = () => {
 
   const isEnded = activity.status === 'ended';
   const isFull = activity.currentParticipants >= activity.maxParticipants;
-  const footerButtonText = isEnded ? '活动已结束' : isFull ? '名额已满' : '立即报名';
+  const isRegistered = Boolean(existingRegistration && REGISTERED_STATUSES.has(existingRegistration.status));
+  const hasPendingRegistration = existingRegistration?.status === 'pending';
+  const actionDisabled = registrationLoading || isRegistered || (!hasPendingRegistration && (isEnded || isFull));
+  const footerButtonText = registrationLoading
+    ? '正在查询报名状态'
+    : isRegistered
+      ? '已报名'
+      : hasPendingRegistration
+        ? '继续支付'
+        : isEnded
+          ? '活动已结束'
+          : isFull
+            ? '名额已满'
+            : '立即报名';
 
   const handlePreview = (current: string, urls: string[] = heroImages) => {
     if (!current) {
@@ -103,9 +147,18 @@ const ActivityDetailPage: React.FC = () => {
   };
 
   const handleSignup = () => {
-    if (isEnded || isFull) {
+    if (registrationLoading || isRegistered) {
       return;
     }
+
+    if (hasPendingRegistration && existingRegistration) {
+      Taro.navigateTo({
+        url: `/pages/content/registration-detail/index?id=${encodeURIComponent(existingRegistration.id)}`,
+      });
+      return;
+    }
+
+    if (isEnded || isFull) return;
 
     Taro.navigateTo({ url: `/pages/register/index?activityId=${activity.id}` });
   };
@@ -217,7 +270,7 @@ const ActivityDetailPage: React.FC = () => {
           <Text className={styles.footerPriceValue}>{formatPrice(activity.price)} / 人</Text>
         </View>
         <View className={styles.actionButtonWrap}>
-          <Button type={isEnded || isFull ? 'secondary' : 'primary'} size="large" block disabled={isEnded || isFull} onClick={handleSignup}>
+          <Button type={actionDisabled ? 'secondary' : 'primary'} size="large" block disabled={actionDisabled} onClick={handleSignup}>
             {footerButtonText}
           </Button>
         </View>

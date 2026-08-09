@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { Image, ScrollView, Text, View } from '@tarojs/components';
+import { ScrollView, Text, View } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import EmptyState from '@/components/EmptyState';
+import SafeImage from '@/components/SafeImage';
+import activityCoverFallback from '@/assets/home/hero-cover.jpg';
 import { fetchRegistrations } from '@/services/member';
 import type { Registration } from '@/types';
 import { formatDate, formatDateTime, getRegistrationStatusColor, getRegistrationStatusText } from '@/utils/helpers';
@@ -65,7 +67,14 @@ const MyRegistrationsPage: React.FC = () => {
                 onClick={() => Taro.navigateTo({ url: `/pages/content/registration-detail/index?id=${registration.id}` })}
               >
                 <View className={styles.coverWrap}>
-                  <Image className={styles.cover} src={activity?.cover || activity?.coverImage || registration.activityCover} mode="aspectFill" />
+                  <SafeImage
+                    className={styles.cover}
+                    src={activity?.cover || activity?.coverImage || registration.activityCover}
+                    fallbackSrc={activityCoverFallback}
+                    fallbackDelayMs={1800}
+                    mode="aspectFill"
+                    lazyLoad
+                  />
                 </View>
                 <View className={styles.body}>
                   <View className={styles.statusBadge} style={{ color: statusColor, backgroundColor: `${statusColor}1A` }}>
