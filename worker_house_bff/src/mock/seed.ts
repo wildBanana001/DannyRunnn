@@ -216,7 +216,7 @@ export const activitySeedData: ActivityRecord[] = [
     endTime: '20:00',
     location: sharedLocation,
     address: sharedAddress,
-    price: 178,
+    price: 0.01,
     originalPrice: 178,
     maxParticipants: 11,
     currentParticipants: 0,

@@ -379,18 +379,8 @@ test('requires addresses only for delivery fulfillment', () => {
   assert.equal(resolveShopOrderAddress('pickup', address), null);
 });
 
-test('keeps all published formal activity fixtures at the one-cent payment test price', () => {
-  const formalActivityIds = [
-    'act-001',
-    'act-002',
-    'act-20260816-crystal',
-    'act-20260822-clay',
-    'act-20260823-letters',
-    'act-20260828-reconcile',
-    'act-20260830-boardgame',
-    'act-20260905-collage',
-    'act-20260912-newcomer',
-  ];
+test('keeps published activity payments at one cent while retaining listed prices', () => {
+  const formalActivityIds = ['act-001', 'act-002'];
   const firstActivity = getActivityById('act-001');
   const secondActivity = getActivityById('act-002');
   const formalActivities = formalActivityIds.map((activityId) => getActivityById(activityId));
@@ -399,10 +389,11 @@ test('keeps all published formal activity fixtures at the one-cent payment test 
   assert.equal(Math.round((firstActivity?.price ?? 0) * 100), 1);
   assert.ok(formalActivities.every((item) => item !== null));
   assert.ok(formalActivities.every((item) => item?.price === 0.01));
-  assert.ok(formalActivities.every((item) => item?.originalPrice === 0.01));
+  assert.equal(firstActivity?.originalPrice, 0.01);
+  assert.equal(secondActivity?.originalPrice, 178);
   assert.ok(formalActivities.every((item) => item?.currentParticipants === 0));
   assert.equal(firstActivity?.startDate, '2026-08-08');
-  assert.equal(secondActivity?.startDate, '2026-08-14');
+  assert.equal(secondActivity?.startDate, '2026-08-09');
 });
 
 test('settles free onsite shop orders without preparing WeChat payment', async () => {

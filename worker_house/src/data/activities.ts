@@ -79,7 +79,7 @@ export const ongoingActivities: Activity[] = [
     startDate: '2026-08-09',
     startTime: '16:00',
     endTime: '20:00',
-    price: 178,
+    price: 0.01,
     originalPrice: 178,
     category: '小饭桌',
     tags: ['云贵川美食', '家宴', '桌游破冰'],

@@ -124,6 +124,9 @@ const ActivityDetailPage: React.FC = () => {
 
   const isEnded = activity.status === 'ended';
   const isFull = activity.currentParticipants >= activity.maxParticipants;
+  const isTestPaymentPrice = activity.price === 0.01
+    && Boolean(activity.originalPrice && activity.originalPrice > activity.price);
+  const displayPrice = isTestPaymentPrice ? activity.originalPrice! : activity.price;
   const isRegistered = Boolean(existingRegistration && REGISTERED_STATUSES.has(existingRegistration.status));
   const hasPendingRegistration = existingRegistration?.status === 'pending';
   const actionDisabled = registrationLoading || isRegistered || (!hasPendingRegistration && (isEnded || isFull));
@@ -217,8 +220,9 @@ const ActivityDetailPage: React.FC = () => {
 
             <View className={styles.infoRow}>
               <View className={styles.priceTag}>
-                <Text className={styles.priceTagText}>{formatPrice(activity.price)} / 人</Text>
+                <Text className={styles.priceTagText}>{formatPrice(displayPrice)} / 人</Text>
               </View>
+              {isTestPaymentPrice ? <Text className={styles.infoText}>体验支付 {formatPrice(activity.price)}</Text> : null}
               <Text className={styles.infoText}>已报名 {activity.currentParticipants}/{activity.maxParticipants} 人</Text>
               <Text className={styles.infoText}>{getActivityStatusText(activity.status)}</Text>
             </View>
@@ -268,7 +272,7 @@ const ActivityDetailPage: React.FC = () => {
       <View className={styles.actionBar}>
         <View className={styles.priceBlock}>
           <Text className={styles.footerPriceLabel}>活动价格</Text>
-          <Text className={styles.footerPriceValue}>{formatPrice(activity.price)} / 人</Text>
+          <Text className={styles.footerPriceValue}>{formatPrice(displayPrice)} / 人</Text>
         </View>
         <View className={styles.actionButtonWrap}>
           {actionDisabled ? (
