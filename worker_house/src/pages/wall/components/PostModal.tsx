@@ -36,7 +36,6 @@ const PostModal: React.FC<PostModalProps> = ({
 }) => {
   const [cachedPost, setCachedPost] = useState<Post | null>(post);
   const [cachedComments, setCachedComments] = useState<Comment[]>(comments);
-  const [scrollKey, setScrollKey] = useState(0);
 
   useEffect(() => {
     if (post) {
@@ -47,12 +46,6 @@ const PostModal: React.FC<PostModalProps> = ({
   useEffect(() => {
     setCachedComments(comments);
   }, [comments]);
-
-  useEffect(() => {
-    if (visible && post) {
-      setScrollKey((current) => current + 1);
-    }
-  }, [post, visible]);
 
   const currentPost = post ?? cachedPost;
   if (!currentPost) {
@@ -74,7 +67,7 @@ const PostModal: React.FC<PostModalProps> = ({
         </View>
       )}
     >
-      <ScrollView key={`${currentPost.id}-${scrollKey}`} className={styles.body} scrollY enableFlex>
+      <ScrollView key={currentPost.id} className={styles.body} scrollY enableFlex>
         <View className={styles.bodyInner}>
           <Text className={styles.date}>{formatDateTime(currentPost.createdAt)}</Text>
           <Text className={styles.title}>{currentPost.title}</Text>
@@ -83,7 +76,7 @@ const PostModal: React.FC<PostModalProps> = ({
             <View className={styles.images}>
               {currentPost.images.map((image, index) => (
                 <SafeImage
-                  key={image}
+                  key={`${currentPost.id}-image-${index}`}
                   className={styles.image}
                   src={image}
                   mode="aspectFill"

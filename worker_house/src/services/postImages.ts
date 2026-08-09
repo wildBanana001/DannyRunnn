@@ -200,6 +200,14 @@ export async function resolvePostListImageUrls(posts: Post[]) {
   return posts.map((post) => applyResolvedPostImageUrls(post, resolvedFileUrls));
 }
 
+export async function resolvePostDisplayImageUrls(post: Post): Promise<Post> {
+  const resolvedPost = await resolvePostImageUrls(post);
+  const resolvedUrls = normalizeUrls(resolvedPost.images);
+  const displayUrls = await resolvePreviewUrls(resolvedPost, resolvedUrls);
+
+  return displayUrls.length > 0 ? { ...resolvedPost, images: displayUrls } : resolvedPost;
+}
+
 export async function previewPostImage(post: Post, imageIndex: number) {
   let isLoading = false;
   try {
@@ -208,9 +216,8 @@ export async function previewPostImage(post: Post, imageIndex: number) {
       isLoading = true;
     }
 
-    const resolvedPost = await resolvePostImageUrls(post);
-    const resolvedUrls = normalizeUrls(resolvedPost.images);
-    const urls = await resolvePreviewUrls(post, resolvedUrls);
+    const resolvedPost = await resolvePostDisplayImageUrls(post);
+    const urls = normalizeUrls(resolvedPost.images);
     if (urls.length === 0) throw new Error('留言图片地址为空');
     const current = urls[Math.min(Math.max(imageIndex, 0), urls.length - 1)];
     if (isLoading) {

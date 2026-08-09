@@ -7,6 +7,7 @@ import CommunityWallUnavailable from '@/components/CommunityWallUnavailable';
 import Pressable from '@/components/Pressable';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
+import { resolvePostDisplayImageUrls } from '@/services/postImages';
 import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { Comment, Post } from '@/types/post';
 import { estimatePostHeight, getFixedTilt, matchPostKeyword } from '@/utils/helpers';
@@ -99,8 +100,24 @@ const WallPage: React.FC = () => {
     setCommentText('');
 
     try {
-      const postDetail = await fetchPostDetail(post.id);
-      setDetail((current) => (current?.post.id === post.id ? postDetail : current));
+      const [postDetail, displayPost] = await Promise.all([
+        fetchPostDetail(post.id),
+        resolvePostDisplayImageUrls(post),
+      ]);
+      setDetail((current) => {
+        if (current?.post.id !== post.id) return current;
+
+        return {
+          comments: postDetail.comments,
+          post: {
+            ...postDetail.post,
+            images: displayPost.images.length > 0 ? displayPost.images : current.post.images,
+            imageFileIds: displayPost.imageFileIds?.length
+              ? displayPost.imageFileIds
+              : postDetail.post.imageFileIds,
+          },
+        };
+      });
     } catch (error) {
       console.warn('[wall] 加载详情失败', error);
       Taro.showToast({ title: '留言详情加载失败', icon: 'none' });
