@@ -9,7 +9,6 @@ export interface WxLoginResult {
   openid: string;
   nickname: string;
   avatar: string;
-  isAdmin: boolean;
   isNew: boolean;
 }
 
@@ -36,7 +35,6 @@ export async function wxLogin(): Promise<WxLoginResult> {
       openid: MOCK_OPENID,
       nickname: user?.nickname ?? '',
       avatar: user?.avatar ?? '',
-      isAdmin: false,
       isNew: !user,
     };
   }

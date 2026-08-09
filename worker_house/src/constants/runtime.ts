@@ -7,5 +7,3 @@
 export const PAYMENT_API_MODE = 'cloudrun' as const; // 微信小程序固定使用真实云托管支付链路
 export const CLOUD_ENV_ID = 'prod-d9g991lo4dba5a4da';
 export const CLOUDRUN_SERVICE = 'worker-house-bff';
-// 支付联调期间新建活动的默认报名价；最终支付金额仍以服务端活动记录为准。
-export const DEFAULT_ACTIVITY_PRICE_YUAN = 0.01;

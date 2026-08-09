@@ -65,7 +65,6 @@ export interface User {
   phone?: string;
   wechatId?: string;
   openid?: string;
-  isAdmin?: boolean;
   isLoggedIn: boolean;
   createdAt?: string;
   updatedAt?: string;

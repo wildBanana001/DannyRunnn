@@ -2,13 +2,13 @@
 
 面向 worker_house 小程序 / BFF 的 monorepo 代码仓。
 
-> 注：旧 Web 管理后台 `worker_house_admin/` 已于重构中移除，管理能力已收敛到小程序原生管理分包 `pages/admin/*`。如需查阅历史代码，可回溯到标签 `refactor/before-p0`。
+> 注：旧 Web 管理后台和小程序原生管理分包均已移除。业务数据不在小程序内配置，统一通过受控数据库变更或 BFF 管理接口维护。如需查阅历史代码，可回溯到标签 `refactor/before-p0`。
 
 ## 子项目
 
 | 目录 | 说明 | 技术栈 |
 |---|---|---|
-| `worker_house/` | 微信小程序主端（C 端 + 原生管理分包 `pages/admin/*`） | Taro 4.1.9 + React 18 + TypeScript |
+| `worker_house/` | 微信小程序用户端（不包含管理与数据配置页面） | Taro 4.1.9 + React 18 + TypeScript |
 | `worker_house_bff/` | 微信云托管后端（BFF） | Express + TypeScript，部署环境 `prod-d9g991lo4dba5a4da` |
 
 小程序包含首页、活动、商城、留言墙和个人中心五个主入口；商城本地使用安全的模拟支付，生产支付配置见 `worker_house_bff/README.md`。

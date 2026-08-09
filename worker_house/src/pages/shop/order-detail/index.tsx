@@ -63,7 +63,7 @@ function getWechatShippingState(order: ShopOrder) {
   if (order.status !== 'paid' || order.mock || order.amount <= 0) return '';
   if (order.wechatShippingStatus === 'reported') return '微信订单履约状态已同步';
   if (order.wechatShippingStatus === 'reporting') return '微信订单履约状态同步中';
-  if (order.wechatShippingStatus === 'failed') return '交付记录已保存，微信状态等待管理员重试同步';
+  if (order.wechatShippingStatus === 'failed') return '交付记录已保存，微信状态等待工作人员处理';
   return '实际交付后同步微信订单履约状态';
 }
 

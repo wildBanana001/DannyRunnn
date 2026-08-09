@@ -1,4 +1,4 @@
-import { getPaymentApiMode, request, requestWithMode } from './request';
+import { getPaymentApiMode, requestWithMode } from './request';
 
 export interface HomeOwnerCard {
   id: string;
@@ -143,28 +143,4 @@ export async function fetchCommunitySiteConfig(): Promise<SiteConfigRecord> {
   } catch {
     return defaultSiteConfigRecord;
   }
-}
-
-export type SiteConfigUpdatePayload = Partial<Pick<SiteConfigRecord,
-  | 'aboutUs'
-  | 'communityQrcode'
-  | 'contactWechat'
-  | 'heroSlogan'
-  | 'heroTitle'
-  | 'homeCopyLead'
-  | 'homeCopyBody'
-  | 'homeChannelsFinder'
-  | 'homeOfficialAccountId'
-  | 'homeOfficialAccountName'
-  | 'homeSpaceImages'
-  | 'homeOwners'
->>;
-
-export async function updateCommunitySiteConfig(payload: SiteConfigUpdatePayload) {
-  const result = await request<SiteConfigRecord>({
-    data: payload,
-    method: 'PUT',
-    path: '/api/admin-mini/site-config',
-  });
-  return normalizeSiteConfigRecord(result);
 }

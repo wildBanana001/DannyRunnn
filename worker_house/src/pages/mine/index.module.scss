@@ -189,16 +189,6 @@
   font-weight: $font-weight-bold;
 }
 
-.adminEntryWrap {
-  padding: 8rpx 24rpx 0;
-  text-align: center;
-}
-
-.adminEntry {
-  font-size: $font-size-xs;
-  color: rgba(139, 115, 85, 0.72);
-}
-
 .bottomSpacing {
   height: calc(var(--app-safe-bottom, env(safe-area-inset-bottom)) + 40rpx);
 }

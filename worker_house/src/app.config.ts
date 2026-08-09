@@ -18,28 +18,6 @@ export default defineAppConfig({
   ],
   subPackages: [
     {
-      root: 'pages/admin',
-      pages: [
-        'index/index',
-        'activities/index',
-        'activity-edit/index',
-        'dashboard/index',
-        'posts/index',
-        'posters/index',
-        'poster-edit/index',
-        'site-config/index',
-        'stories/index',
-        'story-edit/index',
-        'registrations/index',
-        'registration-detail/index',
-        'card-orders/index',
-        'card-order-detail/index',
-        'card-packages/index',
-        'card-package-edit/index',
-        'shop-orders/index'
-      ],
-    },
-    {
       root: 'pages/content',
       pages: [
         'wall-publish/index',

@@ -5,9 +5,7 @@ import { ArrowRight, Articles, Coupon, Edit, Location, Order, Setting } from '@n
 import WxLoginModal from '@/components/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
 import { siteConfig } from '@/data/site';
-import { checkMiniAdmin } from '@/services/admin';
 import { fetchMemberOverview, type MemberOverview } from '@/services/member';
-import { getApiMode } from '@/services/request';
 import { useSiteConfig } from '@/shared/siteConfig';
 import { useUserStore } from '@/store/userStore';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
@@ -34,7 +32,6 @@ const defaultOverview: MemberOverview = {
 const MinePage: React.FC = () => {
   const { user, isLoggedIn, refreshWxMe } = useUserStore();
   const [overview, setOverview] = useState<MemberOverview>(defaultOverview);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [loginModalVisible, setLoginModalVisible] = useState(false);
   const sharedSiteConfig = useSiteConfig();
   const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 50, reserveH5TabBar: true });
@@ -43,21 +40,7 @@ const MinePage: React.FC = () => {
     const loggedIn = useUserStore.getState().isLoggedIn;
     if (!loggedIn) {
       setOverview(defaultOverview);
-      setIsAdmin(false);
       return;
-    }
-
-    // 管理员身份校验：只有命中 BFF 白名单（ADMIN_OPENID_WHITELIST）的 openid
-    // 才会把"管理员入口"渲染出来；未命中 / 未登录 / 接口失败都视为非管理员。
-    if (getApiMode() === 'mock') {
-      setIsAdmin(false);
-    } else {
-      checkMiniAdmin()
-        .then((result) => setIsAdmin(Boolean(result?.isAdmin)))
-        .catch((error) => {
-          console.warn('[mine] admin check failed', error);
-          setIsAdmin(false);
-        });
     }
 
     // 登录态下进入页面时刷新一次后端用户信息（非阻塞）
@@ -76,10 +59,6 @@ const MinePage: React.FC = () => {
       return;
     }
     Taro.navigateTo({ url: item.url });
-  };
-
-  const handleOpenAdmin = () => {
-    Taro.navigateTo({ url: '/pages/admin/index/index' });
   };
 
   return (
@@ -145,12 +124,6 @@ const MinePage: React.FC = () => {
           );
         })}
       </View>
-
-      {isAdmin ? (
-        <View className={styles.adminEntryWrap}>
-          <Text className={styles.adminEntry} onClick={handleOpenAdmin}>管理员入口</Text>
-        </View>
-      ) : null}
 
       <View className={styles.bottomSpacing} />
       <WxLoginModal
