@@ -1,5 +1,6 @@
 import { currentUser } from '@/data/users';
 import { ongoingActivities } from '@/data/activities';
+import { dinnerTableCoverImage } from '@/data/activity-assets';
 import { comments as mockComments, posts as mockPosts } from '@/data/posts';
 import { posters as mockPosters } from '@/data/posters';
 import { siteConfig as mockSiteConfig } from '@/data/site';
@@ -33,12 +34,28 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 let localPosts: Post[] = clone(mockPosts);
 let localComments: Comment[] = clone(mockComments);
 
-const normalizeActivity = (activity: Activity): Activity => ({
-  ...activity,
-  cover: activity.cover || activity.coverImage,
-  covers: activity.covers && activity.covers.length > 0 ? activity.covers : [activity.cover || activity.coverImage, ...(activity.gallery || [])],
-  cardEligible: activity.cardEligible ?? false
-});
+const localActivityCoverImages: Partial<Record<string, string>> = {
+  'act-002': dinnerTableCoverImage,
+};
+
+const normalizeActivity = (activity: Activity): Activity => {
+  const localCoverImage = localActivityCoverImages[activity.id];
+  const coverImage = localCoverImage || activity.cover || activity.coverImage;
+  const gallery = (activity.gallery || []).filter((item) => !item.startsWith('activity-asset://'));
+
+  return {
+    ...activity,
+    coverImage,
+    gallery,
+    cover: coverImage,
+    covers: localCoverImage
+      ? [coverImage, ...gallery]
+      : activity.covers && activity.covers.length > 0
+        ? activity.covers
+        : [coverImage, ...gallery],
+    cardEligible: activity.cardEligible ?? false,
+  };
+};
 
 const normalizePost = (post: Partial<Post> & Pick<Post, 'content' | 'authorId' | 'authorNickname' | 'createdAt' | 'updatedAt'>): Post => ({
   id: post.id || post._id || `post-${Date.now()}`,

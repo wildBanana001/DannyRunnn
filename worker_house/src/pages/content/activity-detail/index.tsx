@@ -10,6 +10,7 @@ import avatarFallback from '@/assets/illustrations/avatar-frame.png';
 import { fetchRegistrations } from '@/services/member';
 import type { Activity, Registration } from '@/types';
 import { formatDate, formatPrice, getActivityStatusText } from '@/utils/helpers';
+import { withLocalActivityDetailAssets } from './activity-assets';
 import styles from './index.module.scss';
 
 const REGISTERED_STATUSES = new Set<Registration['status']>(['paid', 'confirmed', 'completed']);
@@ -39,7 +40,7 @@ const ActivityDetailPage: React.FC = () => {
       if (detail.id !== activityId) {
         throw new Error('活动信息不匹配');
       }
-      setActivity(detail);
+      setActivity(withLocalActivityDetailAssets(detail));
     } catch (error) {
       setActivity(null);
       setErrorMessage(error instanceof Error ? error.message : '活动加载失败');

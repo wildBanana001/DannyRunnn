@@ -1,4 +1,5 @@
 import type { Activity, Host, Venue } from '@/types';
+import { dinnerTableCoverImage } from './activity-assets';
 import { wechatArticleImageUrls as images } from './wechat-images';
 
 const sharedHostId = 'host-orange';
@@ -24,7 +25,8 @@ type ActivitySeed = Pick<
   | 'requirements'
   | 'includes'
   | 'sort'
->;
+> &
+  Partial<Pick<Activity, 'price' | 'originalPrice' | 'maxParticipants' | 'cardEligible'>>;
 
 const buildActivity = (activity: ActivitySeed): Activity => ({
   ...activity,
@@ -32,9 +34,9 @@ const buildActivity = (activity: ActivitySeed): Activity => ({
   cover: activity.coverImage,
   covers: [activity.coverImage, ...activity.gallery],
   endDate: activity.startDate,
-  price: 0.01,
-  originalPrice: 0.01,
-  maxParticipants: 11,
+  price: activity.price ?? 0.01,
+  originalPrice: activity.originalPrice ?? activity.price ?? 0.01,
+  maxParticipants: activity.maxParticipants ?? 11,
   currentParticipants: 0,
   status: 'ongoing',
   hostId: sharedHostId,
@@ -45,7 +47,7 @@ const buildActivity = (activity: ActivitySeed): Activity => ({
   createdAt: '2026-08-05T02:00:00.000Z',
   updatedAt: '2026-08-09T12:23:53.000Z',
   enabled: true,
-  cardEligible: false,
+  cardEligible: activity.cardEligible ?? false,
 });
 
 export const ongoingActivities: Activity[] = [
@@ -68,19 +70,21 @@ export const ongoingActivities: Activity[] = [
   }),
   buildActivity({
     id: 'act-002',
-    title: 'Deeptalk｜幸福的奥义',
-    description: '从记忆里的幸福瞬间出发，重新定义什么才算“过得不错”。',
+    title: '社畜小饭桌｜云贵川美食荟萃',
+    description: '每月一次的小饭桌，用云贵川家宴、桌游和自酿山楂酒认识新朋友。',
     fullDescription:
-      '本场围绕个人对幸福的真实感受展开，从近期的幸福瞬间延展到工作、关系、家庭与自我照顾。现场设有轻量破冰、幸福时刻卡片、自由分享和互相回应环节，表达和分享均遵循自愿原则。',
-    coverImage: images.img08,
-    gallery: [images.img09],
-    startDate: '2026-08-14',
-    startTime: '19:30',
-    endTime: '23:00',
-    category: 'deeptalk',
-    tags: ['幸福感', '主题交流', '小组分享'],
-    requirements: ['允许慢热，不需要强行表达', '可带一件让你想起幸福的物品', '如不希望出镜请提前告知主理人'],
-    includes: ['活动名额', '主题引导与互动材料', '饮品与小食', '幸福时刻卡片'],
+      '每月一次的“社畜小饭桌”，希望用一张餐桌和美食拉近彼此的距离，像去朋友家聚会一样自然、放松、温暖。本期由主厨小九（新疆料理鼠王 / 厨王争霸赛冠军支持者）准备云贵川家宴，当天挑选新鲜食材并亲自下厨。菜单包含五常大米饭与手工粽、豆豉地摊火锅、泡椒藕带炒牛肉、藤椒手撕鸡、红三剁、老奶洋芋、蒜蓉炒通菜、傣味凉拌荷包蛋和花生莲藕鸡爪猪骨汤。饭前安排桌游破冰，流程为欢迎仪式、game time 和小饭桌；每人还可享一杯橙籽自酿半年熟山楂酒。',
+    coverImage: dinnerTableCoverImage,
+    gallery: [],
+    startDate: '2026-08-09',
+    startTime: '16:00',
+    endTime: '20:00',
+    price: 178,
+    originalPrice: 178,
+    category: '小饭桌',
+    tags: ['云贵川美食', '家宴', '桌游破冰'],
+    requirements: ['活动采用预约制，请报名成功后按时到场', '如有食物过敏或忌口，请提前联系主理人', '山楂酒含酒精，未成年人及不饮酒者可选择无酒精饮料'],
+    includes: ['预约制家宴门票', '一杯自酿山楂酒', '饮料与小食自助', '桌游带玩', '活动精彩瞬间记录'],
     sort: 2,
   }),
 ];
