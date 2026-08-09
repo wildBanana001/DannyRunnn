@@ -4,6 +4,7 @@ import { comments as mockComments, posts as mockPosts } from '@/data/posts';
 import { posters as mockPosters } from '@/data/posters';
 import { siteConfig as mockSiteConfig } from '@/data/site';
 import { request as apiRequest, getApiMode } from '@/services/request';
+import { resolvePostImageUrls, resolvePostListImageUrls } from '@/services/postImages';
 import { useUserStore } from '@/store/userStore';
 import type { Activity } from '@/types';
 import type { Comment, Post, PostCreateParams } from '@/types/post';
@@ -211,11 +212,12 @@ export async function fetchPostList(): Promise<Post[]> {
       return response.list;
     }
   );
-  return sortByCreatedDesc(data.map((item) => normalizePost(item)));
+  const normalizedPosts = sortByCreatedDesc(data.map((item) => normalizePost(item)));
+  return resolvePostListImageUrls(normalizedPosts);
 }
 
 export async function fetchPostDetail(id: string): Promise<PostDetailResult> {
-  return safeCall(
+  const detail = await safeCall(
     'post',
     { action: 'get', id },
     async () => {
@@ -231,11 +233,15 @@ export async function fetchPostDetail(id: string): Promise<PostDetailResult> {
     },
     async () => apiRequest<PostDetailResult>({ path: `/api/posts/${encodeURIComponent(id)}` })
   );
+  return {
+    ...detail,
+    post: await resolvePostImageUrls(normalizePost(detail.post)),
+  };
 }
 
 export async function createWallPost(payload: PostCreateParams): Promise<Post> {
   const author = getCurrentPostAuthor();
-  return safeCall(
+  const post = await safeCall(
     'post',
     {
       action: 'create',
@@ -276,10 +282,11 @@ export async function createWallPost(payload: PostCreateParams): Promise<Post> {
       path: '/api/posts',
     })
   );
+  return resolvePostImageUrls(normalizePost(post));
 }
 
 export async function likeWallPost(id: string, nextLiked: boolean): Promise<Post | null> {
-  return safeCall(
+  const post = await safeCall(
     'post',
     { action: 'like', id },
     async () => {
@@ -304,6 +311,7 @@ export async function likeWallPost(id: string, nextLiked: boolean): Promise<Post
       path: `/api/posts/${encodeURIComponent(id)}/like`,
     })
   );
+  return post ? resolvePostImageUrls(normalizePost(post)) : null;
 }
 
 export async function commentWallPost(postId: string, content: string): Promise<Comment> {

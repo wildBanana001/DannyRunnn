@@ -8,6 +8,7 @@ import SafeImage from '@/components/SafeImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import avatarFallback from '@/assets/illustrations/avatar-frame.png';
 import { commentWallPost, fetchPostDetail } from '@/cloud/services';
+import { previewPostImage } from '@/services/postImages';
 import { useCommunityWallFeature } from '@/shared/siteConfig';
 import type { Comment, Post } from '@/types/post';
 import { formatDateTime, getPostCommentCount, getRelativeTime } from '@/utils/helpers';
@@ -129,18 +130,13 @@ const PostDetailPage: React.FC = () => {
 
         {post.images.length > 0 && (
           <View className={styles.images}>
-            {post.images.map((image) => (
+            {post.images.map((image, index) => (
               <SafeImage
                 key={image}
                 className={styles.image}
                 src={image}
                 mode="aspectFill"
-                onClick={() => {
-                  Taro.previewImage({
-                    current: image,
-                    urls: post.images,
-                  });
-                }}
+                onClick={() => void previewPostImage(post, index)}
               />
             ))}
           </View>

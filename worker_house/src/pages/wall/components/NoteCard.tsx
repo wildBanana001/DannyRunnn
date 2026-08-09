@@ -1,8 +1,8 @@
 import React from 'react';
 import { Image, Text, View } from '@tarojs/components';
-import Taro from '@tarojs/taro';
 import { Heart } from '@nutui/icons-react-taro';
 import SafeImage from '@/components/SafeImage';
+import { previewPostImage } from '@/services/postImages';
 import type { Post } from '@/types/post';
 import { getPostCommentCount, getPostExcerpt, getRelativeTime } from '@/utils/helpers';
 import tapeImage from '@/assets/illustrations/tape.png';
@@ -35,10 +35,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ post, tilt, onClick, onLike }) => {
           mode="aspectFill"
           onClick={(event) => {
             event.stopPropagation();
-            Taro.previewImage({
-              current: post.images[0],
-              urls: post.images,
-            });
+            void previewPostImage(post, 0);
           }}
         />
       ) : null}

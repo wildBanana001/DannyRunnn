@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Input, ScrollView, Text, View } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import { Input, ScrollView, Text, View } from '@tarojs/components';
 import { Heart } from '@nutui/icons-react-taro';
 import Button from '@/components/Button';
 import BottomSheet from '@/components/BottomSheet';
+import SafeImage from '@/components/SafeImage';
+import { previewPostImage } from '@/services/postImages';
 import type { Comment, Post } from '@/types/post';
 import { formatDateTime, getPostCommentCount } from '@/utils/helpers';
 import styles from './post-modal.module.scss';
@@ -80,18 +81,13 @@ const PostModal: React.FC<PostModalProps> = ({
           <Text className={styles.content}>{currentPost.content}</Text>
           {currentPost.images.length > 0 && (
             <View className={styles.images}>
-              {currentPost.images.map((image) => (
-                <Image
+              {currentPost.images.map((image, index) => (
+                <SafeImage
                   key={image}
                   className={styles.image}
                   src={image}
                   mode="aspectFill"
-                  onClick={() => {
-                    Taro.previewImage({
-                      current: image,
-                      urls: currentPost.images,
-                    });
-                  }}
+                  onClick={() => void previewPostImage(currentPost, index)}
                 />
               ))}
             </View>

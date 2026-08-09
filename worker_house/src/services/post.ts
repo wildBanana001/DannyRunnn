@@ -1,6 +1,7 @@
 import { posts } from '@/data/posts';
 import { currentUser } from '@/data/users';
 import type { Post } from '@/types/post';
+import { resolvePostListImageUrls } from './postImages';
 import { getApiMode, request } from './request';
 
 interface ListResponse<T> {
@@ -15,9 +16,9 @@ const sortByCreatedDesc = (list: Post[]) => {
 
 export async function fetchMyPosts(): Promise<Post[]> {
   if (getApiMode() === 'mock') {
-    return sortByCreatedDesc(posts.filter((item) => item.authorId === currentUser.id));
+    return resolvePostListImageUrls(sortByCreatedDesc(posts.filter((item) => item.authorId === currentUser.id)));
   }
 
   const response = await request<ListResponse<Post>>({ path: '/api/posts/mine' });
-  return sortByCreatedDesc(response.data ?? response.list ?? []);
+  return resolvePostListImageUrls(sortByCreatedDesc(response.data ?? response.list ?? []));
 }
