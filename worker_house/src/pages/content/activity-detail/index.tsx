@@ -270,9 +270,15 @@ const ActivityDetailPage: React.FC = () => {
           <Text className={styles.footerPriceValue}>{formatPrice(activity.price)} / 人</Text>
         </View>
         <View className={styles.actionButtonWrap}>
-          <Button type={actionDisabled ? 'secondary' : 'primary'} size="large" block disabled={actionDisabled} onClick={handleSignup}>
-            {footerButtonText}
-          </Button>
+          {actionDisabled ? (
+            <View className={styles.actionStatus}>
+              <Text className={styles.actionStatusText}>{footerButtonText}</Text>
+            </View>
+          ) : (
+            <Button type="primary" size="large" block onClick={handleSignup}>
+              {footerButtonText}
+            </Button>
+          )}
         </View>
       </View>
     </View>
