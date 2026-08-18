@@ -1,5 +1,5 @@
 import { currentUser } from '@/data/users';
-import { ongoingActivities } from '@/data/activities';
+import { allActivities } from '@/data/activities';
 import { dinnerTableCoverImage } from '@/data/activity-assets';
 import { comments as mockComments, posts as mockPosts } from '@/data/posts';
 import { posters as mockPosters } from '@/data/posters';
@@ -10,6 +10,7 @@ import { useUserStore } from '@/store/userStore';
 import type { Activity } from '@/types';
 import type { Comment, Post, PostCreateParams } from '@/types/post';
 import type { Poster, SiteConfig } from '@/types/site';
+import { resolveActivityStatus, selectActivitiesByStatus } from '@/utils/activityStatus';
 import { buildPostTitle } from '@/utils/helpers';
 
 interface RegistrationPayload {
@@ -33,12 +34,13 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
 let localPosts: Post[] = clone(mockPosts);
 let localComments: Comment[] = clone(mockComments);
+let remoteActivityCatalogRequest: Promise<Activity[]> | null = null;
 
 const localActivityCoverImages: Partial<Record<string, string>> = {
   'act-002': dinnerTableCoverImage,
 };
 
-const normalizeActivity = (activity: Activity): Activity => {
+const normalizeActivity = (activity: Activity, now = Date.now()): Activity => {
   const localCoverImage = localActivityCoverImages[activity.id];
   const coverImage = localCoverImage || activity.cover || activity.coverImage;
   const gallery = (activity.gallery || []).filter((item) => !item.startsWith('activity-asset://'));
@@ -54,7 +56,40 @@ const normalizeActivity = (activity: Activity): Activity => {
         ? activity.covers
         : [coverImage, ...gallery],
     cardEligible: activity.cardEligible ?? false,
+    status: resolveActivityStatus(activity, now),
   };
+};
+
+const loadRemoteActivityCatalog = async (): Promise<Activity[]> => {
+  const pageSize = 100;
+  const catalog: Activity[] = [];
+  let page = 1;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (catalog.length < total) {
+    const response = await apiRequest<RemoteListResponse<Activity>>({
+      path: `/api/activities?page=${page}&pageSize=${pageSize}`,
+    });
+    const pageItems = Array.isArray(response.list) ? response.list : [];
+    catalog.push(...pageItems);
+    total = Number.isFinite(response.total) ? response.total : catalog.length;
+
+    if (pageItems.length === 0 || pageItems.length < pageSize) {
+      break;
+    }
+    page += 1;
+  }
+
+  return Array.from(new Map(catalog.map((activity) => [activity.id, activity])).values());
+};
+
+const fetchRemoteActivityCatalog = (): Promise<Activity[]> => {
+  if (!remoteActivityCatalogRequest) {
+    remoteActivityCatalogRequest = loadRemoteActivityCatalog().finally(() => {
+      remoteActivityCatalogRequest = null;
+    });
+  }
+  return remoteActivityCatalogRequest;
 };
 
 const normalizePost = (post: Partial<Post> & Pick<Post, 'content' | 'authorId' | 'authorNickname' | 'createdAt' | 'updatedAt'>): Post => ({
@@ -147,18 +182,18 @@ export async function fetchSiteConfig(): Promise<SiteConfig> {
 }
 
 export async function fetchActivities(status: 'ongoing' | 'ended'): Promise<Activity[]> {
+  const now = Date.now();
   const data = await safeCall(
     'activity',
     { action: 'list', status },
-    async () => (status === 'ongoing' ? ongoingActivities : []),
-    async () => {
-      const response = await apiRequest<RemoteListResponse<Activity>>({
-        path: `/api/activities?status=${encodeURIComponent(status)}`,
-      });
-      return response.list;
-    }
+    async () => allActivities,
+    fetchRemoteActivityCatalog,
   );
-  return data.map((item) => normalizeActivity(item));
+  return selectActivitiesByStatus(
+    data.map((item) => normalizeActivity(item, now)),
+    status,
+    now,
+  );
 }
 
 export async function fetchActivity(
@@ -168,7 +203,7 @@ export async function fetchActivity(
   const { fallbackToMock = true } = options;
 
   if (isMockMode()) {
-    const matchedActivity = ongoingActivities.find((activity) => activity.id === id);
+    const matchedActivity = allActivities.find((activity) => activity.id === id);
     return matchedActivity ? normalizeActivity(matchedActivity) : null;
   }
 
@@ -185,7 +220,7 @@ export async function fetchActivity(
   const activity = await safeCall(
     'activity',
     { action: 'get', id },
-    async () => ongoingActivities.find((activity) => activity.id === id) ?? null,
+    async () => allActivities.find((activity) => activity.id === id) ?? null,
     async () => apiRequest<Activity>({ path: `/api/activities/${encodeURIComponent(id)}` })
   );
   return activity ? normalizeActivity(activity) : null;

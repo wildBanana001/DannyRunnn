@@ -1,4 +1,5 @@
 import type { Activity, Host, Venue } from '@/types';
+import { resolveActivityStatus, selectActivitiesByStatus, type ActivityDisplayStatus } from '@/utils/activityStatus';
 import { dinnerTableCoverImage } from './activity-assets';
 import { wechatArticleImageUrls as images } from './wechat-images';
 
@@ -28,29 +29,37 @@ type ActivitySeed = Pick<
 > &
   Partial<Pick<Activity, 'price' | 'originalPrice' | 'maxParticipants' | 'cardEligible'>>;
 
-const buildActivity = (activity: ActivitySeed): Activity => ({
-  ...activity,
-  _id: activity.id,
-  cover: activity.coverImage,
-  covers: [activity.coverImage, ...activity.gallery],
-  endDate: activity.startDate,
-  price: activity.price ?? 0.01,
-  originalPrice: activity.originalPrice ?? activity.price ?? 0.01,
-  maxParticipants: activity.maxParticipants ?? 11,
-  currentParticipants: 0,
-  status: 'ongoing',
-  hostId: sharedHostId,
-  hostName: sharedHostName,
-  hostAvatar: sharedHostAvatar,
-  hostDescription: sharedHostDescription,
-  refundPolicy: sharedRefundPolicy,
-  createdAt: '2026-08-05T02:00:00.000Z',
-  updatedAt: '2026-08-09T12:23:53.000Z',
-  enabled: true,
-  cardEligible: activity.cardEligible ?? false,
-});
+const buildActivity = (activity: ActivitySeed): Activity => {
+  const endDate = activity.startDate;
 
-export const ongoingActivities: Activity[] = [
+  return {
+    ...activity,
+    _id: activity.id,
+    cover: activity.coverImage,
+    covers: [activity.coverImage, ...activity.gallery],
+    endDate,
+    price: activity.price ?? 0.01,
+    originalPrice: activity.originalPrice ?? activity.price ?? 0.01,
+    maxParticipants: activity.maxParticipants ?? 11,
+    currentParticipants: 0,
+    status: resolveActivityStatus({
+      startDate: activity.startDate,
+      endDate,
+      endTime: activity.endTime,
+    }),
+    hostId: sharedHostId,
+    hostName: sharedHostName,
+    hostAvatar: sharedHostAvatar,
+    hostDescription: sharedHostDescription,
+    refundPolicy: sharedRefundPolicy,
+    createdAt: '2026-08-05T02:00:00.000Z',
+    updatedAt: '2026-08-09T12:23:53.000Z',
+    enabled: true,
+    cardEligible: activity.cardEligible ?? false,
+  };
+};
+
+export const allActivities: Activity[] = [
   buildActivity({
     id: 'act-001',
     title: 'Deeptalk｜人生里的 N 种选择',
@@ -108,9 +117,15 @@ export const ongoingActivities: Activity[] = [
   }),
 ];
 
-export const featuredActivity: Activity = ongoingActivities[0];
+export const getLocalActivitiesByStatus = (
+  status: ActivityDisplayStatus,
+  now = Date.now(),
+): Activity[] => selectActivitiesByStatus(allActivities, status, now);
+
+// 保留旧导出供既有页面使用；实际列表每次读取时仍通过 getLocalActivitiesByStatus 重新分类。
+export const ongoingActivities: Activity[] = getLocalActivitiesByStatus('ongoing');
+export const featuredActivity: Activity = ongoingActivities[0] ?? allActivities[0];
 export const upcomingActivities: Activity[] = ongoingActivities;
-export const allActivities: Activity[] = ongoingActivities;
 
 export const hostInfo: Host = {
   id: sharedHostId,

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import { fetchActivities, fetchPosterList, fetchSiteConfig } from '@/cloud/services';
-import { ongoingActivities as activityFallback } from '@/data/activities';
+import { getLocalActivitiesByStatus } from '@/data/activities';
 import { homeLandingConfig, siteConfig as siteFallback, type HomeLandingConfig } from '@/data/site';
 import { posters as posterFallback } from '@/data/posters';
 import type { Activity } from '@/types';
@@ -16,14 +16,17 @@ const mergeSiteConfig = (site: SiteConfig): HomeLandingConfig => ({
 const OriginDetailPage: React.FC = () => {
   const [posters, setPosters] = useState(posterFallback);
   const [siteConfig, setSiteConfig] = useState<HomeLandingConfig>(mergeSiteConfig(siteFallback));
-  const [ongoingActivities, setOngoingActivities] = useState<Activity[]>(activityFallback);
+  const [ongoingActivities, setOngoingActivities] = useState<Activity[]>(() => (
+    getLocalActivitiesByStatus('ongoing')
+  ));
 
   useEffect(() => {
+    const activityFallback = getLocalActivitiesByStatus('ongoing');
     Promise.all([fetchPosterList(), fetchSiteConfig(), fetchActivities('ongoing')])
       .then(([posterList, site, activities]) => {
         setPosters(posterList.length > 0 ? posterList : posterFallback);
         setSiteConfig(mergeSiteConfig(site));
-        setOngoingActivities(activities.length > 0 ? activities : activityFallback);
+        setOngoingActivities(activities);
       })
       .catch(() => {
         setPosters(posterFallback);

@@ -9,7 +9,7 @@ import communityQrFallback from '@/assets/home/community-qr.jpg';
 import { fetchActivities, fetchPosterList } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
-import { ongoingActivities as activityFallback } from '@/data/activities';
+import { getLocalActivitiesByStatus } from '@/data/activities';
 import { homeLandingConfig } from '@/data/site';
 import { useSiteConfig } from '@/shared/siteConfig';
 import { getApiMode } from '@/services/request';
@@ -102,7 +102,9 @@ export const handleStoryTap = (story: { id: string; title?: string; sourceUrl?: 
 
 const HomePage: React.FC = () => {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [ongoingActivitiesState, setOngoingActivitiesState] = useState<Activity[]>(activityFallback);
+  const [ongoingActivitiesState, setOngoingActivitiesState] = useState<Activity[]>(() => (
+    getLocalActivitiesByStatus('ongoing')
+  ));
   const [posters, setPosters] = useState<Poster[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [heroRemoteFailed, setHeroRemoteFailed] = useState(false);
@@ -113,6 +115,7 @@ const HomePage: React.FC = () => {
   const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 34, reserveH5TabBar: true });
 
   const loadHomeData = useCallback(async () => {
+    const activityFallback = getLocalActivitiesByStatus('ongoing');
     const posterRequest = getApiMode() === 'mock' ? Promise.resolve([]) : fetchPosterList().catch(() => []);
     const [activities, posterList, storyList] = await Promise.all([
       fetchActivities('ongoing').catch(() => activityFallback),
@@ -120,7 +123,7 @@ const HomePage: React.FC = () => {
       fetchStories(3).catch(() => []),
     ]);
 
-    setOngoingActivitiesState(activities.length > 0 ? activities : activityFallback);
+    setOngoingActivitiesState(activities);
     setPosters(Array.isArray(posterList) ? posterList.filter((item) => item && item.coverImage) : []);
     setHeroRemoteFailed(false);
     setStories(Array.isArray(storyList) ? storyList : []);
