@@ -1,5 +1,70 @@
 [
   {
+    "id": "act-20260822-clay",
+    "title": "周末黏土手作体验",
+    "description": "制作相框、冰箱贴或小摆件，在轻松的周末完成一件自己的作品。",
+    "fullDescription": "活动先进行简短的作品示范和材料说明，再由参与者选择相框、冰箱贴或小摆件方向进行制作。老师会提供配色、造型和粘合指导，现场备有基础工具与材料，完成的作品可当日带走。",
+    "coverImage": "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-12.jpg",
+    "cover": "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-12.jpg",
+    "gallery": [
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-14.jpg",
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-15.jpg"
+    ],
+    "covers": [
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-12.jpg",
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-14.jpg",
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-15.jpg"
+    ],
+    "startDate": "2026-08-22",
+    "endDate": "2026-08-22",
+    "startTime": "14:30",
+    "endTime": "18:00",
+    "location": "深圳南山大新站 D 口附近的社畜快乐屋",
+    "address": "深圳市南山区大新地铁站 D 口附近（报名成功后发送详细门牌）",
+    "price": 148,
+    "originalPrice": 148,
+    "maxParticipants": 11,
+    "currentParticipants": 0,
+    "status": "ongoing",
+    "category": "手作体验",
+    "tags": [
+      "黏土 DIY",
+      "周末活动",
+      "零基础"
+    ],
+    "cardEligible": false,
+    "hostId": "host-orange",
+    "hostName": "橙子",
+    "hostAvatar": "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-24.jpg",
+    "hostDescription": "互联网大厂裸辞后徒手爆改 80m² 社畜快乐屋的 ENFJ 理想主义体验派。",
+    "venueName": "社畜快乐屋·深圳社交化客厅",
+    "venueDescription": "一间配有沙发客厅、手作长桌和投影设备的线下活动空间，可开展主题交流、手作体验与桌游活动。",
+    "venueImages": [
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-29.jpg",
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-30.jpg",
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-17.jpg",
+      "https://636c-cloudbase-d9ga2lft53663059b-1426048919.tcb.qcloud.la/worker-house/wechat-article/img-34.jpg"
+    ],
+    "requirements": [
+      "建议穿便于活动的衣服",
+      "活动材料按一人一份准备",
+      "如需制作指定造型可提前留言"
+    ],
+    "includes": [
+      "活动名额",
+      "黏土与基础配件",
+      "老师现场指导",
+      "饮品与小食",
+      "作品打包"
+    ],
+    "refundPolicy": "活动开始前 24 小时可申请全额退款；开始前 24 小时内可联系主理人改期一次；开始前 3 小时内及活动开始后不支持退款。若活动由主办方取消，将原路全额退款。",
+    "createdAt": "2026-08-05T02:00:00.000Z",
+    "updatedAt": "2026-08-05T02:00:00.000Z",
+    "enabled": true,
+    "sort": 4,
+    "signups": []
+  },
+  {
     "id": "act-002",
     "title": "社畜小饭桌｜云贵川美食荟萃",
     "description": "每月一次的小饭桌，用云贵川家宴、桌游和自酿山楂酒认识新朋友。",

@@ -87,6 +87,25 @@ export const ongoingActivities: Activity[] = [
     includes: ['预约制家宴门票', '一杯自酿山楂酒', '饮料与小食自助', '桌游带玩', '活动精彩瞬间记录'],
     sort: 2,
   }),
+  buildActivity({
+    id: 'act-20260822-clay',
+    title: '周末黏土手作体验',
+    description: '制作相框、冰箱贴或小摆件，在轻松的周末完成一件自己的作品。',
+    fullDescription:
+      '活动先进行简短的作品示范和材料说明，再由参与者选择相框、冰箱贴或小摆件方向进行制作。老师会提供配色、造型和粘合指导，现场备有基础工具与材料，完成的作品可当日带走。',
+    coverImage: images.img12,
+    gallery: [images.img14, images.img15],
+    startDate: '2026-08-22',
+    startTime: '14:30',
+    endTime: '18:00',
+    price: 148,
+    originalPrice: 148,
+    category: '手作体验',
+    tags: ['黏土 DIY', '周末活动', '零基础'],
+    requirements: ['建议穿便于活动的衣服', '活动材料按一人一份准备', '如需制作指定造型可提前留言'],
+    includes: ['活动名额', '黏土与基础配件', '老师现场指导', '饮品与小食', '作品打包'],
+    sort: 4,
+  }),
 ];
 
 export const featuredActivity: Activity = ongoingActivities[0];
@@ -100,7 +119,7 @@ export const hostInfo: Host = {
   description: '把客厅变成线下主题活动空间的主理人。',
   background:
     '橙子从互联网行业离职后改造了这间 80m² 的社畜快乐屋，希望用主题交流、手作与轻松游戏，让工作之外的真实相遇有一个稳定空间。',
-  activitiesCount: 2,
+  activitiesCount: 3,
   followersCount: 0,
 };
 

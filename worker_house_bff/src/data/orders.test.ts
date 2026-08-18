@@ -396,6 +396,14 @@ test('keeps published activity payments at one cent while retaining listed price
   assert.equal(secondActivity?.startDate, '2026-08-09');
 });
 
+test('keeps released client activity ids in the server payment catalog', () => {
+  const activity = getActivityById('act-20260822-clay');
+  assert.equal(activity?.title, '周末黏土手作体验');
+  assert.equal(activity?.startDate, '2026-08-22');
+  assert.equal(activity?.price, 148);
+  assert.equal(activity?.enabled, true);
+});
+
 test('settles free onsite shop orders without preparing WeChat payment', async () => {
   const timestamp = new Date().toISOString();
   const pendingOrder = await createOrder({

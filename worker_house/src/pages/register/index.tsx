@@ -6,13 +6,13 @@ import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
-import { fetchActivityDetail } from '@/cloud/services';
 import { calculateCardDeduction } from '@/data/mock-member';
 import {
   confirmActivityPayment,
   createActivityPaymentClientRequestId,
   fetchCurrentCardOrder,
   fetchProfiles,
+  fetchRegistrationActivity,
   isActivityPaymentCancelled,
   isDirectActivityPaymentEnabled,
   launchActivityPayment,
@@ -101,7 +101,7 @@ const RegisterPage: React.FC = () => {
     setActivityError('');
     setMemberError('');
     const [activityResult, memberResult] = await Promise.allSettled([
-      activityId ? fetchActivityDetail(activityId) : Promise.reject(new Error('缺少活动信息')),
+      activityId ? fetchRegistrationActivity(activityId) : Promise.reject(new Error('缺少活动信息')),
       refreshMemberData(),
     ]);
 

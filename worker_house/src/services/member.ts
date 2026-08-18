@@ -196,6 +196,26 @@ export async function fetchRegistrationDetail(id: string): Promise<Registration 
   return detail;
 }
 
+export async function fetchRegistrationActivity(activityId: string): Promise<Activity> {
+  const normalizedActivityId = activityId.trim();
+  if (!normalizedActivityId) {
+    throw new Error('缺少活动信息');
+  }
+
+  // 报名页必须与支付接口读取同一活动目录。否则旧版或 mock 内容仍可展示，
+  // 但真实支付服务已经没有对应活动时，会在下单阶段才返回 404。
+  const activity = isRegistrationMockMode()
+    ? await fetchActivity(normalizedActivityId)
+    : await registrationRequest<Activity>({
+        path: `/api/activities/${encodeURIComponent(normalizedActivityId)}`,
+      });
+
+  if (!activity || activity.id !== normalizedActivityId) {
+    throw new Error('活动不存在或已下架');
+  }
+  return activity;
+}
+
 export async function submitRegistrationOrder(payload: SubmitRegistrationPayload): Promise<ActivityPaymentSession> {
   assertRealPaymentRuntime();
 
