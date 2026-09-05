@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button as TaroButton, Input, Text, View, Image } from '@tarojs/components';
 import Button from '@/components/Button';
-import { siteConfig } from '@/data/site';
+import loginLogo from '@/assets/home/hero-cover.jpg';
+import { getMockLoginPreset } from '@/data/mock-member';
 import { getApiMode } from '@/services/request';
 import { useUserStore } from '@/store/userStore';
 import styles from './WxLoginModal.module.scss';
@@ -50,7 +51,8 @@ const WxLoginModal: React.FC<WxLoginModalProps> = ({ visible, onClose, onSuccess
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const loggedIn = await loginWithWx({ nickname: '体验用户', avatar: siteConfig.ownerAvatar });
+      const preset = getMockLoginPreset();
+      const loggedIn = await loginWithWx({ nickname: preset.nickname, avatar: preset.avatar });
       if (loggedIn && typeof onSuccess === 'function') {
         onSuccess();
       }
@@ -70,7 +72,7 @@ const WxLoginModal: React.FC<WxLoginModalProps> = ({ visible, onClose, onSuccess
       <View className={styles.modal} onClick={(event) => event.stopPropagation()}>
         <View className={styles.header}>
           <View className={styles.logoWrap}>
-            <Image className={styles.logo} src={siteConfig.ownerAvatar} mode="aspectFill" />
+            <Image className={styles.logo} src={loginLogo} mode="aspectFill" />
           </View>
           <View className={styles.headerText}>
             <Text className={styles.title}>{titleText}</Text>

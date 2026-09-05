@@ -4,6 +4,7 @@ import {
   getMysqlOrderStorageConfigurationIssues,
   migrateMysqlOrderStorage,
 } from '../data/mysql-orders.js';
+import { migrateMysqlCatalogStorage } from '../data/mysql-catalogs.js';
 
 if (config.shopOrderStorage !== 'mysql') {
   throw new Error('迁移前请设置 SHOP_ORDER_STORAGE=mysql');
@@ -16,7 +17,8 @@ if (issues.length > 0) {
 
 try {
   await migrateMysqlOrderStorage();
-  console.log('MySQL 订单表迁移完成');
+  await migrateMysqlCatalogStorage();
+  console.log('MySQL 订单表与活动/商品目录表迁移完成');
 } catch (error) {
   console.error(`MySQL 订单表迁移失败：${formatMysqlOrderStorageError(error)}`);
   process.exitCode = 1;

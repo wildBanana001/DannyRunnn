@@ -16,6 +16,7 @@
 
 ```text
 PR / push -> GitHub Actions -> npm ci -> TypeScript 编译
+                                -> 单测与真实 MySQL 集成测试（独立测试库）
                                 -> HTTP 冒烟测试
                                 -> Docker 镜像构建校验
 
@@ -25,6 +26,8 @@ push / merge to main -> 微信云托管 Webhook -> 拉取 worker_house_bff
 ```
 
 GitHub Actions 配置位于 `.github/workflows/bff-ci.yml`。CD 使用微信云托管官方 Git 自动部署，不需要在 GitHub 中存放腾讯云永久 SecretId / SecretKey。
+
+两条链路独立触发，CI 存在并不自动阻止失败版本部署。应先通过 PR 门禁与受保护分支合并，再触发生产发布。活动/商品首次切换到 MySQL 前，必须完成 [数据迁移与发布清单](../../worker_house/docs/release-next-steps.md)；不要直接推送 `main` 试跑 CI。
 
 ## 一次性开启 CD
 
@@ -68,19 +71,21 @@ ADMIN_OPENID_WHITELIST=<管理员 OpenID；多人用英文逗号分隔>
 
 如果服务变量中还残留 `SHOP_ORDER_STORAGE=cloudbase`，新版本会在启动时临时兼容为 `mysql` 并记录警告；部署稳定后请删除该旧变量，使用仓库清单中的 `SHOP_ORDER_STORAGE=mysql`。
 
-首次启用时必须等新版本完成部署并切换到 100% 流量，再设置 `ENABLE_SHOP=true`；不要在新旧实例分别写 CloudBase 与 MySQL 的滚动阶段提前开单。若旧版已经产生支付订单，应先暂停新单与支付回调，完成历史订单迁移和核对。
+首次启用时必须等新版本完成部署并切换到 100% 流量，再设置 `ENABLE_SHOP=true`；不要在新旧实例使用不同数据源的滚动阶段提前开单。若旧版已经产生支付订单，应先暂停新单，制定历史订单迁移和对账方案，并保留回调与查单；不能只关闭回调而没有补偿处理方案。
 
-本项目的 `container.config.json` 不声明 `ENABLE_SHOP` 或 `ENABLE_COMMUNITY_WALL`，两个开关都由云托管服务变量管理，自动部署不会覆盖控制台设置。支付联调期间，当前上架的瓶装饮用水和 6 款到店享用酒水统一为 ¥0.01，均按不限库存商品处理；如果后续新增限量商品，应先为商品补充独立的事务预占。
+本项目的 `container.config.json` 不声明 `ENABLE_SHOP` 或 `ENABLE_COMMUNITY_WALL`，两个开关都由云托管服务变量管理，自动部署不会覆盖控制台设置。仓库联调种子中的瓶装饮用水和 6 款到店享用酒水均为 ¥0.01、不限库存；线上实际配置必须读取 MySQL 核对，不能据此推断。有限库存商品通过 MySQL 商品库存锁按 `pending + paid` 订单数量原子预占，关闭或失败订单自动释放。
 
 ## 验证
 
 1. GitHub 的 `BFF CI` 工作流应绿灯通过。
 2. 云托管操作历史应出现对应 `main` commit 的新版本。
 3. `GET /health` 应返回 HTTP `200`。
-4. `GET /api/health` 在持久化数据源未就绪时预期返回 HTTP `503` 和 `configuration_required`；这不代表容器启动失败。
-5. 开启支付后，`GET /api/shop/readiness` 应返回 `ready=true`；小程序支付模式已在 `src/constants/runtime.ts` 固定为 `cloudrun`。
-6. 连续请求数次 `GET /api/shop/readiness`，确认 `orderStorage.ready` 始终为 `true`；若反复出现 `ECONNRESET`，优先核对数据库实例状态、生产内网地址以及服务的 VPC 网络配置。
+4. `MODE=cloudrun` 且 `ALLOW_EPHEMERAL_CLOUDRUN_DATA=false` 时，`GET /api/health` 预期返回 HTTP `503` 和 `configuration_required`，表示遗留文件型能力未开放，不代表容器或 MySQL 目录失败。
+5. 支付、履约与 MySQL 配置完成后，`GET /api/shop/readiness` 应返回 `ready=true`；商城开关关闭时也可以检查。正式小程序的 API/支付模式由构建配置决定，本项目 CI 显式使用 `cloudrun`。
+6. 核对 `GET /api/shop/readiness` 的存储、支付和履约状态，并实际读取活动/商品目录。readiness 的存储初始化结果会缓存，重复调用不能替代数据库实时探活；若目录请求出现 `ECONNRESET`，核对数据库实例状态、生产内网地址及 VPC 网络配置。
 7. `GET /api/site-config` 应返回与服务变量一致的 `communityWallEnabled`；设置 `ENABLE_COMMUNITY_WALL=true` 后重新进入首页即可看到留言墙入口。
+
+可使用 `BFF_BASE_URL=https://已确认的服务域名 npm run check:release -- --expect-shop=closed` 执行无交易验收；批准开单后改用 `--expect-shop=open`。该命令不创建订单、不改配置；自动迁移开启时，服务端 GET readiness 仍可能触发建表。详见发布清单中的使用条件与验收边界。
 
 ## 手动备用部署
 
@@ -99,9 +104,10 @@ tcb cloudrun deploy \
 
 ## 回滚
 
-1. 进入 `worker-house-bff` 的版本 / 流量管理。
-2. 将 100% 流量切回上一个已验证版本。
-3. 回滚代码后再合并到 `main`，让自动部署恢复到 Git 中的正确状态。
+1. 先暂停新单，保留支付回调与历史订单查询。
+2. 核对候选版本的数据源、目录差异、有限库存保护及新版已产生的订单。文件目录旧版本不能视为无条件安全回滚版本。
+3. 确认兼容性后再切换流量并对账；保持新增 MySQL 表和迁移标记，不删表、清空种子状态或用旧订单备份覆盖新订单。
+4. 将批准的回滚代码通过 PR 合并到 `main`，恢复 Git 与线上版本一致，完成验收后才恢复新单。
 
 ## 不触发时的排查顺序
 

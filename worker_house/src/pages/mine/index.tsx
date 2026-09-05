@@ -4,7 +4,7 @@ import Taro, { useDidShow, useTabItemTap } from '@tarojs/taro';
 import { ArrowRight, Articles, Coupon, Edit, Location, Order, Setting } from '@nutui/icons-react-taro';
 import WxLoginModal from '@/components/WxLoginModal';
 import SafeImage from '@/components/SafeImage';
-import { siteConfig } from '@/data/site';
+import { MEMBER_CARD_ENABLED } from '@/constants/capabilities';
 import { fetchMemberOverview, type MemberOverview } from '@/services/member';
 import { fetchAdminIdentity } from '@/services/adminFulfillment';
 import { useSiteConfig } from '@/shared/siteConfig';
@@ -157,6 +157,9 @@ const MinePage: React.FC = () => {
   };
 
   const visibleMenuItems = menuItems.reduce<MineMenuItem[]>((items, item) => {
+    if (item.key === 'cards' && !MEMBER_CARD_ENABLED) {
+      return items;
+    }
     if (item.wallOnly && !sharedSiteConfig.communityWallEnabled) {
       return items;
     }
@@ -177,7 +180,7 @@ const MinePage: React.FC = () => {
             <Image className={styles.avatarFrame} src={avatarFrame} mode="aspectFit" />
             <SafeImage
               className={styles.avatar}
-              src={user?.avatar || siteConfig.ownerAvatar || defaultAvatar}
+              src={user?.avatar || defaultAvatar}
               fallbackSrc={defaultAvatar}
               fallbackDelayMs={1800}
               mode="aspectFill"
@@ -188,7 +191,7 @@ const MinePage: React.FC = () => {
             <Text className={styles.tip}>
               {isLoggedIn
                 ? `默认档案：${overview.defaultProfileName || '还没创建'}，今晚也要给自己留一点松弛感。`
-                : '先登录，再把喜欢的活动、档案和次卡都留在这里。'}
+                : '先登录，再把喜欢的活动和报名记录留在这里。'}
             </Text>
           </View>
         </View>
@@ -207,10 +210,12 @@ const MinePage: React.FC = () => {
           <Text className={styles.statValue}>{overview.registrationsCount}</Text>
           <Text className={styles.statLabel}>报名</Text>
         </View>
-        <View className={styles.statItem}>
-          <Text className={styles.statValue}>{overview.remainingCardTimes}</Text>
-          <Text className={styles.statLabel}>次卡余量</Text>
-        </View>
+        {MEMBER_CARD_ENABLED ? (
+          <View className={styles.statItem}>
+            <Text className={styles.statValue}>{overview.remainingCardTimes}</Text>
+            <Text className={styles.statLabel}>次卡余量</Text>
+          </View>
+        ) : null}
       </View>
 
       <View className={styles.menuList}>

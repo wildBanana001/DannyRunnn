@@ -2,10 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseCardPurchaseRequest, resolveActiveCardPackageTerms, type CardPurchaseTerms } from './card-purchase.js';
 import { getCardPackageById } from './cardPackages.js';
 import { cardOrderSeedData } from './seed.js';
 import { clone, memoryStore, now } from './store.js';
-import { getProfileById, resolveProfileForRegistration } from './profiles.js';
+import { resolveProfileForRegistration } from './profiles.js';
 import type {
   CardOrder,
   CardOrderAdjustLog,
@@ -16,19 +17,6 @@ import type {
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const storageFilePath = path.join(currentDir, 'cardOrders.store.json');
-
-interface CreateCardOrderInput {
-  amount?: number;
-  cardType?: string;
-  expiresAt?: string;
-  packageId?: string;
-  perUseMaxOffset?: number;
-  profileId?: string;
-  totalCount?: number;
-  userNickname?: string;
-  userWechatName?: string;
-  validDays?: number;
-}
 
 interface ApplyCardUsageInput {
   activityId: string;
@@ -105,19 +93,15 @@ function sortOrders(list: CardOrder[]) {
   });
 }
 
-function resolveProfile(openid: string, profileId?: string) {
-  const profile = profileId ? getProfileById(openid, profileId) : resolveProfileForRegistration(openid);
+function resolveProfile(openid: string) {
+  const profile = resolveProfileForRegistration(openid);
   if (!profile) {
     throw new Error('请先创建用户档案');
   }
   return profile;
 }
 
-function buildExpiresAt(validDays?: number, fallbackExpiresAt?: string) {
-  const normalizedExpiresAt = sanitizeString(fallbackExpiresAt);
-  if (normalizedExpiresAt) {
-    return normalizedExpiresAt;
-  }
+function buildExpiresAt(validDays?: number) {
   if (!validDays || !Number.isFinite(validDays) || validDays <= 0) {
     return undefined;
   }
@@ -221,40 +205,27 @@ function isOrderUsable(order: CardOrder) {
   return resolveCardOrderStatus(order.status, order.remainingCount, order.expiresAt) === 'active' && order.remainingCount > 0;
 }
 
-function buildCardOrder(openid: string, profile: Profile, input: CreateCardOrderInput): CardOrder {
-  const matchedPackage = input.packageId ? getCardPackageById(sanitizeString(input.packageId)) : null;
-  const totalCount = Math.max(
-    1,
-    Math.floor(
-      sanitizeNumber(
-        input.totalCount,
-        matchedPackage?.totalCount ?? 10,
-      ),
-    ),
-  );
-  const amount = Math.max(0, sanitizeNumber(input.amount, matchedPackage?.price ?? totalCount * 99));
-  const perUseMaxOffset = Math.max(0, sanitizeNumber(input.perUseMaxOffset, matchedPackage?.perUseMaxOffset ?? 148));
-  const validDays = Math.max(0, Math.floor(sanitizeNumber(input.validDays, matchedPackage?.validDays ?? 0))) || undefined;
+function buildCardOrder(openid: string, profile: Profile, terms: CardPurchaseTerms): CardOrder {
   const timestamp = now();
 
   return normalizeCardOrder({
     id: createId('card'),
     openid,
     profileId: profile.id,
-    userNickname: sanitizeString(input.userNickname) || profile.nickname,
-    userWechatName: sanitizeString(input.userWechatName) || profile.wechatName,
-    cardType: sanitizeString(input.cardType) || matchedPackage?.name || `${totalCount} 次卡`,
-    totalCount,
+    userNickname: profile.nickname,
+    userWechatName: profile.wechatName,
+    cardType: terms.cardType,
+    totalCount: terms.totalCount,
     usedCount: 0,
-    remainingCount: totalCount,
-    amount,
+    remainingCount: terms.totalCount,
+    amount: terms.amount,
     purchasedAt: timestamp,
     status: 'active',
-    expiresAt: buildExpiresAt(validDays, input.expiresAt),
+    expiresAt: buildExpiresAt(terms.validDays),
     usageLogs: [],
-    packageId: matchedPackage?.id,
-    perUseMaxOffset,
-    validDays,
+    packageId: terms.packageId,
+    perUseMaxOffset: terms.perUseMaxOffset,
+    validDays: terms.validDays,
     adjustLogs: [],
   });
 }
@@ -307,10 +278,12 @@ export function findUsableCardOrder(openid: string, profileId: string, cardOrder
   return clone(usable[0] ? normalizeCardOrder(usable[0]) : null);
 }
 
-export function createCardOrder(openid: string, input: CreateCardOrderInput) {
+export function createCardOrder(openid: string, input: unknown) {
   loadCardOrders();
-  const profile = resolveProfile(openid, input.profileId);
-  const record = buildCardOrder(openid, profile, input);
+  const request = parseCardPurchaseRequest(input);
+  const terms = resolveActiveCardPackageTerms(getCardPackageById(request.packageId));
+  const profile = resolveProfile(openid);
+  const record = buildCardOrder(openid, profile, terms);
   memoryStore.cardOrders = sortOrders([record, ...memoryStore.cardOrders]);
   persistCardOrders();
   return clone(record);

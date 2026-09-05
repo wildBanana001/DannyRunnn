@@ -42,6 +42,10 @@ function formatDate(value: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function formatAmount(amount: number) {
+  return amount <= 0 ? '¥0.00' : `¥${(amount / 100).toFixed(2)}`;
+}
+
 function isMissingShopOrder(error: unknown) {
   if (error instanceof ApiRequestError) return error.statusCode === 404;
   return error instanceof Error && error.message === '订单不存在';
@@ -143,6 +147,7 @@ const ShopOrderDetailPage: React.FC = () => {
   }
 
   const shippingState = getWechatShippingState(order);
+  const productSubtotal = order.unitPrice * order.quantity;
   return (
     <ScrollView className={styles.container} scrollY enableFlex>
       <View className={styles.hero}>
@@ -163,8 +168,23 @@ const ShopOrderDetailPage: React.FC = () => {
         />
         <View className={styles.productInfo}>
           <Text className={styles.productName}>{order.productName}</Text>
-          <Text className={styles.meta}>数量：{order.quantity} {order.unitLabel}</Text>
+          <Text className={styles.meta}>单价 {formatAmount(order.unitPrice)} × {order.quantity} {order.unitLabel}</Text>
           <Text className={styles.amount}>{order.amount <= 0 ? '免费' : `¥${(order.amount / 100).toFixed(2)}`}</Text>
+        </View>
+      </View>
+
+      <View className={styles.detailCard}>
+        <View className={styles.detailRow}>
+          <Text className={styles.label}>商品小计</Text>
+          <Text className={styles.value}>{formatAmount(productSubtotal)}</Text>
+        </View>
+        <View className={styles.detailRow}>
+          <Text className={styles.label}>配送费</Text>
+          <Text className={styles.value}>{formatAmount(order.shippingFee)}</Text>
+        </View>
+        <View className={styles.detailRow}>
+          <Text className={styles.label}>订单合计</Text>
+          <Text className={styles.value}>{order.amount <= 0 ? '免费' : formatAmount(order.amount)}</Text>
         </View>
       </View>
 

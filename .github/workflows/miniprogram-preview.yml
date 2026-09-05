@@ -16,6 +16,7 @@ on:
       - "worker_house/babel.config.js"
       - "worker_house/tsconfig.json"
       - "worker_house/scripts/ci-upload.js"
+      - "worker_house/scripts/assert-production-bundle.cjs"
       - ".github/workflows/miniprogram-preview.yml"
   workflow_dispatch:
 
@@ -37,6 +38,8 @@ jobs:
     env:
       NO_PROXY: servicewechat.com
       TARO_APP_API_MODE: cloudrun
+      TARO_APP_CLOUD_ENV_ID: prod-d9g991lo4dba5a4da
+      TARO_APP_CLOUDRUN_SERVICE: worker-house-bff
       TARO_APP_BFF_BASE_URL: ${{ vars.TARO_APP_BFF_BASE_URL }}
       TARO_APP_FONT_ASSET_BASE_URL: ${{ vars.TARO_APP_FONT_ASSET_BASE_URL }}
       TARO_APP_SHOP_ASSET_BASE_URL: ${{ vars.TARO_APP_SHOP_ASSET_BASE_URL }}
@@ -67,8 +70,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run unit and contract tests
+        run: npm test
+
       - name: Build WeChat Mini Program
         run: npm run build:weapp
+
+      - name: Verify production bundle excludes local business seeds
+        run: npm run verify:production-bundle
 
       - name: Upload development version and generate preview QR
         env:

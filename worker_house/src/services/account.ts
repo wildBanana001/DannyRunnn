@@ -1,4 +1,5 @@
 import Taro from '@tarojs/taro';
+import { MOCK_PERSONAL_CACHE_KEYS } from '@/data/mock-member';
 import { getPaymentApiMode, requestWithMode } from './request';
 import { deleteTrackedPostImages } from './upload';
 
@@ -65,11 +66,8 @@ export class AccountDeletionCleanupError extends Error {
 
 const PERSONAL_STORAGE_KEYS = [
   'user',
-  'worker-house-mock-wx-user',
-  'worker-house-mock-addresses-v1',
-  'worker-house-mock-shop-orders-v2',
-  'worker-house-member-state-v5',
   'worker-house-post-file-ids:v1',
+  ...MOCK_PERSONAL_CACHE_KEYS,
 ] as const;
 
 export function fetchAccountDeletionPreview() {

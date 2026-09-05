@@ -5,12 +5,9 @@ import { ArrowRight } from '@nutui/icons-react-taro';
 import BottomSheet from '@/components/BottomSheet';
 import Pressable from '@/components/Pressable';
 import SafeImage from '@/components/SafeImage';
-import communityQrFallback from '@/assets/home/community-qr.jpg';
 import { fetchActivities, fetchPosterList } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
-import { getLocalActivitiesByStatus } from '@/data/activities';
-import { homeLandingConfig } from '@/data/site';
 import { useSiteConfig } from '@/shared/siteConfig';
 import { getApiMode } from '@/services/request';
 import { fetchStories } from '@/services/stories';
@@ -37,43 +34,23 @@ const TEXT_ASSETS = {
   shechuStories: require('@/assets/home/text/title-shechu-stories.png'),
   moreFun: require('@/assets/home/text/btn-more-fun.png'),
   owner: require('@/assets/home/text/title-owner.png'),
-  orangeLabel: require('@/assets/home/text/label-orange.png'),
-  xiaoheiLabel: require('@/assets/home/text/label-xiaohei.png'),
   letsParty: require('@/assets/home/text/badge-lets-party.png'),
 };
 
 // 默认内容大图直接走 CDN（项目已有），避免相对路径回落造成空白
 const HOME_ASSETS = {
-  hero: require('@/assets/home/hero-may.jpg'),
-  communityCollage: require('@/assets/home/hero-cover.jpg'),
+  hero: require('@/assets/home/space-room-v2.jpg'),
   spaceFallback: require('@/assets/home/space-room-v2.jpg'),
-  catFallback: require('@/assets/shop/product-stress-ball.jpg'),
   spark: require('@/assets/home/doodle-star.svg'),
   divider: require('@/assets/home/divider-more-activities.png'),
   april: require('@/assets/home/hero-cover.jpg'),
-  space: require('@/assets/home/space-room-v2.jpg'),
   stories: [
     { id: 'story-sanjiaozhu', title: '社畜x三脚猪', image: require('@/assets/home/hero-cover.jpg') },
     { id: 'story-mcdonald', title: '社畜x麦当劳', image: require('@/assets/home/space-room-v2.jpg') },
-    { id: 'story-need', title: '社畜xneed', image: require('@/assets/home/hero-may.jpg') },
+    { id: 'story-need', title: '社畜xneed', image: require('@/assets/home/space-room-v2.jpg') },
   ],
   text: TEXT_ASSETS,
 };
-
-const FALLBACK_OWNER_CARDS = [
-  {
-    id: 'owner-orange',
-    avatar: require('@/assets/home/hero-cover.jpg'),
-    label: '橙子',
-    description: '互联网大厂裸辞，正在探索新新人类生活方式，徒手爆改80m²社畜快乐屋，旅游狂热分子，enfj理想主义体验派！',
-  },
-  {
-    id: 'owner-cat',
-    avatar: require('@/assets/shop/product-stress-ball.jpg'),
-    label: '小黑',
-    description: '一只3岁的粘人奶牛猫，社畜团宠，一脸正义又娇憨可爱的黑猫警长，yes sir~',
-  },
-];
 
 interface StoryCardItem {
   id: string;
@@ -102,9 +79,7 @@ export const handleStoryTap = (story: { id: string; title?: string; sourceUrl?: 
 
 const HomePage: React.FC = () => {
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [ongoingActivitiesState, setOngoingActivitiesState] = useState<Activity[]>(() => (
-    getLocalActivitiesByStatus('ongoing')
-  ));
+  const [ongoingActivitiesState, setOngoingActivitiesState] = useState<Activity[]>([]);
   const [posters, setPosters] = useState<Poster[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [heroRemoteFailed, setHeroRemoteFailed] = useState(false);
@@ -115,13 +90,15 @@ const HomePage: React.FC = () => {
   const viewportStyle = useViewportLayout({ fallbackTopGapRpx: 34, reserveH5TabBar: true });
 
   const loadHomeData = useCallback(async () => {
-    const activityFallback = getLocalActivitiesByStatus('ongoing');
-    const posterRequest = getApiMode() === 'mock' ? Promise.resolve([]) : fetchPosterList().catch(() => []);
-    const [activities, posterList, storyList] = await Promise.all([
-      fetchActivities('ongoing').catch(() => activityFallback),
+    const posterRequest = getApiMode() === 'mock' ? Promise.resolve<Poster[]>([]) : fetchPosterList();
+    const [activityResult, posterResult, storyResult] = await Promise.allSettled([
+      fetchActivities('ongoing'),
       posterRequest,
-      fetchStories(3).catch(() => []),
+      fetchStories(3),
     ]);
+    const activities = activityResult.status === 'fulfilled' ? activityResult.value : [];
+    const posterList = posterResult.status === 'fulfilled' ? posterResult.value : [];
+    const storyList = storyResult.status === 'fulfilled' ? storyResult.value : [];
 
     setOngoingActivitiesState(activities);
     setPosters(Array.isArray(posterList) ? posterList.filter((item) => item && item.coverImage) : []);
@@ -135,10 +112,10 @@ const HomePage: React.FC = () => {
 
   useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
 
-  const communityQr = sharedSiteConfig?.communityQrcode || homeLandingConfig.communityQr || '';
-  const homeCopyLead = sharedSiteConfig?.homeCopyLead || 'Hiiii这里是社畜没有派对！';
-  const homeCopyBody = sharedSiteConfig?.homeCopyBody || '一个通过客厅建立有趣新人类社交方式的城市共居空间，这里为社交、文化、艺术、共创、女性友好住宿等一切创意活动无限开放';
-  const finderUserName = sharedSiteConfig?.homeChannelsFinder || 'sph_worker_house_demo';
+  const communityQr = sharedSiteConfig.communityQrcode;
+  const homeCopyLead = sharedSiteConfig.homeCopyLead;
+  const homeCopyBody = sharedSiteConfig.homeCopyBody;
+  const finderUserName = sharedSiteConfig.homeChannelsFinder;
   const moreActivities = useMemo(() => ongoingActivitiesState.slice(0, 2), [ongoingActivitiesState]);
 
   const heroSlides = useMemo(() => {
@@ -152,17 +129,10 @@ const HomePage: React.FC = () => {
   }, [posters]);
 
   const spaceImages = useMemo(() => {
-    const list = (sharedSiteConfig?.homeSpaceImages ?? []).filter((item) => typeof item === 'string' && item.length > 0);
-    return list.length > 0 ? list : [HOME_ASSETS.space];
-  }, [sharedSiteConfig?.homeSpaceImages]);
+    return sharedSiteConfig.homeSpaceImages.filter((item) => typeof item === 'string' && item.length > 0);
+  }, [sharedSiteConfig.homeSpaceImages]);
 
-  const ownerCards = useMemo(() => {
-    const list = sharedSiteConfig?.homeOwners ?? [];
-    if (Array.isArray(list) && list.length > 0) {
-      return list;
-    }
-    return FALLBACK_OWNER_CARDS;
-  }, [sharedSiteConfig?.homeOwners]);
+  const ownerCards = sharedSiteConfig.homeOwners;
 
   const storyCards: StoryCardItem[] = useMemo(() => {
     if (stories.length > 0) {
@@ -282,7 +252,7 @@ const HomePage: React.FC = () => {
                       className={styles.activityCard}
                       onClick={() => void Taro.navigateTo({ url: `/pages/content/activity-detail/index?id=${activity.id}` })}
                     >
-                      <SafeImage className={styles.activityThumb} src={activity.cover || activity.coverImage} fallbackSrc={HOME_ASSETS.communityCollage} fallbackDelayMs={1600} mode="aspectFill" lazyLoad />
+                      <SafeImage className={styles.activityThumb} src={activity.cover || activity.coverImage} fallbackSrc={HOME_ASSETS.spaceFallback} fallbackDelayMs={1600} mode="aspectFill" lazyLoad />
                       <View className={styles.activityContent}>
                         <Text className={styles.activityStatus}>招募中</Text>
                         <Text className={styles.activityTitle}>{activity.title}</Text>
@@ -331,9 +301,9 @@ const HomePage: React.FC = () => {
                     </SwiperItem>
                   ))}
                 </Swiper>
-              ) : (
+              ) : spaceImages.length === 1 ? (
                 <SafeImage className={styles.spaceImage} src={spaceImages[0]} fallbackSrc={HOME_ASSETS.spaceFallback} fallbackDelayMs={1800} mode="aspectFill" lazyLoad />
-              )}
+              ) : <View className={styles.emptyPanel}><Text className={styles.emptyText}>空间图片暂不可用，请稍后再试。</Text></View>}
             </View>
             <View className={styles.spaceIntroRow}>
               <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.spaceTitleImage} src={HOME_ASSETS.text.happyHouse} />
@@ -366,39 +336,24 @@ const HomePage: React.FC = () => {
             </View>
           </View>
 
-          <View className={`${styles.section} ${styles.ownersSection}`}>
-            <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.ownerTitleImage} src={HOME_ASSETS.text.owner} />
-            <View className={styles.ownerList}>
-              {ownerCards.map((owner, index) => (
-                <View key={owner.id} className={`${styles.ownerCard} ${index % 2 === 1 ? styles.ownerCardReverse : ''}`}>
-                  <View className={`${styles.ownerAvatar} ${index % 2 === 1 ? styles.ownerAvatarXiaohei : styles.ownerAvatarOrange}`}>
-                    <SafeImage
-                      className={styles.ownerAvatarImage}
-                      src={owner.avatar}
-                      fallbackSrc={index % 2 === 1 ? HOME_ASSETS.catFallback : HOME_ASSETS.communityCollage}
-                      fallbackDelayMs={1800}
-                      mode="aspectFill"
-                      lazyLoad
-                    />
+          {ownerCards.length > 0 ? (
+            <View className={`${styles.section} ${styles.ownersSection}`}>
+              <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.ownerTitleImage} src={HOME_ASSETS.text.owner} />
+              <View className={styles.ownerList}>
+                {ownerCards.map((owner, index) => (
+                  <View key={owner.id} className={`${styles.ownerCard} ${index % 2 === 1 ? styles.ownerCardReverse : ''}`}>
+                    <View className={`${styles.ownerAvatar} ${index % 2 === 1 ? styles.ownerAvatarXiaohei : styles.ownerAvatarOrange}`}>
+                      {owner.avatar ? <Image className={styles.ownerAvatarImage} src={owner.avatar} mode="aspectFill" lazyLoad /> : null}
+                    </View>
+                    <View className={styles.ownerBody}>
+                      {owner.label ? <Text className={styles.ownerLabelText}>{owner.label}</Text> : null}
+                      <Text className={styles.ownerDescription}>{owner.description}</Text>
+                    </View>
                   </View>
-                  <View className={styles.ownerBody}>
-                    {owner.label ? (
-                      index < 2 ? (
-                        <Image
-                          {...HOME_TEXT_IMAGE_PROPS}
-                          className={`${styles.ownerLabelImage} ${index % 2 === 1 ? styles.ownerLabelXiaohei : styles.ownerLabelOrange}`}
-                          src={index % 2 === 1 ? HOME_ASSETS.text.xiaoheiLabel : HOME_ASSETS.text.orangeLabel}
-                        />
-                      ) : (
-                        <Text className={styles.ownerLabelText}>{owner.label}</Text>
-                      )
-                    ) : null}
-                    <Text className={styles.ownerDescription}>{owner.description}</Text>
-                  </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
+          ) : null}
 
           <View className={styles.badgeSection}>
             <Image {...HOME_TEXT_IMAGE_PROPS} className={styles.badgeImage} src={HOME_ASSETS.text.letsParty} />
@@ -410,7 +365,9 @@ const HomePage: React.FC = () => {
         <View className={styles.communitySheet}>
           <Text className={styles.communityTitle}>加入社群</Text>
           <Text className={styles.communityText}>微信扫码加入群聊，活动开场、临时加场和夜谈通知都会在这里同步。</Text>
-          <SafeImage className={styles.communityQr} src={communityQr} fallbackSrc={communityQrFallback} mode="aspectFit" />
+          {communityQr
+            ? <Image className={styles.communityQr} src={communityQr} mode="aspectFit" />
+            : <Text className={styles.communityNote}>社群二维码暂不可用，请稍后再试。</Text>}
           <Text className={styles.communityNote}>真机扫码即可加入；若群码失效，可联系主理人更新。</Text>
         </View>
       </BottomSheet>

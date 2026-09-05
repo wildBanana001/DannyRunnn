@@ -155,6 +155,13 @@ $shop-accent: $color-brand;
   color: $color-text-primary;
 }
 
+.quantityHint {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: $color-text-secondary;
+}
+
 .quantityControl {
   display: flex;
   align-items: center;
@@ -170,6 +177,10 @@ $shop-accent: $color-brand;
   width: 68rpx;
   height: 58rpx;
   color: #5c493a;
+}
+
+.quantityButtonDisabled {
+  opacity: 0.28;
 }
 
 .quantityValue {

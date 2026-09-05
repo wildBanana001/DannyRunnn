@@ -4,8 +4,7 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
-import activityCoverFallback from '@/assets/home/hero-cover.jpg';
-import activityPosterFallback from '@/assets/home/hero-may.jpg';
+import activityImageFallback from '@/assets/home/space-room-v2.jpg';
 import { fetchActivities } from '@/cloud/services';
 import { useEnterAnimation } from '@/hooks/useEnterAnimation';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
@@ -113,7 +112,7 @@ const ActivityPage: React.FC = () => {
       ) : activeTab === 'ongoing' ? (
         ongoingList.length > 0 ? (
           <View className={styles.ongoingList} style={enterStyle}>
-            {ongoingList.map((activity, index) => {
+            {ongoingList.map((activity) => {
             const progress = getProgressPercent(
               activity.currentParticipants,
               activity.maxParticipants,
@@ -128,7 +127,7 @@ const ActivityPage: React.FC = () => {
                   <SafeImage
                     className={styles.ongoingCover}
                     src={activity.coverImage}
-                    fallbackSrc={index % 2 === 0 ? activityCoverFallback : activityPosterFallback}
+                    fallbackSrc={activityImageFallback}
                     mode="aspectFill"
                     fallbackDelayMs={2200}
                   />
@@ -175,7 +174,7 @@ const ActivityPage: React.FC = () => {
                     <SafeImage
                       className={styles.endedThumb}
                       src={activity.coverImage}
-                      fallbackSrc={activityCoverFallback}
+                      fallbackSrc={activityImageFallback}
                       mode="aspectFill"
                       fallbackDelayMs={2200}
                     />

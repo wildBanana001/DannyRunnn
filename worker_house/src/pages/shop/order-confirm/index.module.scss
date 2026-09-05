@@ -174,7 +174,8 @@ $shop-accent: $color-brand;
 }
 
 .productName,
-.productMeta {
+.productMeta,
+.quantityHint {
   display: block;
 }
 
@@ -189,6 +190,12 @@ $shop-accent: $color-brand;
   margin-top: 8rpx;
   font-size: 23rpx;
   color: #8d7b6d;
+}
+
+.quantityHint {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: $color-text-secondary;
 }
 
 .quantityControl {
@@ -209,11 +216,41 @@ $shop-accent: $color-brand;
   color: #5d4939;
 }
 
+.quantityButtonDisabled {
+  opacity: 0.28;
+}
+
 .quantityValue {
   min-width: 38rpx;
   text-align: center;
   font-size: 24rpx;
   font-weight: $font-weight-bold;
+}
+
+.pricingSummary {
+  margin-top: 22rpx;
+  padding-top: 18rpx;
+  border-top: 2rpx solid $color-divider;
+}
+
+.pricingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  & + & {
+    margin-top: 12rpx;
+  }
+}
+
+.pricingLabel,
+.pricingValue {
+  font-size: 23rpx;
+  color: $color-text-secondary;
+}
+
+.pricingValue {
+  color: $color-text-primary;
 }
 
 .remarkRow {

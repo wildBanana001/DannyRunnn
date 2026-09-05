@@ -43,7 +43,7 @@ BFF 会先通过微信开放平台接口获取 `access_token`，再调用：
 
 - 通过 `X-WX-OPENID / X-WX-UNIONID / X-WX-APPID / X-WX-SOURCE / X-WX-FROM-OPENID` 读取微信自动注入身份
 - `GET /health` 是容器存活检查；`GET /api/health` 反映业务配置是否就绪，并单独返回留言墙 CloudBase 存储状态
-- 商城订单和活动报名支付单共用微信云托管内置 MySQL，并通过 `kind` 字段隔离；不依赖 CloudBase 文档库或 `CLOUDBASE_APIKEY`
+- 商城订单、活动报名支付单、活动目录和商品目录均持久化到微信云托管内置 MySQL；不依赖 CloudBase 文档库或 `CLOUDBASE_APIKEY`
 - 留言墙直接使用 `CLOUD_APP_ID / CLOUD_APP_SECRET / CLOUD_ENV_ID` 访问同环境的 `posts`、`comments` 集合和云存储，不再依赖 `post` 云函数
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA=true` 只用于临时联调，商城与活动支付均不依赖该开关
 
@@ -79,7 +79,7 @@ PORT=4000
 - `CLOUD_ADMIN_SERVICE_TOKEN`：BFF 调用仍保留的管理云函数（例如海报管理）所用的独立高强度 Secret；生产环境必须在 BFF 与对应云函数中配置同一个值，禁止提交到 Git。帖子接口不再使用该令牌
 - `ALLOW_EPHEMERAL_CLOUDRUN_DATA`：仅允许云托管联调时使用临时文件存储，默认 `false`
 - `ENABLE_COMMUNITY_WALL`：留言墙展示开关，只有显式设置为 `true` 时，小程序才展示首页和“我的”页入口；默认关闭。该值由 `GET /api/site-config` 下发，修改服务变量后无需修改小程序代码
-- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。支付联调期间，当前上架的瓶装饮用水和 6 款到店享用酒水统一为 ¥0.01，均按不限库存商品处理；有限名额活动通过 MySQL 行锁与事务原子占位。
+- `ENABLE_SHOP`：请在云托管控制台单独维护的 BFF 服务级商城/活动支付开关；仓库的容器清单不声明该变量，避免自动部署覆盖控制台设置。仓库联调种子中的瓶装饮用水和 6 款到店享用酒水均为 ¥0.01、不限库存，线上实际配置以 MySQL 为准；有限名额活动通过 MySQL 行锁与事务原子占位。
 - `SHOP_ORDER_STORAGE`：云托管默认 `mysql`；`file` 只用于本地或临时联调。已确认旧库无真实订单后，线上遗留值 `cloudbase` 会临时兼容为 `mysql` 并输出警告；仍应从云托管服务变量中删除该旧值
 - `MYSQL_ADDRESS / MYSQL_USERNAME / MYSQL_PASSWORD`：微信云托管 MySQL 的内网地址、用户名和密码；密码只放服务 Secret，禁止提交到 Git。也支持 `DB_HOST / DB_PORT / DB_USER / DB_PASSWORD` 或完整 `CONNECTION_URI`
 - 生产环境应使用 MySQL 直连服务的内网地址；如果数据库控制台要求 VPC，必须同时在 `worker-house-bff` 服务的网络配置中开启私有网络并选择数据库所在 VPC。仅填写内网地址不能替代网络连通配置，详见 [MySQL 数据库集成](https://docs.cloudbase.net/run/develop/resource-integration/mysql) 与 [直连服务](https://docs.cloudbase.net/database/configuration/db/tdsql/direct-connection)
@@ -183,12 +183,18 @@ npm run migrate-images
 
 商城商品目录：
 
-- `GET /api/shop/products`：下发当前上架商品；商品名称、价格、图片、描述、标签、酒精度、容量和履约方式都由服务端返回
+- `GET /api/shop/products`：下发当前上架商品；商品名称、价格、运费、数量限制、库存、图片、描述、标签、酒精度、容量和履约方式都由服务端返回
 - `GET /api/shop/products/:id`：下发单个上架商品，商品下架后返回 `404`
-- `src/data/shop.store.json` 是唯一商品目录数据源。修改并部署 BFF 即可更新商城，无需修改或重新发布小程序
-- `enabled=false` 的商品会保留在服务端供历史订单对账，但不会出现在商城列表中；支付金额始终以服务端当前价格为准
+- `cloudrun + SHOP_ORDER_STORAGE=mysql` 下，`worker_house_shop_products` 是生产商品目录；`src/data/shop.store.json` 只在数据库首次初始化时作为种子，本地 `mock/file` 模式继续直接读取该文件
+- `shippingFee / minQuantity / maxQuantity / stock` 必须由服务端商品目录显式配置；`stock=null` 表示不限库存。有限库存商品在 MySQL 事务内按商品串行预占 `pending + paid` 数量，关闭或失败的订单自动释放；列表与详情返回扣除预占后的可售剩余。下单与重试仍会由服务端复核，并按“单价 × 数量 + 单笔运费”核价，客户端不能传入或覆盖价格/库存
+- `enabled=false` 的商品会保留在服务端供历史订单对账，但不会出现在商城列表中；支付金额始终以 MySQL 当前商品配置为准
 - `imageUrl` 可使用 HTTPS / `cloud://` 地址，也可使用 BFF `public/images/shop/` 下的 `/static/images/shop/...` 相对路径
-- 原酒单的 6 款特调均保存在 `src/data/shop.store.json`，以 `category=cocktail` 分组展示；上下架和内容更新只需部署 BFF
+
+活动目录：
+
+- `cloudrun + SHOP_ORDER_STORAGE=mysql` 下，公开活动列表/详情、管理端活动 CRUD 和支付核价均读取 `worker_house_activities`
+- `src/data/activities.store.json` 只在数据库首次初始化时作为种子，本地 `mock/file` 模式继续用作可写数据文件；生产 CRUD 不写容器文件
+- `/static/images/activities/dinner-table/...` 是 `act-002` 晚餐局详情图的 BFF 公网静态路径，不再依赖小程序私有资源协议
 
 远程功能开关：
 
@@ -197,7 +203,7 @@ npm run migrate-images
 
 活动报名支付接口：
 
-- `POST /api/shop/activity-registrations/pay`：按服务端活动价格创建报名支付单；支付联调期间当前正式活动统一为 ¥0.01
+- `POST /api/shop/activity-registrations/pay`：按服务端活动价格创建报名支付单；本轮仓库种子按要求统一为 ¥0.01 验收价，已有 MySQL 目录不会因种子变动而自动调价，正式价格需验收后另行确认
 - `GET /api/shop/activity-registrations/mine`：读取当前用户的报名记录
 - `GET /api/shop/activity-registrations/:id`：查单并返回服务端确认后的报名状态
 - `POST /api/shop/activity-registrations/:id/retry`：继续支付未过期的报名单
@@ -219,7 +225,7 @@ npm run migrate-images
 {
   "status": "configuration_required",
   "mode": "cloudrun",
-  "persistence": "mysql-orders+bundled-content",
+  "persistence": "mysql-orders+catalogs",
   "shop": {
     "enabled": false,
     "payment": "configuration_required",
@@ -331,9 +337,9 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 
 1. 在微信公众平台开通云托管并创建服务
 2. 获取环境 ID（例如 `prod-xxxx`）
-3. 确认 `worker_house/src/constants/runtime.ts` 中的支付模式为 `cloudrun`；商城和活动报名支付会一起启用，其他模块可继续保持 `TARO_APP_API_MODE=mock`
+3. 正式微信小程序必须显式使用 `TARO_APP_API_MODE=cloudrun`（或已配置的 `bff`），不得让其他业务模块继续使用 `mock`；生产构建会执行模式校验和本地业务种子扫描
 4. 使用生产内网地址连接 MySQL；若该数据库要求 VPC，在云托管服务网络配置中选择数据库所在 VPC
-5. 确认 `/api/shop/readiness` 返回支付配置与 MySQL 订单库均为 `ready=true`
+5. 确认 `/api/shop/readiness` 返回支付、履约配置与 MySQL 订单库均为 `ready=true`，另行核对活动/商品目录
 6. 将 `worker_house_bff` 按 `Dockerfile + container.config.json` 部署到同一云托管环境
 7. 重启服务并验证 `/api/health` 与小程序写接口
 
@@ -357,6 +363,9 @@ TARO_APP_BFF_BASE_URL=https://your-bff-domain
 
 ## 已知限制
 
-- 商城订单与活动报名已支持云托管 MySQL 持久化；其余仍使用文件存储的 BFF 写接口会继续被默认安全门禁阻止
+- 商城订单、活动报名、活动目录与商品目录已支持云托管 MySQL 持久化；其余仍使用文件存储的 BFF 写接口会继续被默认安全门禁阻止
 - `wechat` 模式下，BFF 仍依赖 `CLOUD_APP_ID / CLOUD_APP_SECRET / CLOUD_ENV_ID`
 - MySQL 首次创建和表初始化由云托管流水线 SQL 或 `MYSQL_AUTO_MIGRATE=true` 完成
+- 商品目录当前只有生产读取链路，尚无管理端商品 CRUD；首次种子完成后应通过受控 SQL 或后续运营工具维护 MySQL，重新部署 `shop.store.json` 不会覆盖线上商品
+- 商品 `stock` 通过 `worker_house_shop_stock_locks` 与订单事务原子预占；`pending / paid` 占用库存，`closed / failed` 自动释放，`stock=null` 不限库存。这里实现的是订单预占口径，不是独立仓储系统的出入库流水；有限名额活动继续使用活动行锁事务原子占位
+- 已释放订单若收到迟到的微信支付成功回调，会在同一商品锁下重新占位；若容量已被替代订单占满，则按安全优先返回失败并记录 `inventory_reconciliation_required`，必须人工核对支付并退款或补货后处理，系统不会静默超卖

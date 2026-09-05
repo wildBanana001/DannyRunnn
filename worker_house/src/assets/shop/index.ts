@@ -1,2 +1,2 @@
-// 仅用于远程图片加载失败时的通用占位，不再按商品 ID 内置商品图。
-export const shopProductPlaceholder = require('./product-water.jpg');
+// Neutral UI fallback only. Real product images must come from the BFF catalog.
+export const shopProductPlaceholder = require('../illustrations/envelope.png');

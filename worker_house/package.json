@@ -11,7 +11,15 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit --pretty false",
+    "test": "npm run test:activity-status && npm run test:api-mode && npm run test:activity-fallbacks && npm run test:member-card-safety && npm run test:remote-safe-bundle && npm run test:production-mock-site-safety && npm run test:shop-contract",
     "test:activity-status": "node --require ts-node/register --test tests/activity-status.test.cjs",
+    "test:api-mode": "node --require ts-node/register --test tests/api-mode.test.cjs",
+    "test:activity-fallbacks": "node --test tests/activity-fallbacks.test.cjs",
+    "test:member-card-safety": "node --test tests/member-card-safety.test.cjs",
+    "test:remote-safe-bundle": "node --test tests/remote-safe-bundle.test.cjs",
+    "test:production-mock-site-safety": "node --test tests/production-mock-site-safety.test.cjs",
+    "test:shop-contract": "node --test tests/shop-contract.test.cjs",
+    "verify:production-bundle": "node scripts/assert-production-bundle.cjs",
     "icons:tabbar": "node scripts/generate-tabbar-icons.cjs",
     "build:weapp": "npm run typecheck && taro build --type weapp --no-check",
     "ci:weapp": "node scripts/ci-upload.js all",
@@ -91,7 +99,6 @@
     "sharp": "^0.34.5",
     "stylelint": "^14.4.0",
     "ts-node": "^10.9.1",
-    "tsconfig-paths-webpack-plugin": "^4.0.1",
     "tt-ide-cli": "^0.1.31",
     "typescript": "^5.1.0",
     "webpack": "5.91.0"

@@ -2,7 +2,7 @@
 
 面向 worker_house 小程序 / BFF 的 monorepo 代码仓。
 
-> 注：旧 Web 管理后台和小程序原生管理分包均已移除。业务数据不在小程序内配置，统一通过受控数据库变更或 BFF 管理接口维护。如需查阅历史代码，可回溯到标签 `refactor/before-p0`。
+> 注：旧 Web 管理后台和小程序原生管理分包均已移除。正式小程序只通过 BFF 获取业务数据；仓库内的前端 mock 仅供显式 `mock` 开发构建使用，并由生产构建 alias 与产物扫描双重隔离。如需查阅历史代码，可回溯到标签 `refactor/before-p0`。
 
 ## 子项目
 
@@ -11,22 +11,32 @@
 | `worker_house/` | 微信小程序用户端（不包含管理与数据配置页面） | Taro 4.1.9 + React 18 + TypeScript |
 | `worker_house_bff/` | 微信云托管后端（BFF） | Express + TypeScript，部署环境 `prod-d9g991lo4dba5a4da` |
 
-小程序包含首页、活动、商城、留言墙和个人中心五个主入口；商城本地使用安全的模拟支付，生产支付配置见 `worker_house_bff/README.md`。
+小程序底部包含首页、活动、商城和“我的”四个 Tab；留言墙是由服务端开关控制的内容页。商城本地使用安全的模拟支付，生产支付配置见 `worker_house_bff/README.md`。
+
+项目目录、页面分包、接口链路及数据归属详见 `worker_house/docs/architecture-and-data-sources.md`。
 
 个人中心设置页包含“注销账号与删除数据”：注销前保护待支付、未履约订单与未使用权益，注销后删除用户资料、地址、报名及社区内容，并仅对必须保留的真实支付凭证执行去标识化留存。帖子、评论及其云存储文件由 BFF 直接清理，随 `origin/main` 的云托管版本一起发布。
 
 ## 快速开始
 
 ```bash
-# 小程序
+# 小程序：本地 mock 联调
 cd worker_house
-npm install --legacy-peer-deps
+npm ci
+TARO_APP_API_MODE=mock npm run dev:weapp
+
+# 小程序：CloudRun 正式构建
+TARO_APP_API_MODE=cloudrun \
+TARO_APP_CLOUD_ENV_ID=prod-d9g991lo4dba5a4da \
+TARO_APP_CLOUDRUN_SERVICE=worker-house-bff \
 npm run build:weapp
+npm run verify:production-bundle
 
 # BFF
 cd worker_house_bff
-npm install
-npm run build && npm start
+npm ci
+npm test
+npm start
 ```
 
 ## ⚠️ 重要说明

@@ -28,7 +28,7 @@ export function initCloud() {
       hasInited = true;
     }
   } catch (error) {
-    console.warn('[cloud] 初始化失败，已回退到本地数据', error);
+    console.warn('[cloud] 初始化失败，远端请求暂不可用', error);
   }
 }
 

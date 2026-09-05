@@ -14,9 +14,10 @@ interface ActivityCardProps {
 }
 
 const ActivityCard: React.FC<ActivityCardProps> = ({ activity, className, onClick }) => {
-  const isTestPaymentPrice = activity.price === 0.01
-    && Boolean(activity.originalPrice && activity.originalPrice > activity.price);
-  const displayPrice = isTestPaymentPrice ? activity.originalPrice! : activity.price;
+  const originalPrice = typeof activity.originalPrice === 'number'
+    && activity.originalPrice > activity.price
+    ? activity.originalPrice
+    : null;
 
   const handleClick = () => {
     if (onClick) {
@@ -39,12 +40,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, className, onClic
         </View>
         <View className={styles.footer}>
           <View className={styles.priceSection}>
-            <Text className={styles.price}>{formatPrice(displayPrice)}</Text>
-            {isTestPaymentPrice ? (
-              <Text className={styles.testPrice}>体验支付 {formatPrice(activity.price)}</Text>
-            ) : activity.originalPrice && activity.originalPrice > activity.price ? (
+            <Text className={styles.price}>{formatPrice(activity.price)}</Text>
+            {originalPrice !== null ? (
               <Text className={styles.originalPrice}>
-                {formatPrice(activity.originalPrice)}
+                {formatPrice(originalPrice)}
               </Text>
             ) : null}
           </View>

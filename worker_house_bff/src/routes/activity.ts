@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { config } from '../config.js';
 import {
-  deleteActivity,
-  getActivityById,
-  listActivities,
+  deletePersistedActivity,
+  getPersistedActivityById,
+  isActivityCatalogValidationError,
+  listPersistedActivities,
   registerActivityParticipant,
-  upsertActivity,
+  upsertPersistedActivity,
 } from '../data/activities.js';
 import { getOrdersByKind } from '../data/orders.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -21,9 +22,9 @@ function activityTime(activity: ActivityRecord) {
   return new Date(`${activity.startDate}T${activity.startTime || '00:00'}:00+08:00`).getTime();
 }
 
-function getPublicActivity(activityId: string) {
-  const activity = getActivityById(activityId);
-  return activity && activity.enabled !== false ? toPublicActivity(activity) : null;
+async function getPublicActivity(activityId: string) {
+  const activity = await getPersistedActivityById(activityId);
+  return activity?.enabled === true ? toPublicActivity(activity) : null;
 }
 
 function toPublicActivity(activity: ActivityRecord): ActivityRecord {
@@ -32,92 +33,111 @@ function toPublicActivity(activity: ActivityRecord): ActivityRecord {
 }
 
 async function withPaidRegistrationCounts(activities: ActivityRecord[]) {
-  try {
-    const paidCounts = new Map<string, number>();
-    for (const order of await getOrdersByKind('activity')) {
-      if (order.status !== 'paid') continue;
-      paidCounts.set(order.productId, (paidCounts.get(order.productId) ?? 0) + 1);
-    }
-    return activities.map((activity) => ({
-      ...activity,
-      currentParticipants: activity.currentParticipants + (paidCounts.get(activity.id) ?? 0),
-    }));
-  } catch (error) {
-    console.warn(
-      '[activities] load paid registration counts failed',
-      error instanceof Error ? error.message : error,
-    );
-    return activities;
+  const paidCounts = new Map<string, number>();
+  for (const order of await getOrdersByKind('activity')) {
+    if (order.status !== 'paid') continue;
+    paidCounts.set(order.productId, (paidCounts.get(order.productId) ?? 0) + 1);
   }
+  return activities.map((activity) => ({
+    ...activity,
+    currentParticipants: activity.currentParticipants + (paidCounts.get(activity.id) ?? 0),
+  }));
 }
 
 export const activityRouter = Router();
 
 // 公开展示与报名支付共用 BFF 活动目录，避免列表、详情和支付价格来自不同数据源。
 activityRouter.get('/', async (request, response) => {
-  const page = parsePage(request.query.page, 1);
-  const pageSize = Math.min(parsePage(request.query.pageSize, 10), 100);
-  const rawStatus = typeof request.query.status === 'string' ? request.query.status.trim() : '';
-  const type = typeof request.query.type === 'string' ? request.query.type.trim() : '';
-  const status = type === 'past' && !rawStatus ? 'ended' : rawStatus;
-  const keyword = typeof request.query.keyword === 'string' ? request.query.keyword.trim().toLowerCase() : '';
+  try {
+    const page = parsePage(request.query.page, 1);
+    const pageSize = Math.min(parsePage(request.query.pageSize, 10), 100);
+    const rawStatus = typeof request.query.status === 'string' ? request.query.status.trim() : '';
+    const type = typeof request.query.type === 'string' ? request.query.type.trim() : '';
+    const status = type === 'past' && !rawStatus ? 'ended' : rawStatus;
+    const keyword = typeof request.query.keyword === 'string' ? request.query.keyword.trim().toLowerCase() : '';
 
-  let list = (await withPaidRegistrationCounts(listActivities().map(toPublicActivity)))
-    .filter((item) => item.enabled !== false);
-  if (status) {
-    list = list.filter((item) => item.status === status);
-  }
-  if (keyword) {
-    list = list.filter((item) =>
-      [item.title, item.description, ...item.tags].some((value) => value.toLowerCase().includes(keyword)),
+    let list = (await withPaidRegistrationCounts((await listPersistedActivities()).map(toPublicActivity)))
+      .filter((item) => item.enabled === true);
+    if (status) {
+      list = list.filter((item) => item.status === status);
+    }
+    if (keyword) {
+      list = list.filter((item) =>
+        [item.title, item.description, ...item.tags].some((value) => value.toLowerCase().includes(keyword)),
+      );
+    }
+
+    list.sort((first, second) =>
+      status === 'ended'
+        ? activityTime(second) - activityTime(first)
+        : activityTime(first) - activityTime(second),
     );
+
+    const startIndex = (page - 1) * pageSize;
+    response.json({
+      list: list.slice(startIndex, startIndex + pageSize),
+      total: list.length,
+    });
+  } catch (error) {
+    console.error('[activities] public catalog unavailable', error instanceof Error ? error.message : error);
+    response.status(503).json({ message: '活动目录暂时不可用，请稍后重试' });
   }
-
-  list.sort((first, second) =>
-    status === 'ended'
-      ? activityTime(second) - activityTime(first)
-      : activityTime(first) - activityTime(second),
-  );
-
-  const startIndex = (page - 1) * pageSize;
-  response.json({
-    list: list.slice(startIndex, startIndex + pageSize),
-    total: list.length,
-  });
 });
 
-activityRouter.post('/', authMiddleware, (request, response) => {
-  const record = upsertActivity(undefined, request.body as Partial<ActivityRecord>);
-  response.status(201).json(record);
+activityRouter.post('/', authMiddleware, async (request, response) => {
+  try {
+    const record = await upsertPersistedActivity(undefined, request.body as Partial<ActivityRecord>);
+    response.status(201).json(record);
+  } catch (error) {
+    response.status(isActivityCatalogValidationError(error) ? 422 : 503).json({
+      message: error instanceof Error ? error.message : '创建活动失败',
+    });
+  }
 });
 
 activityRouter.get('/:id', async (request, response) => {
-  const activity = getPublicActivity(String(request.params.id));
-  if (!activity) {
-    response.status(404).json({ message: '活动不存在或已下架' });
-    return;
+  try {
+    const activity = await getPublicActivity(String(request.params.id));
+    if (!activity) {
+      response.status(404).json({ message: '活动不存在或已下架' });
+      return;
+    }
+    response.json((await withPaidRegistrationCounts([activity]))[0]);
+  } catch (error) {
+    console.error('[activities] public detail unavailable', error instanceof Error ? error.message : error);
+    response.status(503).json({ message: '活动详情暂时不可用，请稍后重试' });
   }
-  response.json((await withPaidRegistrationCounts([activity]))[0]);
 });
 
-activityRouter.put('/:id', authMiddleware, (request, response) => {
-  const activityId = String(request.params.id);
-  if (!getActivityById(activityId)) {
-    response.status(404).json({ message: '活动不存在' });
-    return;
+activityRouter.put('/:id', authMiddleware, async (request, response) => {
+  try {
+    const activityId = String(request.params.id);
+    const record = await upsertPersistedActivity(activityId, request.body as Partial<ActivityRecord>);
+    if (!record) {
+      response.status(404).json({ message: '活动不存在' });
+      return;
+    }
+    response.json(record);
+  } catch (error) {
+    response.status(isActivityCatalogValidationError(error) ? 422 : 503).json({
+      message: error instanceof Error ? error.message : '更新活动失败',
+    });
   }
-  response.json(upsertActivity(activityId, request.body as Partial<ActivityRecord>));
 });
 
-activityRouter.delete('/:id', authMiddleware, (request, response) => {
-  if (!deleteActivity(String(request.params.id))) {
-    response.status(404).json({ message: '活动不存在' });
-    return;
+activityRouter.delete('/:id', authMiddleware, async (request, response) => {
+  try {
+    if (!await deletePersistedActivity(String(request.params.id))) {
+      response.status(404).json({ message: '活动不存在' });
+      return;
+    }
+    response.json({ success: true });
+  } catch (error) {
+    response.status(500).json({ message: error instanceof Error ? error.message : '删除活动失败' });
   }
-  response.json({ success: true });
 });
 
-activityRouter.post('/:id/signup', wxCloudrunAuth, (request, response) => {
+activityRouter.post('/:id/signup', wxCloudrunAuth, async (request, response) => {
   if (config.cloudMode !== 'mock') {
     response.status(410).json({ message: '活动报名已改为微信支付，请使用活动支付接口' });
     return;
@@ -132,7 +152,7 @@ activityRouter.post('/:id/signup', wxCloudrunAuth, (request, response) => {
   }
 
   const activityId = String(request.params.id);
-  const currentActivity = getPublicActivity(activityId);
+  const currentActivity = await getPublicActivity(activityId);
   if (!currentActivity || currentActivity.status === 'ended') {
     response.status(404).json({ message: '活动不存在、已结束或已下架' });
     return;

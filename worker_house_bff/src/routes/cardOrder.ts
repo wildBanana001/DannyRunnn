@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import {
-  createCardOrder,
   getCardOrderById,
   getUsageLogsByCardOrderId,
   listCardOrdersByOpenid,
 } from '../data/cardOrders.js';
 import { wxCloudrunAuth } from '../middlewares/wx-cloudrun-auth.js';
+import { rejectCardPurchase } from './card-purchase-unavailable.js';
 import { parsePage, paginate, requireWxOpenid } from './utils.js';
 
 export const cardOrderRouter = Router();
@@ -55,16 +55,4 @@ cardOrderRouter.get('/:id', (request, response) => {
   response.json(order);
 });
 
-cardOrderRouter.post('/', (request, response) => {
-  const openid = requireWxOpenid(request, response);
-  if (!openid) {
-    return;
-  }
-
-  try {
-    const order = createCardOrder(openid, request.body ?? {});
-    response.status(201).json(order);
-  } catch (error) {
-    response.status(400).json({ message: error instanceof Error ? error.message : '购买次卡失败' });
-  }
-});
+cardOrderRouter.post('/', rejectCardPurchase);

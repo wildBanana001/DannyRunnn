@@ -2,6 +2,10 @@ import type { Activity } from '../types';
 
 export type ActivityDisplayStatus = 'ongoing' | 'ended';
 
+export interface ActivityStatusResolutionOptions {
+  trustProvidedStatus?: boolean;
+}
+
 const SHENZHEN_TIMEZONE_OFFSET = '+08:00';
 const DEFAULT_START_TIME = '00:00';
 const DEFAULT_END_TIME = '23:59';
@@ -41,16 +45,28 @@ export const getActivityEndTimestamp = (
 };
 
 export const resolveActivityStatus = (
-  activity: Pick<Activity, 'startDate' | 'endDate' | 'endTime'>,
+  activity: Pick<Activity, 'startDate' | 'endDate' | 'endTime'> & Partial<Pick<Activity, 'status'>>,
   now = Date.now(),
-): ActivityDisplayStatus => {
+  { trustProvidedStatus = false }: ActivityStatusResolutionOptions = {},
+): Activity['status'] => {
+  if (
+    trustProvidedStatus
+    && (activity.status === 'upcoming' || activity.status === 'ongoing' || activity.status === 'ended')
+  ) {
+    return activity.status;
+  }
+
   const endTimestamp = getActivityEndTimestamp(activity);
   return endTimestamp !== null && now >= endTimestamp ? 'ended' : 'ongoing';
 };
 
-export const refreshActivityStatus = <T extends Activity>(activity: T, now = Date.now()): T => ({
+export const refreshActivityStatus = <T extends Activity>(
+  activity: T,
+  now = Date.now(),
+  options: ActivityStatusResolutionOptions = {},
+): T => ({
   ...activity,
-  status: resolveActivityStatus(activity, now),
+  status: resolveActivityStatus(activity, now, options),
 });
 
 const getActivityStartTimestamp = (
@@ -67,11 +83,12 @@ export const selectActivitiesByStatus = <T extends Activity>(
   activities: T[],
   status: ActivityDisplayStatus,
   now = Date.now(),
+  options: ActivityStatusResolutionOptions = {},
 ): T[] => {
   const direction = status === 'ended' ? -1 : 1;
 
   return activities
-    .map((activity) => refreshActivityStatus(activity, now))
+    .map((activity) => refreshActivityStatus(activity, now, options))
     .filter((activity) => activity.status === status)
     .sort((first, second) => {
       const timestampDifference = getActivityStartTimestamp(first) - getActivityStartTimestamp(second);

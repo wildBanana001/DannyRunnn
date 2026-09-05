@@ -1,43 +1,37 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, Text, View } from '@tarojs/components';
 import { fetchActivities, fetchPosterList, fetchSiteConfig } from '@/cloud/services';
-import { getLocalActivitiesByStatus } from '@/data/activities';
-import { homeLandingConfig, siteConfig as siteFallback, type HomeLandingConfig } from '@/data/site';
-import { posters as posterFallback } from '@/data/posters';
 import type { Activity } from '@/types';
-import type { SiteConfig } from '@/types/site';
+import type { Poster, SiteConfig } from '@/types/site';
 import styles from './index.module.scss';
 
-const mergeSiteConfig = (site: SiteConfig): HomeLandingConfig => ({
-  ...homeLandingConfig,
-  ...site,
-});
-
 const OriginDetailPage: React.FC = () => {
-  const [posters, setPosters] = useState(posterFallback);
-  const [siteConfig, setSiteConfig] = useState<HomeLandingConfig>(mergeSiteConfig(siteFallback));
-  const [ongoingActivities, setOngoingActivities] = useState<Activity[]>(() => (
-    getLocalActivitiesByStatus('ongoing')
-  ));
+  const [posters, setPosters] = useState<Poster[]>([]);
+  const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null);
+  const [ongoingActivities, setOngoingActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
-    const activityFallback = getLocalActivitiesByStatus('ongoing');
-    Promise.all([fetchPosterList(), fetchSiteConfig(), fetchActivities('ongoing')])
-      .then(([posterList, site, activities]) => {
-        setPosters(posterList.length > 0 ? posterList : posterFallback);
-        setSiteConfig(mergeSiteConfig(site));
-        setOngoingActivities(activities);
-      })
-      .catch(() => {
-        setPosters(posterFallback);
-        setSiteConfig(mergeSiteConfig(siteFallback));
-        setOngoingActivities(activityFallback);
+    let isActive = true;
+
+    void Promise.allSettled([fetchPosterList(), fetchSiteConfig(), fetchActivities('ongoing')])
+      .then(([posterResult, siteResult, activityResult]) => {
+        if (!isActive) return;
+        setPosters(posterResult.status === 'fulfilled' ? posterResult.value : []);
+        setSiteConfig(siteResult.status === 'fulfilled' ? siteResult.value : null);
+        setOngoingActivities(activityResult.status === 'fulfilled' ? activityResult.value : []);
       });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const originImage = useMemo(() => {
-    return ongoingActivities[1]?.cover || ongoingActivities[1]?.coverImage || posters[1]?.coverImage || siteConfig.spaceImage;
-  }, [ongoingActivities, posters, siteConfig.spaceImage]);
+    return ongoingActivities[1]?.cover || ongoingActivities[1]?.coverImage || posters[1]?.coverImage || siteConfig?.spaceImage || '';
+  }, [ongoingActivities, posters, siteConfig?.spaceImage]);
+  const originParagraphs = siteConfig?.spaceDescription?.trim()
+    ? [siteConfig.spaceDescription.trim()]
+    : [];
 
   return (
     <ScrollView className={styles.container} scrollY enableFlex>
@@ -47,20 +41,20 @@ const OriginDetailPage: React.FC = () => {
         <Text className={styles.description}>把首页原本那段长文本、图片与时间线完整搬到这里，慢慢读也没关系。</Text>
       </View>
 
-      <Image className={styles.cover} src={originImage} mode="aspectFill" />
+      {originImage ? <Image className={styles.cover} src={originImage} mode="aspectFill" /> : null}
 
       <View className={styles.timelineCard}>
-        {siteConfig.originParagraphs.map((paragraph, index) => (
+        {originParagraphs.length > 0 ? originParagraphs.map((paragraph, index) => (
           <View key={paragraph} className={styles.timelineItem}>
             <View className={styles.timelineMarker}>
               <Text className={styles.timelineIndex}>{String(index + 1).padStart(2, '0')}</Text>
             </View>
             <View className={styles.timelineBody}>
-              <Text className={styles.timelineTitle}>{index === 0 ? '下班后还想被认真接住' : index === siteConfig.originParagraphs.length - 1 ? '继续生长的第二客厅' : `阶段 ${index + 1}`}</Text>
+              <Text className={styles.timelineTitle}>{index === 0 ? '下班后还想被认真接住' : index === originParagraphs.length - 1 ? '继续生长的第二客厅' : `阶段 ${index + 1}`}</Text>
               <Text className={styles.timelineText}>{paragraph}</Text>
             </View>
           </View>
-        ))}
+        )) : <Text className={styles.timelineText}>起源内容暂不可用，请稍后再试。</Text>}
       </View>
     </ScrollView>
   );

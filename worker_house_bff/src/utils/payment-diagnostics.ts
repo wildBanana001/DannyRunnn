@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { WechatPayApiError } from './wechat-pay.js';
 
 const STORAGE_UNAVAILABLE_CODES = new Set([
+  'ACTIVITY_CATALOG_STORAGE_INVALID',
   'MYSQL_CONFIGURATION_REQUIRED',
   'ER_ACCESS_DENIED_ERROR',
   'ER_BAD_DB_ERROR',

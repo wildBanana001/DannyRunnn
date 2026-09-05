@@ -1,17 +1,12 @@
 import { Router } from 'express';
 import { callCloudFunction, normalizePoster } from '../cloudClient.js';
+import {
+  isPosterPayloadValidationError,
+  isPublicPoster,
+  validatePosterEnabledInput,
+} from '../data/poster-contract.js';
 import { authMiddleware, resolveRequestToken } from '../middleware/auth.js';
 import type { PosterRecord } from '../mock/types.js';
-
-function parseBoolean(value: unknown) {
-  if (value === 'true' || value === true) {
-    return true;
-  }
-  if (value === 'false' || value === false) {
-    return false;
-  }
-  return undefined;
-}
 
 function parsePage(value: unknown, fallback: number) {
   const parsed = Number(value);
@@ -62,7 +57,6 @@ posterRouter.put('/reorder', authMiddleware, async (request, response) => {
 posterRouter.get('/', async (request, response) => {
   const page = parsePage(request.query.page, 1);
   const pageSize = parsePage(request.query.pageSize, 10);
-  const enabled = parseBoolean(request.query.enabled);
 
   try {
     const result = await callCloudFunction<Record<string, unknown>[]>('poster', {
@@ -76,11 +70,7 @@ posterRouter.get('/', async (request, response) => {
 
     let list = result.data
       .map((item) => normalizePoster(item))
-      .filter((item): item is PosterRecord => Boolean(item));
-
-    if (enabled !== undefined) {
-      list = list.filter((item) => item.enabled === enabled);
-    }
+      .filter((item): item is PosterRecord => isPublicPoster(item));
 
     list = list.sort((first, second) => {
       if (first.sort !== second.sort) {
@@ -101,6 +91,7 @@ posterRouter.get('/', async (request, response) => {
 
 posterRouter.post('/', authMiddleware, async (request, response) => {
   try {
+    validatePosterEnabledInput((request.body as Record<string, unknown>) ?? {}, true);
     const result = await callCloudFunction<{ id: string }>('poster', {
       action: 'create',
       data: request.body,
@@ -120,7 +111,9 @@ posterRouter.post('/', authMiddleware, async (request, response) => {
 
     response.json(detail.data);
   } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '创建海报失败' });
+    response.status(isPosterPayloadValidationError(error) ? 422 : 500).json({
+      message: error instanceof Error ? error.message : '创建海报失败',
+    });
   }
 });
 
@@ -133,6 +126,10 @@ posterRouter.get('/:id', async (request, response) => {
       return;
     }
 
+    if (!isPublicPoster(result.data)) {
+      response.status(404).json({ message: '海报不存在或已下线' });
+      return;
+    }
     response.json(result.data);
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '获取海报详情失败' });
@@ -141,6 +138,7 @@ posterRouter.get('/:id', async (request, response) => {
 
 posterRouter.put('/:id', authMiddleware, async (request, response) => {
   try {
+    validatePosterEnabledInput((request.body as Record<string, unknown>) ?? {}, false);
     const result = await callCloudFunction<{ id: string }>('poster', {
       action: 'update',
       data: request.body,
@@ -161,7 +159,9 @@ posterRouter.put('/:id', authMiddleware, async (request, response) => {
 
     response.json(detail.data);
   } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '更新海报失败' });
+    response.status(isPosterPayloadValidationError(error) ? 422 : 500).json({
+      message: error instanceof Error ? error.message : '更新海报失败',
+    });
   }
 });
 

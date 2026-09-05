@@ -2,6 +2,20 @@ import Taro from '@tarojs/taro';
 import type { Address } from './address';
 import { cloudrunBinaryRequest } from './cloudrun';
 import { getApiMode, getPaymentApiMode, requestWithMode, type ApiMode, type RequestOptions } from './request';
+import {
+  calculateShopOrderPricing,
+  clampShopQuantity,
+  getShopProductQuantityIssue,
+  getShopQuantityBounds,
+  normalizeShopProductPayload,
+} from './shop-contract';
+
+export {
+  calculateShopOrderPricing,
+  clampShopQuantity,
+  getShopProductQuantityIssue,
+  getShopQuantityBounds,
+};
 
 export type ShopOrderStatus = 'pending' | 'paid' | 'failed' | 'closed';
 export type ShopFulfillmentType = 'delivery' | 'pickup' | 'onsite';
@@ -23,6 +37,10 @@ export interface ShopProduct {
   alcoholic: boolean;
   abv: number;
   volumeMl: number;
+  shippingFee: number;
+  minQuantity: number;
+  maxQuantity: number;
+  stock: number | null;
   enabled: boolean;
 }
 
@@ -42,6 +60,7 @@ export interface ShopOrder {
   productName: string;
   productImageUrl: string;
   unitPrice: number;
+  shippingFee: number;
   quantity: number;
   amount: number;
   address: ShopAddressSnapshot | null;
@@ -72,6 +91,10 @@ export interface ShopPayParams {
 
 export interface ShopPaymentSession {
   outTradeNo: string;
+  productId: string;
+  unitPrice: number;
+  shippingFee: number;
+  quantity: number;
   amount: number;
   status: ShopOrderStatus;
   mock: boolean;
@@ -189,19 +212,8 @@ export async function loadShopProductImage(imageUrl: string): Promise<string> {
   return pending;
 }
 
-function normalizeProduct(product: ShopProduct): ShopProduct {
-  return {
-    ...product,
-    category: product.category?.trim() || 'general',
-    fulfillmentType: product.fulfillmentType === 'onsite' || product.fulfillmentType === 'pickup' ? product.fulfillmentType : 'delivery',
-    fulfillmentLabel: product.fulfillmentLabel?.trim() || (product.fulfillmentType === 'onsite' ? '到店享用' : product.fulfillmentType === 'pickup' ? '到店自取' : '快递配送'),
-    unitLabel: product.unitLabel?.trim() || '件',
-    alcoholic: Boolean(product.alcoholic),
-    abv: Math.max(0, Number(product.abv) || 0),
-    volumeMl: Math.max(0, Number(product.volumeMl) || 0),
-    enabled: product.enabled !== false,
-    imageUrl: product.imageUrl?.trim() || '',
-  };
+function normalizeProduct(product: unknown): ShopProduct {
+  return normalizeShopProductPayload(product);
 }
 
 function normalizeOrder(order: ShopOrder): ShopOrder {
@@ -211,6 +223,9 @@ function normalizeOrder(order: ShopOrder): ShopOrder {
     : 'not_required';
   return {
     ...order,
+    shippingFee: Number.isSafeInteger(Number(order.shippingFee))
+      ? Math.max(0, Number(order.shippingFee))
+      : 0,
     address: order.address || null,
     fulfillmentType: order.fulfillmentType === 'onsite' || order.fulfillmentType === 'pickup' ? order.fulfillmentType : 'delivery',
     fulfillmentLabel: order.fulfillmentLabel?.trim() || (order.fulfillmentType === 'onsite' ? '到店享用' : order.fulfillmentType === 'pickup' ? '到店自取' : '快递配送'),
@@ -251,12 +266,14 @@ export function isPaymentCancelled(error: unknown): boolean {
 }
 
 export async function fetchShopProducts(): Promise<ShopProduct[]> {
-  const result = await shopRequest<{ list: ShopProduct[] }>({ path: '/api/shop/products' });
-  return (result.list || []).map(normalizeProduct);
+  const result = await shopRequest<{ list?: unknown[] }>({ path: '/api/shop/products' });
+  return (Array.isArray(result.list) ? result.list : [])
+    .map(normalizeProduct)
+    .filter((product) => product.enabled);
 }
 
 export async function fetchShopProduct(productId: string): Promise<ShopProduct> {
-  const result = await shopRequest<ShopProduct>({ path: `/api/shop/products/${encodeURIComponent(productId)}` });
+  const result = await shopRequest<unknown>({ path: `/api/shop/products/${encodeURIComponent(productId)}` });
   return normalizeProduct(result);
 }
 

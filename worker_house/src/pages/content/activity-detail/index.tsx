@@ -4,13 +4,14 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import { MEMBER_CARD_ENABLED } from '@/constants/capabilities';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchActivityDetail } from '@/cloud/services';
 import avatarFallback from '@/assets/illustrations/avatar-frame.png';
+import activityImageFallback from '@/assets/home/space-room-v2.jpg';
 import { fetchRegistrations } from '@/services/member';
 import type { Activity, Registration } from '@/types';
 import { formatDate, formatPrice, getActivityStatusText } from '@/utils/helpers';
-import { withLocalActivityDetailAssets } from './activity-assets';
 import styles from './index.module.scss';
 
 const REGISTERED_STATUSES = new Set<Registration['status']>(['paid', 'confirmed', 'completed']);
@@ -40,7 +41,7 @@ const ActivityDetailPage: React.FC = () => {
       if (detail.id !== activityId) {
         throw new Error('活动信息不匹配');
       }
-      setActivity(withLocalActivityDetailAssets(detail));
+      setActivity(detail);
     } catch (error) {
       setActivity(null);
       setErrorMessage(error instanceof Error ? error.message : '活动加载失败');
@@ -124,9 +125,10 @@ const ActivityDetailPage: React.FC = () => {
 
   const isEnded = activity.status === 'ended';
   const isFull = activity.currentParticipants >= activity.maxParticipants;
-  const isTestPaymentPrice = activity.price === 0.01
-    && Boolean(activity.originalPrice && activity.originalPrice > activity.price);
-  const displayPrice = isTestPaymentPrice ? activity.originalPrice! : activity.price;
+  const originalPrice = typeof activity.originalPrice === 'number'
+    && activity.originalPrice > activity.price
+    ? activity.originalPrice
+    : null;
   const isRegistered = Boolean(existingRegistration && REGISTERED_STATUSES.has(existingRegistration.status));
   const hasPendingRegistration = existingRegistration?.status === 'pending';
   const actionDisabled = registrationLoading || isRegistered || (!hasPendingRegistration && (isEnded || isFull));
@@ -176,14 +178,14 @@ const ActivityDetailPage: React.FC = () => {
               {heroImages.map((image) => (
                 <SwiperItem key={image}>
                   <View className={styles.heroImageWrap} onClick={() => handlePreview(image)}>
-                    <SafeImage className={styles.heroImage} src={image} mode="aspectFill" fallbackDelayMs={2200} />
+                    <SafeImage className={styles.heroImage} src={image} fallbackSrc={activityImageFallback} mode="aspectFill" fallbackDelayMs={2200} />
                   </View>
                 </SwiperItem>
               ))}
             </Swiper>
           ) : (
             <View className={styles.heroImageWrap} onClick={() => handlePreview(heroImages[0])}>
-              <SafeImage className={styles.heroImage} src={heroImages[0]} mode="aspectFill" fallbackDelayMs={2200} />
+              <SafeImage className={styles.heroImage} src={heroImages[0]} fallbackSrc={activityImageFallback} mode="aspectFill" fallbackDelayMs={2200} />
             </View>
           )}
         </View>
@@ -196,7 +198,7 @@ const ActivityDetailPage: React.FC = () => {
                   <Text className={styles.tagText}>{tag}</Text>
                 </View>
               ))}
-              {activity.cardEligible ? (
+              {MEMBER_CARD_ENABLED && activity.cardEligible ? (
                 <View className={styles.cardTag}>
                   <Text className={styles.cardTagText}>支持次卡</Text>
                 </View>
@@ -220,9 +222,11 @@ const ActivityDetailPage: React.FC = () => {
 
             <View className={styles.infoRow}>
               <View className={styles.priceTag}>
-                <Text className={styles.priceTagText}>{formatPrice(displayPrice)} / 人</Text>
+                <Text className={styles.priceTagText}>{formatPrice(activity.price)} / 人</Text>
               </View>
-              {isTestPaymentPrice ? <Text className={styles.infoText}>体验支付 {formatPrice(activity.price)}</Text> : null}
+              {originalPrice !== null ? (
+                <Text className={`${styles.infoText} ${styles.originalPriceText}`}>原价 {formatPrice(originalPrice)}</Text>
+              ) : null}
               <Text className={styles.infoText}>已报名 {activity.currentParticipants}/{activity.maxParticipants} 人</Text>
               <Text className={styles.infoText}>{getActivityStatusText(activity.status)}</Text>
             </View>
@@ -238,7 +242,13 @@ const ActivityDetailPage: React.FC = () => {
               <View className={styles.gallerySection}>
                 {contentImages.map((image) => (
                   <View key={image} className={styles.galleryCard} onClick={() => handlePreview(image, contentImages)}>
-                    <SafeImage className={styles.galleryImage} src={image} mode="aspectFill" lazyLoad />
+                    <SafeImage
+                      className={styles.galleryImage}
+                      src={image}
+                      fallbackSrc={activityImageFallback}
+                      mode="aspectFill"
+                      lazyLoad
+                    />
                   </View>
                 ))}
               </View>
@@ -272,7 +282,7 @@ const ActivityDetailPage: React.FC = () => {
       <View className={styles.actionBar}>
         <View className={styles.priceBlock}>
           <Text className={styles.footerPriceLabel}>活动价格</Text>
-          <Text className={styles.footerPriceValue}>{formatPrice(displayPrice)} / 人</Text>
+          <Text className={styles.footerPriceValue}>{formatPrice(activity.price)} / 人</Text>
         </View>
         <View className={styles.actionButtonWrap}>
           {actionDisabled ? (

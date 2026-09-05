@@ -1,42 +1,20 @@
-import Taro from '@tarojs/taro';
+import {
+  getMockWxLoginResult,
+  getMockWxUserProfile,
+  updateMockWxUserProfile,
+} from '@/data/mock-member';
+import type { WxLoginResult, WxUserProfile } from '@/types/auth';
 import { getApiMode, request } from './request';
+
+export type { WxLoginResult, WxUserProfile } from '@/types/auth';
 
 const jsonHeaders = {
   'content-type': 'application/json',
 };
 
-export interface WxLoginResult {
-  openid: string;
-  nickname: string;
-  avatar: string;
-  isNew: boolean;
-}
-
-export interface WxUserProfile {
-  openid: string;
-  nickname: string;
-  avatar: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const MOCK_USER_STORAGE_KEY = 'worker-house-mock-wx-user';
-const MOCK_OPENID = 'mock_openid_001';
-
-function getMockUser(): WxUserProfile | null {
-  const cached = Taro.getStorageSync<WxUserProfile | null>(MOCK_USER_STORAGE_KEY);
-  return cached?.openid ? cached : null;
-}
-
 export async function wxLogin(): Promise<WxLoginResult> {
   if (getApiMode() === 'mock') {
-    const user = getMockUser();
-    return {
-      openid: MOCK_OPENID,
-      nickname: user?.nickname ?? '',
-      avatar: user?.avatar ?? '',
-      isNew: !user,
-    };
+    return getMockWxLoginResult();
   }
 
   return request<WxLoginResult>({
@@ -48,17 +26,7 @@ export async function wxLogin(): Promise<WxLoginResult> {
 
 export async function wxUpdateProfile(payload: { nickname: string; avatar: string }): Promise<WxUserProfile> {
   if (getApiMode() === 'mock') {
-    const current = getMockUser();
-    const timestamp = new Date().toISOString();
-    const user: WxUserProfile = {
-      openid: MOCK_OPENID,
-      nickname: payload.nickname.trim(),
-      avatar: payload.avatar.trim(),
-      createdAt: current?.createdAt ?? timestamp,
-      updatedAt: timestamp,
-    };
-    Taro.setStorageSync(MOCK_USER_STORAGE_KEY, user);
-    return user;
+    return updateMockWxUserProfile(payload);
   }
 
   return request<WxUserProfile>({
@@ -71,11 +39,7 @@ export async function wxUpdateProfile(payload: { nickname: string; avatar: strin
 
 export async function wxGetMe(): Promise<WxUserProfile> {
   if (getApiMode() === 'mock') {
-    const user = getMockUser();
-    if (!user) {
-      throw new Error('mock 用户尚未登录');
-    }
-    return user;
+    return getMockWxUserProfile();
   }
 
   return request<WxUserProfile>({

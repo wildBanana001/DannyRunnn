@@ -5,7 +5,13 @@ import { Minus, Plus } from '@nutui/icons-react-taro';
 import EmptyState from '@/components/EmptyState';
 import ShopProductImage from '@/components/ShopProductImage';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
-import { fetchShopProduct, type ShopProduct } from '@/services/shop';
+import {
+  clampShopQuantity,
+  fetchShopProduct,
+  getShopProductQuantityIssue,
+  getShopQuantityBounds,
+  type ShopProduct,
+} from '@/services/shop';
 import styles from './index.module.scss';
 
 const ProductDetailPage: React.FC = () => {
@@ -28,6 +34,7 @@ const ProductDetailPage: React.FC = () => {
       setError(false);
       const nextProduct = await fetchShopProduct(productId);
       setProduct(nextProduct);
+      setQuantity((current) => clampShopQuantity(nextProduct, current));
       Taro.setNavigationBarTitle({ title: nextProduct.name });
     } catch (loadError) {
       console.warn('[shop] load product failed', loadError);
@@ -43,12 +50,16 @@ const ProductDetailPage: React.FC = () => {
 
   const changeQuantity = (delta: number) => {
     if (!product) return;
-    setQuantity((current) => Math.max(1, Math.min(99, current + delta)));
+    const bounds = getShopQuantityBounds(product);
+    if (!bounds.canPurchase) return;
+    setQuantity((current) => clampShopQuantity(product, current + delta));
   };
 
   const handleBuy = () => {
-    if (!product || !product.enabled) {
-      Taro.showToast({ title: '该商品已下架', icon: 'none' });
+    if (!product) return;
+    const quantityIssue = getShopProductQuantityIssue(product, quantity);
+    if (quantityIssue) {
+      Taro.showToast({ title: quantityIssue, icon: 'none' });
       return;
     }
     Taro.navigateTo({
@@ -73,6 +84,15 @@ const ProductDetailPage: React.FC = () => {
     || product.abv > 0
     || product.category.toLowerCase() === 'cocktail'
     || product.tags.some((tag) => tag.includes('酒精'));
+  const quantityBounds = getShopQuantityBounds(product);
+  const quantityIssue = getShopProductQuantityIssue(product, quantity);
+  const decreaseDisabled = !quantityBounds.canPurchase || quantity <= quantityBounds.minQuantity;
+  const increaseDisabled = !quantityBounds.canPurchase || quantity >= quantityBounds.maxQuantity;
+  const buyButtonText = !product.enabled
+    ? '已下架'
+    : quantityBounds.canPurchase
+      ? '立即购买'
+      : '暂时售罄';
 
   return (
     <View className={styles.container} style={viewportStyle}>
@@ -121,11 +141,21 @@ const ProductDetailPage: React.FC = () => {
           <View>
             <Text className={styles.metaLabel}>购买单位</Text>
             <Text className={styles.metaValue}>{product.unitLabel}</Text>
+            <Text className={styles.quantityHint}>
+              每单 {product.minQuantity}-{product.maxQuantity} {product.unitLabel}
+              {product.stock === null ? '' : ` · 剩余 ${product.stock}`}
+            </Text>
           </View>
           <View className={styles.quantityControl}>
-            <View className={styles.quantityButton} onClick={() => changeQuantity(-1)}><Minus size="16" /></View>
+            <View
+              className={`${styles.quantityButton} ${decreaseDisabled ? styles.quantityButtonDisabled : ''}`}
+              onClick={() => changeQuantity(-1)}
+            ><Minus size="16" /></View>
             <Text className={styles.quantityValue}>{quantity}</Text>
-            <View className={styles.quantityButton} onClick={() => changeQuantity(1)}><Plus size="16" /></View>
+            <View
+              className={`${styles.quantityButton} ${increaseDisabled ? styles.quantityButtonDisabled : ''}`}
+              onClick={() => changeQuantity(1)}
+            ><Plus size="16" /></View>
           </View>
         </View>
       </View>
@@ -140,8 +170,8 @@ const ProductDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.footer}>
-        <View className={`${styles.buyBtn} ${!product.enabled ? styles.buyBtnDisabled : ''}`} onClick={handleBuy}>
-          <Text className={styles.buyBtnText}>{product.enabled ? '立即购买' : '已下架'}</Text>
+        <View className={`${styles.buyBtn} ${quantityIssue ? styles.buyBtnDisabled : ''}`} onClick={handleBuy}>
+          <Text className={styles.buyBtnText}>{buyButtonText}</Text>
         </View>
       </View>
     </View>

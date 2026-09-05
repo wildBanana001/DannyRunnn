@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { resetLocalPostData } from '@/cloud/services';
-import { siteConfig } from '@/data/site';
 import {
   ACCOUNT_DELETION_CONFIRMATION,
   clearLocalAccountData,
@@ -52,7 +51,7 @@ const SettingsPage: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const logout = useUserStore((state) => state.logout);
   const sharedSiteConfig = useSiteConfig();
-  const aboutUs = sharedSiteConfig?.aboutUs || siteConfig.spaceDescription;
+  const aboutUs = sharedSiteConfig.aboutUs;
 
   const handleClearCache = async () => {
     clearSiteConfigCache();
@@ -62,7 +61,7 @@ const SettingsPage: React.FC = () => {
   const handleAbout = async () => {
     await Taro.showModal({
       title: '关于我们',
-      content: aboutUs || siteConfig.spaceDescription,
+      content: aboutUs || '站点介绍暂不可用，请稍后再试。',
       showCancel: false,
       confirmColor: '#E60000'
     });

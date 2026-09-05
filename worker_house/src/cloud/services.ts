@@ -1,16 +1,18 @@
-import { currentUser } from '@/data/users';
 import { allActivities } from '@/data/activities';
-import { dinnerTableCoverImage } from '@/data/activity-assets';
+import { getMockCurrentUser, getMockLegacySiteConfig } from '@/data/mock-member';
 import { comments as mockComments, posts as mockPosts } from '@/data/posts';
 import { posters as mockPosters } from '@/data/posters';
-import { siteConfig as mockSiteConfig } from '@/data/site';
 import { request as apiRequest, getApiMode } from '@/services/request';
 import { resolvePostImageUrls, resolvePostListImageUrls } from '@/services/postImages';
 import { useUserStore } from '@/store/userStore';
 import type { Activity } from '@/types';
 import type { Comment, Post, PostCreateParams } from '@/types/post';
 import type { Poster, SiteConfig } from '@/types/site';
-import { resolveActivityStatus, selectActivitiesByStatus } from '@/utils/activityStatus';
+import {
+  resolveActivityStatus,
+  selectActivitiesByStatus,
+  type ActivityStatusResolutionOptions,
+} from '@/utils/activityStatus';
 import { buildPostTitle } from '@/utils/helpers';
 
 interface RegistrationPayload {
@@ -36,27 +38,24 @@ let localPosts: Post[] = clone(mockPosts);
 let localComments: Comment[] = clone(mockComments);
 let remoteActivityCatalogRequest: Promise<Activity[]> | null = null;
 
-const localActivityCoverImages: Partial<Record<string, string>> = {
-  'act-002': dinnerTableCoverImage,
-};
-
-const normalizeActivity = (activity: Activity, now = Date.now()): Activity => {
-  const localCoverImage = localActivityCoverImages[activity.id];
-  const coverImage = localCoverImage || activity.cover || activity.coverImage;
-  const gallery = (activity.gallery || []).filter((item) => !item.startsWith('activity-asset://'));
+const normalizeActivity = (
+  activity: Activity,
+  now = Date.now(),
+  statusOptions: ActivityStatusResolutionOptions = {},
+): Activity => {
+  const coverImage = activity.cover || activity.coverImage;
+  const gallery = activity.gallery || [];
 
   return {
     ...activity,
     coverImage,
     gallery,
     cover: coverImage,
-    covers: localCoverImage
-      ? [coverImage, ...gallery]
-      : activity.covers && activity.covers.length > 0
-        ? activity.covers
-        : [coverImage, ...gallery],
+    covers: activity.covers && activity.covers.length > 0
+      ? activity.covers
+      : [coverImage, ...gallery],
     cardEligible: activity.cardEligible ?? false,
-    status: resolveActivityStatus(activity, now),
+    status: resolveActivityStatus(activity, now, statusOptions),
   };
 };
 
@@ -124,7 +123,7 @@ const getCurrentPostAuthor = () => {
   const user = useUserStore.getState().user;
   return user
     ? { id: user.openid || user.id, nickname: user.nickname || '微信用户', avatar: user.avatar }
-    : currentUser;
+    : getMockCurrentUser();
 };
 
 export function resetLocalPostData() {
@@ -176,13 +175,16 @@ export async function fetchSiteConfig(): Promise<SiteConfig> {
   return safeCall(
     'site_config',
     { action: 'get' },
-    async () => mockSiteConfig,
+    async () => getMockLegacySiteConfig(),
     async () => apiRequest<SiteConfig>({ path: '/api/site/config' })
   );
 }
 
 export async function fetchActivities(status: 'ongoing' | 'ended'): Promise<Activity[]> {
   const now = Date.now();
+  const statusOptions: ActivityStatusResolutionOptions = {
+    trustProvidedStatus: !isMockMode(),
+  };
   const data = await safeCall(
     'activity',
     { action: 'list', status },
@@ -190,9 +192,10 @@ export async function fetchActivities(status: 'ongoing' | 'ended'): Promise<Acti
     fetchRemoteActivityCatalog,
   );
   return selectActivitiesByStatus(
-    data.map((item) => normalizeActivity(item, now)),
+    data.map((item) => normalizeActivity(item, now, statusOptions)),
     status,
     now,
+    statusOptions,
   );
 }
 
@@ -210,7 +213,7 @@ export async function fetchActivity(
   if (!fallbackToMock) {
     try {
       const activity = await apiRequest<Activity>({ path: `/api/activities/${encodeURIComponent(id)}` });
-      return normalizeActivity(activity);
+      return normalizeActivity(activity, Date.now(), { trustProvidedStatus: true });
     } catch (error) {
       console.warn('[activity] load failed', id, error);
       return null;
@@ -223,7 +226,7 @@ export async function fetchActivity(
     async () => allActivities.find((activity) => activity.id === id) ?? null,
     async () => apiRequest<Activity>({ path: `/api/activities/${encodeURIComponent(id)}` })
   );
-  return activity ? normalizeActivity(activity) : null;
+  return activity ? normalizeActivity(activity, Date.now(), { trustProvidedStatus: true }) : null;
 }
 
 export async function fetchActivityDetail(id: string): Promise<Activity> {

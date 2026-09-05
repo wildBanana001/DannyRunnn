@@ -4,9 +4,10 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
+import activityImageFallback from '@/assets/home/space-room-v2.jpg';
+import { MEMBER_CARD_ENABLED } from '@/constants/capabilities';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
-import { calculateCardDeduction } from '@/data/mock-member';
 import {
   confirmActivityPayment,
   createActivityPaymentClientRequestId,
@@ -46,6 +47,27 @@ const buildProfileFormValue = (profile?: Profile, nextIsDefault = false): Profil
   isDefault: profile?.isDefault ?? nextIsDefault,
 });
 
+const buildTransientProfile = (value: ProfileFormValue, clientRequestId: string): Profile => {
+  const timestamp = new Date().toISOString();
+  return {
+    id: `registration-profile-${clientRequestId}`,
+    nickname: value.nickname.trim() || '未命名用户',
+    wechatName: value.wechatName.trim(),
+    phone: value.phone?.trim() || undefined,
+    gender: value.gender ?? 'other',
+    ageRange: value.ageRange.trim(),
+    industry: value.industry.trim(),
+    occupation: value.occupation.trim(),
+    city: value.city.trim(),
+    socialGoal: value.socialGoal.trim(),
+    introduction: value.introduction.trim(),
+    tags: value.tags.map((item) => item.trim()).filter(Boolean),
+    isDefault: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+};
+
 const RegisterPage: React.FC = () => {
   const viewportStyle = useViewportLayout();
   const router = useRouter();
@@ -54,8 +76,10 @@ const RegisterPage: React.FC = () => {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState('');
-  const [memberError, setMemberError] = useState('');
+  const [memberNotice, setMemberNotice] = useState('');
+  const [profileServiceAvailable, setProfileServiceAvailable] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [transientProfile, setTransientProfile] = useState<Profile | null>(null);
   const [currentCard, setCurrentCard] = useState<CardOrder | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState('');
   const [editingProfileId, setEditingProfileId] = useState<string | undefined>();
@@ -70,53 +94,74 @@ const RegisterPage: React.FC = () => {
   const { paymentErrorDialog, showPaymentError } = usePaymentErrorDialog();
 
   const refreshMemberData = useCallback(async () => {
-    const [profileResult, cardResult] = await Promise.allSettled([fetchProfiles(), fetchCurrentCardOrder()]);
+    const [profileResult, cardResult] = await Promise.allSettled([
+      fetchProfiles(),
+      MEMBER_CARD_ENABLED ? fetchCurrentCardOrder() : Promise.resolve(null),
+    ]);
+    let nextNotice = '';
+
     if (cardResult.status === 'fulfilled') {
       setCurrentCard(cardResult.value);
     } else {
       setCurrentCard(null);
       console.warn('[register] load card failed', cardResult.reason);
+      nextNotice = '次卡信息暂不可用，本次报名将使用微信支付。';
     }
+
     if (profileResult.status === 'rejected') {
-      throw new Error('报名档案加载失败，请重试');
+      console.warn('[register] load profiles failed', profileResult.reason);
+      setProfileServiceAvailable(false);
+      setProfiles([]);
+      setMemberNotice('档案服务暂不可用，当前填写只用于本次报名。');
+      setStep((currentStep) => currentStep === 3 ? currentStep : 2);
+      return;
     }
 
     const profileList = profileResult.value;
+    setProfileServiceAvailable(true);
     setProfiles(profileList);
+    setMemberNotice(nextNotice);
 
     setSelectedProfileId((prevSelectedId) => {
-      const preferredProfile = profileList.find((item) => item.id === prevSelectedId) || profileList.find((item) => item.isDefault) || profileList[0];
+      const preferredProfile = transientProfile?.id === prevSelectedId
+        ? transientProfile
+        : profileList.find((item) => item.id === prevSelectedId)
+          || profileList.find((item) => item.isDefault)
+          || profileList[0];
       return preferredProfile?.id || '';
     });
 
-    if (profileList.length === 0) {
-      setStep(2);
-      setEditingProfileId(undefined);
-      setFormValue(buildProfileFormValue(undefined, true));
+    if (profileList.length === 0 && !transientProfile) {
+      setStep((currentStep) => currentStep === 3 ? currentStep : 2);
     }
-  }, []);
+  }, [transientProfile]);
 
   const loadPage = useCallback(async () => {
     setActivityLoading(true);
     setActivityError('');
-    setMemberError('');
-    const [activityResult, memberResult] = await Promise.allSettled([
-      activityId ? fetchRegistrationActivity(activityId) : Promise.reject(new Error('缺少活动信息')),
-      refreshMemberData(),
-    ]);
+    setMemberNotice('');
+    void refreshMemberData().catch((error) => {
+      console.warn('[register] load member data failed', error);
+      setProfileServiceAvailable(false);
+      setMemberNotice('档案服务暂不可用，当前填写只用于本次报名。');
+      setStep((currentStep) => currentStep === 3 ? currentStep : 2);
+    });
 
-    if (activityResult.status === 'fulfilled' && activityResult.value.id === activityId) {
-      setActivity(activityResult.value);
-    } else {
-      const reason = activityResult.status === 'rejected' ? activityResult.reason : new Error('活动信息不匹配');
+    try {
+      if (!activityId) {
+        throw new Error('缺少活动信息');
+      }
+      const nextActivity = await fetchRegistrationActivity(activityId);
+      if (nextActivity.id !== activityId) {
+        throw new Error('活动信息不匹配');
+      }
+      setActivity(nextActivity);
+    } catch (error) {
       setActivity(null);
-      setActivityError(reason instanceof Error ? reason.message : '活动加载失败');
+      setActivityError(error instanceof Error ? error.message : '活动加载失败');
+    } finally {
+      setActivityLoading(false);
     }
-    if (memberResult.status === 'rejected') {
-      console.warn('[register] load member data failed', memberResult.reason);
-      setMemberError(memberResult.reason instanceof Error ? memberResult.reason.message : '报名档案加载失败');
-    }
-    setActivityLoading(false);
   }, [activityId, refreshMemberData]);
 
   useDidShow(() => {
@@ -132,29 +177,36 @@ const RegisterPage: React.FC = () => {
     setUseCard(Boolean(activity?.cardEligible && remainingCount > 0));
   }, [activity?.cardEligible, currentCard?.remainingCount, directPaymentEnabled]);
 
+  const availableProfiles = useMemo(
+    () => transientProfile
+      ? [transientProfile, ...profiles.filter((item) => item.id !== transientProfile.id)]
+      : profiles,
+    [profiles, transientProfile]
+  );
+
   const selectedProfile = useMemo(
-    () => profiles.find((item) => item.id === selectedProfileId) || profiles[0],
-    [profiles, selectedProfileId]
+    () => availableProfiles.find((item) => item.id === selectedProfileId) || availableProfiles[0],
+    [availableProfiles, selectedProfileId]
   );
 
   const paymentSummary = useMemo(() => {
     if (!activity) {
       return { deductionAmount: 0, payableAmount: 0 };
     }
-    const remainingCount = currentCard?.remainingCount || 0;
-    const deductionAmount = calculateCardDeduction(
-      registrationPrice,
-      directPaymentEnabled ? false : useCard,
-      Boolean(activity.cardEligible),
-      remainingCount
-    );
+    const deductionAmount = MEMBER_CARD_ENABLED
+      && useCard
+      && activity.cardEligible
+      && (currentCard?.remainingCount || 0) > 0
+      ? Math.min(registrationPrice, currentCard?.perUseMaxOffset || 0)
+      : 0;
     return {
       deductionAmount,
       payableAmount: Math.max(0, registrationPrice - deductionAmount),
     };
-  }, [activity, currentCard?.remainingCount, directPaymentEnabled, registrationPrice, useCard]);
+  }, [activity, currentCard?.perUseMaxOffset, currentCard?.remainingCount, registrationPrice, useCard]);
 
   const handleCreateProfile = () => {
+    setTransientProfile(null);
     setEditingProfileId(undefined);
     setFormValue(buildProfileFormValue(undefined, profiles.length === 0));
     setStep(2);
@@ -167,13 +219,38 @@ const RegisterPage: React.FC = () => {
   };
 
   const handleSaveProfile = async (goNext: boolean) => {
+    const continueWithTransientProfile = () => {
+      const nextProfile = buildTransientProfile(formValue, clientRequestId);
+      setTransientProfile(nextProfile);
+      setSelectedProfileId(nextProfile.id);
+      setEditingProfileId(nextProfile.id);
+      setProfileServiceAvailable(false);
+      setMemberNotice('档案服务暂不可用，当前填写只用于本次报名。');
+      setStep(3);
+      Taro.showToast({ title: '将使用当前填写内容报名', icon: 'none' });
+    };
+
+    if (!profileServiceAvailable) {
+      if (goNext) {
+        continueWithTransientProfile();
+      } else {
+        Taro.showToast({ title: '档案服务暂不可用', icon: 'none' });
+      }
+      return;
+    }
+
     setIsSavingProfile(true);
     try {
-      const savedProfile = await saveProfile({ ...formValue, id: editingProfileId });
-      const latestProfiles = await fetchProfiles();
-      setProfiles(latestProfiles);
+      const remoteProfileId = editingProfileId === transientProfile?.id ? undefined : editingProfileId;
+      const savedProfile = await saveProfile({ ...formValue, id: remoteProfileId });
+      setProfiles((currentProfiles) => [
+        savedProfile,
+        ...currentProfiles.filter((item) => item.id !== savedProfile.id),
+      ]);
+      setTransientProfile(null);
       setSelectedProfileId(savedProfile.id);
       setEditingProfileId(savedProfile.id);
+      setMemberNotice('');
       Taro.showToast({ title: '档案已保存', icon: 'success' });
 
       if (goNext) {
@@ -184,7 +261,11 @@ const RegisterPage: React.FC = () => {
       Taro.redirectTo({ url: '/pages/my-profiles/index' });
     } catch (error) {
       console.warn('[register] save profile failed', error);
-      Taro.showToast({ title: '保存失败，请稍后再试', icon: 'none' });
+      if (goNext) {
+        continueWithTransientProfile();
+      } else {
+        Taro.showToast({ title: '保存失败，请稍后再试', icon: 'none' });
+      }
     } finally {
       setIsSavingProfile(false);
     }
@@ -273,16 +354,6 @@ const RegisterPage: React.FC = () => {
     );
   }
 
-  if (memberError) {
-    return (
-      <View className={styles.statePage} style={viewportStyle}>
-        <EmptyState title="报名资料加载失败" description={memberError}>
-          <Button block type="outline" onClick={() => void loadPage()}>重新加载</Button>
-        </EmptyState>
-      </View>
-    );
-  }
-
   return (
     <View className={styles.container} style={viewportStyle}>
       <ScrollView className={styles.scrollView} scrollY enableFlex>
@@ -298,7 +369,13 @@ const RegisterPage: React.FC = () => {
         </View>
 
         <View className={styles.activityCard}>
-          <SafeImage className={styles.activityCover} src={activity.cover || activity.coverImage} mode="aspectFill" fallbackDelayMs={2200} />
+          <SafeImage
+            className={styles.activityCover}
+            src={activity.cover || activity.coverImage}
+            fallbackSrc={activityImageFallback}
+            mode="aspectFill"
+            fallbackDelayMs={2200}
+          />
           <View className={styles.activityInfo}>
             <Text className={styles.activityTitle}>{activity.title}</Text>
             <Text className={styles.activityMeta}>{formatDate(activity.startDate)} · {activity.startTime}-{activity.endTime}</Text>
@@ -306,9 +383,15 @@ const RegisterPage: React.FC = () => {
           </View>
         </View>
 
+        {memberNotice ? (
+          <View className={styles.sectionCard}>
+            <Text className={styles.warningText}>{memberNotice}</Text>
+          </View>
+        ) : null}
+
         {step === 1 ? (
           <ProfileSelectionPanel
-            profiles={profiles}
+            profiles={availableProfiles}
             selectedProfileId={selectedProfileId}
             onCreate={handleCreateProfile}
             onEdit={handleEditProfile}
@@ -321,9 +404,11 @@ const RegisterPage: React.FC = () => {
             <ProfileForm
               value={formValue}
               title={editingProfileId ? '编辑这份社畜档案' : '新建一份社畜档案'}
-              description="所有字段都可以空着，先把想写的写下来就好。"
+              description={profileServiceAvailable
+                ? '所有字段都可以空着，先把想写的写下来就好。'
+                : '档案服务暂不可用，当前填写只用于本次报名。'}
               submitText={isSavingProfile ? '保存中...' : '保存并下一步'}
-              secondaryActionText={isSavingProfile ? undefined : '仅保存档案'}
+              secondaryActionText={profileServiceAvailable && !isSavingProfile ? '仅保存档案' : undefined}
               cancelText="返回上一步"
               onChange={(patch) => setFormValue((prev) => ({ ...prev, ...patch }))}
               onSubmit={() => !isSavingProfile && handleSaveProfile(true)}
@@ -338,14 +423,17 @@ const RegisterPage: React.FC = () => {
             <ProfileSnapshotPanel profile={selectedProfile} onEdit={() => selectedProfile && handleEditProfile(selectedProfile)} />
 
             <View className={styles.sectionCard}>
-              <Text className={styles.sectionTitle}>{directPaymentEnabled ? '微信支付' : '次卡抵扣'}</Text>
-              {directPaymentEnabled ? (
+              <Text className={styles.sectionTitle}>{MEMBER_CARD_ENABLED ? '报名支付' : '微信支付'}</Text>
+              {!MEMBER_CARD_ENABLED ? (
                 <Text className={styles.paymentNotice}>报名金额由服务端核算。支付完成后，以微信支付服务端确认结果为准。</Text>
               ) : (
               <View className={styles.cardToggleRow}>
                 <View>
                   <Text className={styles.toggleTitle}>使用社畜次卡</Text>
-                  <Text className={styles.toggleDesc}>当前剩余 {currentCard?.remainingCount || 0} 次，可单次最高抵扣 ¥148。</Text>
+                  <Text className={styles.toggleDesc}>
+                    当前剩余 {currentCard?.remainingCount || 0} 次
+                    {(currentCard?.perUseMaxOffset || 0) > 0 ? `，单次最高抵扣 ${formatPrice(currentCard?.perUseMaxOffset || 0)}` : ''}。
+                  </Text>
                 </View>
                 <View
                   className={activity.cardEligible && (currentCard?.remainingCount || 0) > 0 ? (useCard ? styles.toggleActive : styles.toggle) : styles.toggleDisabled}
@@ -363,14 +451,16 @@ const RegisterPage: React.FC = () => {
                 </View>
               </View>
               )}
-              {!directPaymentEnabled && !activity.cardEligible ? <Text className={styles.warningText}>这场活动暂不支持次卡抵扣，仍可直接完成报名。</Text> : null}
-              {!directPaymentEnabled && activity.cardEligible && (currentCard?.remainingCount || 0) <= 0 ? (
-                <Text className={styles.warningText} onClick={() => Taro.navigateTo({ url: '/pages/my-cards/index' })}>当前没有可用次卡，去「社畜次卡」页面买一张再回来也行。</Text>
+              {MEMBER_CARD_ENABLED && !activity.cardEligible ? <Text className={styles.warningText}>这场活动暂不支持次卡抵扣，仍可使用微信支付。</Text> : null}
+              {MEMBER_CARD_ENABLED && activity.cardEligible && (currentCard?.remainingCount || 0) <= 0 ? (
+                <Text className={styles.warningText}>当前没有可用次卡，本次可使用微信支付。</Text>
               ) : null}
 
               <View className={styles.pricePanel}>
                 <View className={styles.priceRow}><Text className={styles.priceLabel}>报名价</Text><Text className={styles.priceValue}>{formatPrice(registrationPrice)}</Text></View>
-                <View className={styles.priceRow}><Text className={styles.priceLabel}>抵扣</Text><Text className={styles.discountValue}>- {formatPrice(paymentSummary.deductionAmount)}</Text></View>
+                {MEMBER_CARD_ENABLED ? (
+                  <View className={styles.priceRow}><Text className={styles.priceLabel}>抵扣</Text><Text className={styles.discountValue}>- {formatPrice(paymentSummary.deductionAmount)}</Text></View>
+                ) : null}
                 <View className={styles.priceRowStrong}><Text className={styles.priceStrongLabel}>实付</Text><Text className={styles.priceStrongValue}>{formatPrice(paymentSummary.payableAmount)}</Text></View>
               </View>
             </View>

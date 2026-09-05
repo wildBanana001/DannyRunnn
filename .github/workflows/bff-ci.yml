@@ -28,7 +28,7 @@ defaults:
 
 jobs:
   verify:
-    name: Build, smoke test, and verify image
+    name: Build, MySQL integration tests, smoke test, and verify image
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -36,7 +36,9 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_DATABASE: worker_house
+          MYSQL_DATABASE: worker_house_test
+          MYSQL_USER: worker_house_test
+          MYSQL_PASSWORD: mysql-test-password
           MYSQL_ROOT_PASSWORD: mysql-ci-password
         ports:
           - 3306:3306
@@ -65,8 +67,11 @@ jobs:
 
       - name: Test payment signing, idempotency, and configuration checks
         run: npm test
+
+      - name: Require real MySQL catalog, stock, and order integration tests
+        run: npm run test:mysql
         env:
-          MYSQL_TEST_URL: mysql://root:mysql-ci-password@127.0.0.1:3306/worker_house
+          MYSQL_TEST_URL: mysql://worker_house_test:mysql-test-password@127.0.0.1:3306/worker_house_test
 
       - name: Smoke test HTTP health endpoints
         shell: bash

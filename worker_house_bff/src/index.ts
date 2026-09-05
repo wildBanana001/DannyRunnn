@@ -1,8 +1,10 @@
 import cors from 'cors';
 import express from 'express';
 import { config, hasWechatCloudConfig } from './config.js';
+import { initializeActivityCatalog } from './data/activities.js';
 import { getSiteConfig as getCommunitySiteConfig } from './data/siteConfig.js';
 import { checkOrderStorageReady } from './data/orders.js';
+import { initializeShopCatalog } from './data/shop.js';
 import { activityRouter } from './routes/activity.js';
 import { accountRouter } from './routes/account.js';
 import { adminMiniRouter } from './routes/adminMini.js';
@@ -20,46 +22,13 @@ import { shopRouter } from './routes/shop.js';
 import { siteRouter } from './routes/site.js';
 import { storiesRouter, adminMiniStoriesRouter } from './routes/stories.js';
 import { adminUploadRouter, userUploadRouter } from './routes/upload.js';
-import { isMysqlBackedAdminOrderRequest } from './utils/admin-order-runtime.js';
+import { isRequestRuntimeReady } from './runtime-gate.js';
 import { getWechatPayConfigurationStatus } from './utils/wechat-pay.js';
 
 const app = express();
 
 function isRuntimeReady() {
   return config.cloudMode !== 'cloudrun' || config.allowEphemeralCloudrunData;
-}
-
-function isRequestRuntimeReady(path: string, method: string) {
-  if (isRuntimeReady()) return true;
-  const isAccountPath = path === '/account' || path.startsWith('/account/');
-  const accountDeletionReady = isAccountPath && (method !== 'DELETE' || hasWechatCloudConfig());
-  const communityReady = hasWechatCloudConfig() && (
-    path === '/posts'
-    || path.startsWith('/posts/')
-    || path === '/upload'
-    || path.startsWith('/upload/')
-    || path === '/admin/upload'
-    || path.startsWith('/admin/upload/')
-    || path === '/admin-mini/check'
-    || path === '/admin-mini/stats'
-    || path === '/admin-mini/upload'
-    || path === '/admin-mini/posts'
-    || path.startsWith('/admin-mini/posts/')
-  );
-  const paymentStorageReady = config.shopOrderStorage === 'mysql'
-    && (path === '/shop' || path.startsWith('/shop/'));
-  const paymentAdminOrderReady = config.enableShop
-    && config.shopOrderStorage === 'mysql'
-    && isMysqlBackedAdminOrderRequest(path, method);
-  const bundledActivityRead = method === 'GET'
-    && (path === '/activities' || path.startsWith('/activities/'));
-  const bundledSiteConfigRead = method === 'GET' && path === '/site-config';
-  return accountDeletionReady
-    || communityReady
-    || paymentStorageReady
-    || paymentAdminOrderReady
-    || bundledActivityRead
-    || bundledSiteConfigRead;
 }
 
 function buildHealthPayload() {
@@ -72,7 +41,7 @@ function buildHealthPayload() {
     },
     persistence: config.cloudMode === 'cloudrun'
       ? config.shopOrderStorage === 'mysql'
-        ? 'mysql-orders+bundled-content'
+        ? 'mysql-orders+catalogs'
         : 'ephemeral-filesystem'
       : 'local-filesystem',
     shop: {
@@ -114,7 +83,7 @@ app.get('/api/health', (_request, response) => {
 app.use('/api', (request, response, next) => {
   if (!isRequestRuntimeReady(request.path, request.method)) {
     response.status(503).json({
-      message: '该接口仍使用临时文件存储，云托管生产环境暂未开放；支付订单与活动报名已独立使用 MySQL',
+      message: '该接口仍依赖未迁移的临时存储，云托管生产环境暂未开放；订单与活动/商品目录已使用 MySQL',
     });
     return;
   }
@@ -156,15 +125,27 @@ app.use((error: unknown, _request: express.Request, response: express.Response, 
   response.status(500).json({ message: '服务内部错误' });
 });
 
-app.listen(config.port, () => {
-  console.log(`worker_house_bff 已启动：http://localhost:${config.port} （mode=${config.cloudMode}）`);
-  if (config.enableShop && config.cloudMode !== 'mock') {
-    void checkOrderStorageReady().then((ready) => {
-      if (!ready) console.warn('[orders store] configuration_required');
-    });
-    const paymentConfiguration = getWechatPayConfigurationStatus();
-    if (!paymentConfiguration.ready) {
-      console.warn(`[wechat-pay] configuration_required issues=${paymentConfiguration.issues.join(',')}`);
+async function startServer() {
+  await Promise.all([
+    initializeActivityCatalog(),
+    initializeShopCatalog(),
+  ]);
+
+  app.listen(config.port, () => {
+    console.log(`worker_house_bff 已启动：http://localhost:${config.port} （mode=${config.cloudMode}）`);
+    if (config.enableShop && config.cloudMode !== 'mock') {
+      void checkOrderStorageReady().then((ready) => {
+        if (!ready) console.warn('[orders store] configuration_required');
+      });
+      const paymentConfiguration = getWechatPayConfigurationStatus();
+      if (!paymentConfiguration.ready) {
+        console.warn(`[wechat-pay] configuration_required issues=${paymentConfiguration.issues.join(',')}`);
+      }
     }
-  }
+  });
+}
+
+void startServer().catch((error) => {
+  console.error('[startup] catalog initialization failed', error instanceof Error ? error.message : error);
+  process.exit(1);
 });

@@ -1,12 +1,99 @@
 import Taro from '@tarojs/taro';
 import { allActivities, featuredActivity } from '@/data/activities';
-import type { Activity, CardOrder, CardUsageLog, Profile, ProfileFormValue, ProfileSnapshot, Registration } from '@/types';
+import { homeLandingConfig as mockHomeLandingConfig, siteConfig as mockLegacySiteConfig } from '@/data/site';
+import { currentUser as mockCurrentUser } from '@/data/users';
+import type { Activity, CardOrder, CardUsageLog, Profile, ProfileFormValue, ProfileSnapshot, Registration, User } from '@/types';
+import type { AdminFulfillmentTask, AdminIdentity } from '@/types/adminFulfillment';
+import type { WxLoginResult, WxUserProfile } from '@/types/auth';
+import type { SiteConfig } from '@/types/site';
+import type { SiteConfigRecord } from '@/types/siteConfig';
 
 const STORAGE_KEY = 'worker-house-member-state-v5';
 const DEFAULT_OPENID = 'mock_openid_001';
 const CARD_PACKAGE_PRICE = 399;
 const CARD_MAX_DEDUCTION = 148;
 const CARD_PACKAGE_COUNT = 3;
+const MOCK_WX_USER_STORAGE_KEY = 'worker-house-mock-wx-user';
+const MOCK_ADMIN_TASK_STORAGE_KEY = 'worker-house-admin-fulfillment-tasks-v1';
+
+export const MOCK_PERSONAL_CACHE_KEYS = [
+  STORAGE_KEY,
+  MOCK_WX_USER_STORAGE_KEY,
+  'worker-house-mock-addresses-v1',
+  'worker-house-mock-shop-orders-v2',
+] as const;
+
+const mockSiteConfigRecord: SiteConfigRecord = {
+  communityWallEnabled: false,
+  communityQrcode: mockHomeLandingConfig.communityQr || '',
+  contactWechat: 'DannyRunnn',
+  heroSlogan: '真实聚点',
+  heroTitle: '社畜空间',
+  aboutUs: '一间社畜快乐屋，把每次相遇都变成松弛体验。',
+  homeCopyLead: 'Hiiii这里是社畜没有派对！',
+  homeCopyBody: '一个通过客厅建立有趣新人类社交方式的城市共居空间，这里为社交、文化、艺术、共创、女性友好住宿等一切创意活动无限开放',
+  homeChannelsFinder: 'sph_worker_house_demo',
+  homeOfficialAccountId: 'gh_worker_house_official',
+  homeOfficialAccountName: '社畜没有派对',
+  homeSpaceImages: [...mockHomeLandingConfig.spaceGallery],
+  homeOwners: [
+    {
+      id: 'owner-orange',
+      avatar: mockLegacySiteConfig.ownerAvatar,
+      label: '橙子',
+      description: '互联网大厂裸辞，正在探索新新人类生活方式，徒手爆改80m²社畜快乐屋，旅游狂热分子，enfj理想主义体验派！',
+    },
+    {
+      id: 'owner-cat',
+      avatar: mockHomeLandingConfig.spaceGallery[1] || mockLegacySiteConfig.ownerAvatar,
+      label: '小黑',
+      description: '一只3岁的粘人奶牛猫，社畜团宠，一脸正义又娇憨可爱的黑猫警长，yes sir~',
+    },
+  ],
+  updatedAt: '',
+  updatedBy: '',
+};
+
+const mockAdminFulfillmentTasks: AdminFulfillmentTask[] = [
+  {
+    action: 'fulfill',
+    amount: 1,
+    createdAt: '2026-08-09T11:58:00.000Z',
+    fulfillmentLabel: '现场参与',
+    fulfillmentStatus: 'pending',
+    id: 'WA-MOCK-ACTIVITY-001',
+    kind: 'activity',
+    paidAt: '2026-08-09T12:00:00.000Z',
+    participantContact: 'Linkaifeng · 13800000000',
+    participantName: '凯锋',
+    quantity: 1,
+    remark: '',
+    title: 'Deeptalk｜幸福的奥义',
+    unitLabel: '位',
+    wechatShippingAttempts: 0,
+    wechatShippingError: '',
+    wechatShippingStatus: 'pending',
+  },
+  {
+    action: 'retry',
+    amount: 1,
+    createdAt: '2026-08-09T10:30:00.000Z',
+    fulfillmentLabel: '到店享用',
+    fulfillmentStatus: 'fulfilled',
+    id: 'WH-MOCK-SHOP-001',
+    kind: 'shop',
+    paidAt: '2026-08-09T10:31:00.000Z',
+    participantContact: '',
+    participantName: '到店用户',
+    quantity: 1,
+    remark: '少冰',
+    title: '落日气泡 Highball',
+    unitLabel: '杯',
+    wechatShippingAttempts: 1,
+    wechatShippingError: '微信接口暂时不可用，请重试',
+    wechatShippingStatus: 'failed',
+  },
+];
 
 interface WorkerHouseMockState {
   profiles: Profile[];
@@ -381,3 +468,85 @@ export const createMockRegistration = (payload: CreateRegistrationPayload): Regi
 
   return nextState.registrations[0];
 };
+
+const getStoredMockWxUser = (): WxUserProfile | null => {
+  const cached = Taro.getStorageSync<WxUserProfile | null>(MOCK_WX_USER_STORAGE_KEY);
+  return cached?.openid ? cached : null;
+};
+
+export const getMockWxLoginResult = (): WxLoginResult => {
+  const user = getStoredMockWxUser();
+  return {
+    openid: DEFAULT_OPENID,
+    nickname: user?.nickname ?? '',
+    avatar: user?.avatar ?? '',
+    isNew: !user,
+  };
+};
+
+export const updateMockWxUserProfile = (payload: { nickname: string; avatar: string }): WxUserProfile => {
+  const current = getStoredMockWxUser();
+  const timestamp = new Date().toISOString();
+  const user: WxUserProfile = {
+    openid: DEFAULT_OPENID,
+    nickname: payload.nickname.trim(),
+    avatar: payload.avatar.trim(),
+    createdAt: current?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  };
+  Taro.setStorageSync(MOCK_WX_USER_STORAGE_KEY, user);
+  return user;
+};
+
+export const getMockWxUserProfile = (): WxUserProfile => {
+  const user = getStoredMockWxUser();
+  if (!user) {
+    throw new Error('mock 用户尚未登录');
+  }
+  return user;
+};
+
+export const getMockAdminIdentity = (): AdminIdentity => ({
+  isAdmin: true,
+  openid: DEFAULT_OPENID,
+});
+
+export const getMockAdminFulfillmentTasks = (): AdminFulfillmentTask[] => {
+  const cached = Taro.getStorageSync<AdminFulfillmentTask[] | null>(MOCK_ADMIN_TASK_STORAGE_KEY);
+  if (Array.isArray(cached)) {
+    return clone(cached);
+  }
+  const initialTasks = clone(mockAdminFulfillmentTasks);
+  Taro.setStorageSync(MOCK_ADMIN_TASK_STORAGE_KEY, initialTasks);
+  return initialTasks;
+};
+
+export const completeMockAdminFulfillmentTask = (task: AdminFulfillmentTask): AdminFulfillmentTask => {
+  const tasks = getMockAdminFulfillmentTasks();
+  const current = tasks.find((item) => item.id === task.id && item.kind === task.kind);
+  if (!current) {
+    throw new Error('待核销订单不存在或已经处理');
+  }
+  Taro.setStorageSync(
+    MOCK_ADMIN_TASK_STORAGE_KEY,
+    tasks.filter((item) => item.id !== task.id || item.kind !== task.kind),
+  );
+  return {
+    ...current,
+    action: 'retry',
+    fulfillmentStatus: 'fulfilled',
+    wechatShippingError: '',
+    wechatShippingStatus: current.wechatShippingStatus === 'not_required' ? 'not_required' : 'reported',
+  };
+};
+
+export const getMockSiteConfigRecord = (): SiteConfigRecord => clone(mockSiteConfigRecord);
+
+export const getMockLegacySiteConfig = (): SiteConfig => clone(mockLegacySiteConfig);
+
+export const getMockCurrentUser = (): User => clone(mockCurrentUser);
+
+export const getMockLoginPreset = (): { nickname: string; avatar: string } => ({
+  nickname: '体验用户',
+  avatar: mockLegacySiteConfig.ownerAvatar,
+});

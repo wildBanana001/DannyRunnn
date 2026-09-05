@@ -80,3 +80,50 @@ test('分类忽略接口中已过期的静态 status 并按日期重新归档', 
   assert.deepEqual(selectActivitiesByStatus([expired, future], 'ended', now).map(({ id }) => id), ['expired']);
   assert.deepEqual(selectActivitiesByStatus([expired, future], 'ongoing', now).map(({ id }) => id), ['future']);
 });
+
+test('远端活动优先使用接口下发的合法 status', () => {
+  const futureButEnded = createActivity({
+    id: 'remote-ended',
+    startDate: '2026-08-22',
+    endDate: '2026-08-22',
+    status: 'ended',
+  });
+  const remoteUpcoming = createActivity({
+    id: 'remote-upcoming',
+    startDate: '2026-08-01',
+    endDate: '2026-08-01',
+    status: 'upcoming',
+  });
+  const now = Date.parse('2026-08-18T12:00:00+08:00');
+  const options = { trustProvidedStatus: true };
+
+  assert.deepEqual(
+    selectActivitiesByStatus([futureButEnded, remoteUpcoming], 'ended', now, options).map(({ id }) => id),
+    ['remote-ended'],
+  );
+  assert.deepEqual(
+    selectActivitiesByStatus([futureButEnded, remoteUpcoming], 'ongoing', now, options).map(({ id }) => id),
+    [],
+  );
+});
+
+test('远端活动 status 缺失或非法时按日期推导', () => {
+  const expiredWithInvalidStatus = createActivity({ id: 'invalid', status: 'invalid' });
+  const futureWithoutStatus = createActivity({
+    id: 'missing',
+    startDate: '2026-08-22',
+    endDate: '2026-08-22',
+  });
+  delete futureWithoutStatus.status;
+  const now = Date.parse('2026-08-18T12:00:00+08:00');
+  const options = { trustProvidedStatus: true };
+
+  assert.deepEqual(
+    selectActivitiesByStatus([expiredWithInvalidStatus, futureWithoutStatus], 'ended', now, options).map(({ id }) => id),
+    ['invalid'],
+  );
+  assert.deepEqual(
+    selectActivitiesByStatus([expiredWithInvalidStatus, futureWithoutStatus], 'ongoing', now, options).map(({ id }) => id),
+    ['missing'],
+  );
+});

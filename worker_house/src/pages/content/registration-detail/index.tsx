@@ -4,7 +4,8 @@ import Taro, { useRouter } from '@tarojs/taro';
 import Button from '@/components/Button';
 import EmptyState from '@/components/EmptyState';
 import SafeImage from '@/components/SafeImage';
-import activityCoverFallback from '@/assets/home/hero-cover.jpg';
+import { MEMBER_CARD_ENABLED } from '@/constants/capabilities';
+import activityCoverFallback from '@/assets/home/space-room-v2.jpg';
 import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import {
   confirmActivityPayment,
@@ -128,7 +129,9 @@ const RegistrationDetailPage: React.FC = () => {
         <View className={styles.sectionCard}>
           <Text className={styles.sectionTitle}>支付信息</Text>
           <View className={styles.row}><Text className={styles.label}>原价</Text><Text className={styles.value}>{formatPrice(detail.originalPrice)}</Text></View>
-          <View className={styles.row}><Text className={styles.label}>次卡抵扣</Text><Text className={styles.discountValue}>- {formatPrice(detail.cardOffset)}</Text></View>
+          {MEMBER_CARD_ENABLED ? (
+            <View className={styles.row}><Text className={styles.label}>次卡抵扣</Text><Text className={styles.discountValue}>- {formatPrice(detail.cardOffset)}</Text></View>
+          ) : null}
           <View className={styles.row}><Text className={styles.label}>实付</Text><Text className={styles.strongValue}>{formatPrice(detail.amountPaid)}</Text></View>
           <View className={styles.row}><Text className={styles.label}>应付金额</Text><Text className={styles.value}>{formatPrice(detail.payable)}</Text></View>
         </View>

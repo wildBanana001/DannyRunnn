@@ -198,7 +198,7 @@ export function destroyAdminSession(token: string) {
 }
 
 export function normalizePoster(record: Record<string, unknown> | null | undefined): PosterRecord | null {
-  if (!record) {
+  if (!record || typeof record.enabled !== 'boolean') {
     return null;
   }
 
@@ -209,7 +209,7 @@ export function normalizePoster(record: Record<string, unknown> | null | undefin
     detailImages: Array.isArray(record.detailImages)
       ? record.detailImages.map((item) => String(item))
       : [],
-    enabled: Boolean(record.enabled),
+    enabled: record.enabled,
     sort: Number(record.sort ?? 0),
     createdAt: String(record.createdAt ?? new Date().toISOString()),
     updatedAt: String(record.updatedAt ?? record.createdAt ?? new Date().toISOString()),

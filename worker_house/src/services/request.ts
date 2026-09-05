@@ -1,5 +1,4 @@
 import Taro from '@tarojs/taro';
-import { PAYMENT_API_MODE } from '../constants/runtime';
 import { createApiRequestError } from './apiError';
 import { cloudrunRequest, type CloudrunRequestOptions } from './cloudrun';
 
@@ -50,7 +49,7 @@ export function getApiMode(): ApiMode {
 }
 
 export function getPaymentApiMode(): ApiMode {
-  return process.env.TARO_ENV === 'weapp' ? PAYMENT_API_MODE : 'mock';
+  return process.env.TARO_ENV === 'weapp' ? getApiMode() : 'mock';
 }
 
 export async function requestWithMode<T>(apiMode: ApiMode, options: RequestOptions): Promise<T> {

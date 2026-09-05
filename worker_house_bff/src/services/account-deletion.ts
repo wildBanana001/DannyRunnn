@@ -1,6 +1,6 @@
 import { deleteAddressesByOpenid, getAddressesByOpenid } from '../data/addresses.js';
 import {
-  removeActivityParticipantsByOpenid,
+  removePersistedActivityParticipantsByOpenid,
 } from '../data/activities.js';
 import {
   deleteCardOrdersByOpenid,
@@ -162,7 +162,7 @@ export async function deleteAccountData(openid: string): Promise<AccountDeletion
     throw error;
   }
 
-  const activitySignups = removeActivityParticipantsByOpenid(openid);
+  const activitySignups = await removePersistedActivityParticipantsByOpenid(openid);
   const registrations = deleteRegistrationsByOpenid(openid);
   const cardOrders = deleteCardOrdersByOpenid(openid);
   const profiles = deleteProfilesByOpenid(openid);

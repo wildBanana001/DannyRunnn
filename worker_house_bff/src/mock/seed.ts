@@ -63,13 +63,13 @@ const img = {
 } as const;
 
 const dinnerTableAssets = {
-  coverImage: 'activity-asset://dinner-table/cover.jpg',
+  coverImage: '/static/images/activities/dinner-table/cover.jpg',
   gallery: [
-    'activity-asset://dinner-table/menu.jpg',
-    'activity-asset://dinner-table/food-1.jpg',
-    'activity-asset://dinner-table/food-2.jpg',
-    'activity-asset://dinner-table/food-3.jpg',
-    'activity-asset://dinner-table/food-4.jpg',
+    '/static/images/activities/dinner-table/menu.jpg',
+    '/static/images/activities/dinner-table/food-1.jpg',
+    '/static/images/activities/dinner-table/food-2.jpg',
+    '/static/images/activities/dinner-table/food-3.jpg',
+    '/static/images/activities/dinner-table/food-4.jpg',
   ],
 } as const;
 

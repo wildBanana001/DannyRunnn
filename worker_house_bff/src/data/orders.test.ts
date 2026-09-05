@@ -2,32 +2,78 @@ import assert from 'node:assert/strict';
 import { rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test, { after } from 'node:test';
+import type { Request, RequestHandler, Response } from 'express';
 import {
   AccountOrderDeletionBlockedError,
   ActivityCapacityExceededError,
+  ShopStockExceededError,
   claimOrderFulfillmentReport,
   claimOrderPaymentPreparation,
   createActivityOrderWithCapacity,
   createOrder,
+  createShopOrderWithStock,
   deleteOrAnonymizeOrdersByOpenid,
   finishOrderPaymentPreparation,
   finishOrderFulfillmentReport,
+  getActiveShopOrdersByProductIds,
   getOrderById,
   getOrdersByOpenid,
   getOrdersByProductId,
   settleFreeOrder,
   updateOrderStatus,
 } from './orders.js';
-import { getActivityById } from './activities.js';
+import {
+  deleteActivity,
+  getActivityById,
+  listActivities,
+  upsertActivity,
+} from './activities.js';
+import type { ActivityRecord } from '../types/index.js';
 import { getProductById, listProducts, normalizeShopProduct } from './shop.js';
-import { resolveShopOrderAddress } from '../routes/shop.js';
+import { resolveShopOrderAddress, shopRouter, withAvailableShopStock } from '../routes/shop.js';
+import { createOutTradeNo } from '../utils/wechat-pay.js';
 
 const storageFilePath = fileURLToPath(new URL('./orders.store.json', import.meta.url));
 rmSync(storageFilePath, { force: true });
-after(() => rmSync(storageFilePath, { force: true }));
+const createdActivityIds = new Set<string>();
+after(() => {
+  rmSync(storageFilePath, { force: true });
+  for (const activityId of createdActivityIds) deleteActivity(activityId);
+});
+
+function createTestActivity(options: {
+  currentParticipants?: number;
+  enabled?: boolean;
+  maxParticipants?: number;
+  priceInCents?: number;
+} = {}) {
+  const source = listActivities()[0];
+  assert.ok(source);
+  const priceInCents = options.priceInCents ?? 9_900;
+  const created = upsertActivity(undefined, {
+    ...source,
+    cardEligible: false,
+    currentParticipants: options.currentParticipants ?? 0,
+    enabled: options.enabled ?? true,
+    maxParticipants: options.maxParticipants ?? 10,
+    originalPrice: priceInCents / 100,
+    price: priceInCents / 100,
+    title: `订单活动测试 ${createdActivityIds.size + 1}`,
+  });
+  createdActivityIds.add(created.id);
+  return created;
+}
+
+function activityCapacity(activity: ActivityRecord) {
+  return {
+    configurationVersion: activity.updatedAt,
+    currentParticipants: activity.currentParticipants,
+    maxParticipants: activity.maxParticipants,
+  };
+}
 
 function createPendingOrder(amount = 5_990, id = 'WH0123456789ABCDEF0123456789ABCD') {
-  return createOrder({
+  return createFixtureOrder({
     id,
     clientRequestId: `shop-request-${id}`,
     productId: 'prod-coffee-box',
@@ -76,6 +122,94 @@ function buildCapacityActivityOrder(id: string, activityId: string, openid: stri
   };
 }
 
+function buildStockShopOrder(id: string, productId: string, quantity: number) {
+  return {
+    id,
+    kind: 'shop' as const,
+    clientRequestId: `request-${id}`,
+    productId,
+    productName: '有限库存测试商品',
+    productImageUrl: '',
+    unitPrice: 100,
+    shippingFee: 0,
+    quantity,
+    amount: quantity * 100,
+    address: null,
+    fulfillmentType: 'pickup' as const,
+    fulfillmentLabel: '到店自提',
+    unitLabel: '件',
+    openid: `openid-${id}`,
+    status: 'pending' as const,
+    mock: false,
+    expiresAt: new Date(Date.now() + 15 * 60 * 1_000).toISOString(),
+  };
+}
+
+function createFixtureOrder(input: Parameters<typeof createOrder>[0]) {
+  if (input.kind === 'activity') {
+    const activity = getActivityById(input.productId) ?? createTestActivity({
+      priceInCents: input.unitPrice,
+    });
+    return createActivityOrderWithCapacity(
+      {
+        ...input,
+        activityRegistration: input.activityRegistration
+          ? { ...input.activityRegistration, activityId: activity.id }
+          : undefined,
+        kind: 'activity',
+        productId: activity.id,
+      },
+      activityCapacity(activity),
+    );
+  }
+  return createShopOrderWithStock({ ...input, kind: 'shop' }, { stock: null });
+}
+
+test('rejects the generic order creation entry point in every storage mode', async () => {
+  await assert.rejects(
+    createOrder(buildStockShopOrder('WH_GENERIC_CREATE_BLOCKED', 'generic-create-product', 1)),
+    (error: unknown) => (error as { code?: string }).code === 'SHOP_STOCK_TRANSACTION_REQUIRED',
+  );
+  await assert.rejects(
+    createOrder(buildCapacityActivityOrder('WA_GENERIC_CREATE_BLOCKED', 'generic-act', 'generic-openid')),
+    (error: unknown) => (error as { code?: string }).code === 'ACTIVITY_CAPACITY_TRANSACTION_REQUIRED',
+  );
+});
+
+test('shop pay request reuses a paid snapshot even when the catalog item no longer exists', async () => {
+  const openid = 'openid-shop-route-idempotency';
+  const clientRequestId = 'shop-route-idempotency-request';
+  const productId = 'retired-shop-route-product';
+  assert.equal(getProductById(productId), null);
+  const original = await createShopOrderWithStock({
+    ...buildStockShopOrder(createOutTradeNo(openid, clientRequestId), productId, 1),
+    clientRequestId,
+    openid,
+    status: 'paid',
+    mock: true,
+  }, { stock: null });
+  const layers = (shopRouter as unknown as {
+    stack: Array<{ route?: { path?: string; methods?: { post?: boolean }; stack: Array<{ handle: RequestHandler }> } }>;
+  }).stack;
+  const handler = layers.find((layer) => layer.route?.path === '/orders/pay' && layer.route.methods?.post)
+    ?.route?.stack.at(-1)?.handle;
+  assert.ok(handler);
+  const invoke = (quantity: number) => new Promise<{ status: number; body: Record<string, unknown> }>((resolve, reject) => {
+    let statusCode = 200;
+    const response = {
+      status(code: number) { statusCode = code; return this; },
+      json(body: Record<string, unknown>) { resolve({ status: statusCode, body }); return this; },
+    } as unknown as Response;
+    handler({ wxUser: { openid }, body: { productId, clientRequestId, quantity } } as Request, response, reject);
+  });
+  const duplicate = await invoke(1);
+  assert.equal(duplicate.status, 200);
+  assert.equal(duplicate.body.amount, original.amount);
+  assert.equal(duplicate.body.unitPrice, original.unitPrice);
+  assert.equal(duplicate.body.outTradeNo, original.id);
+  assert.equal((await invoke(2)).status, 409, 'changed user-owned input is not an idempotent retry');
+});
+
 test('keeps order creation idempotent and serializes prepay_id preparation', async () => {
   const created = await createPendingOrder();
   const duplicate = await createPendingOrder(1);
@@ -108,7 +242,7 @@ test('keeps order creation idempotent and serializes prepay_id preparation', asy
 });
 
 test('records onsite fulfillment and serializes WeChat self-pickup reporting', async () => {
-  const pending = await createOrder({
+  const pending = await createFixtureOrder({
     id: 'WHFULFILLMENT0123456789ABCDEF0123',
     clientRequestId: 'shop-fulfillment-request',
     productId: 'cocktail-001',
@@ -166,16 +300,16 @@ test('records onsite fulfillment and serializes WeChat self-pickup reporting', a
 });
 
 test('stores activity registrations separately from shop orders', async () => {
-  const activityOrder = await createOrder({
+  const activityOrder = await createFixtureOrder({
     id: 'WA0123456789ABCDEF0123456789ABCD',
     kind: 'activity',
     clientRequestId: 'activity-request-test',
     productId: 'act-001',
     productName: '测试活动',
     productImageUrl: '',
-    unitPrice: 12_800,
+    unitPrice: 1,
     quantity: 1,
-    amount: 12_800,
+    amount: 1,
     address: null,
     fulfillmentType: 'onsite',
     fulfillmentLabel: '现场参与',
@@ -217,7 +351,7 @@ test('stores activity registrations separately from shop orders', async () => {
 });
 
 test('records activity check-in before idempotently reporting WeChat self-pickup fulfillment', async () => {
-  const activityOrder = await createOrder({
+  const activityOrder = await createFixtureOrder({
     ...buildCapacityActivityOrder(
       'WAFULFILLMENT0123456789ABCDEF0123',
       'activity-fulfillment-test',
@@ -278,7 +412,7 @@ test('records activity check-in before idempotently reporting WeChat self-pickup
 });
 
 test('completes mock activity check-in without requiring a WeChat shipping report', async () => {
-  const mockActivityOrder = await createOrder({
+  const mockActivityOrder = await createFixtureOrder({
     ...buildCapacityActivityOrder(
       'WAMOCKFULFILLMENT123456789ABCDEF01',
       'activity-mock-fulfillment-test',
@@ -302,19 +436,22 @@ test('completes mock activity check-in without requiring a WeChat shipping repor
   assert.equal(claim.order?.wechatShippingStatus, 'not_required');
 });
 
-test('normalizes legacy shop products and only lists enabled catalog products', () => {
+test('fails legacy shop products closed and only lists fully configured catalog products', () => {
   const legacyProduct = normalizeShopProduct({
     id: 'legacy-product',
     name: '历史商品',
   });
   assert.equal(legacyProduct.fulfillmentType, 'delivery');
-  assert.equal(legacyProduct.fulfillmentLabel, '快递配送');
-  assert.equal(legacyProduct.unitLabel, '件');
+  assert.equal(legacyProduct.fulfillmentLabel, '');
+  assert.equal(legacyProduct.unitLabel, '');
   assert.equal(legacyProduct.alcoholic, false);
   assert.equal(legacyProduct.abv, 0);
   assert.equal(legacyProduct.volumeMl, 0);
-  assert.equal(legacyProduct.enabled, true);
-  assert.equal('stock' in legacyProduct, false);
+  assert.equal(legacyProduct.shippingFee, 0);
+  assert.equal(legacyProduct.minQuantity, 1);
+  assert.equal(legacyProduct.maxQuantity, 1);
+  assert.equal(legacyProduct.stock, 0);
+  assert.equal(legacyProduct.enabled, false);
 
   const disabledProduct = normalizeShopProduct({
     id: 'disabled-product',
@@ -323,7 +460,7 @@ test('normalizes legacy shop products and only lists enabled catalog products', 
   });
   assert.equal(disabledProduct.enabled, false);
   assert.equal(disabledProduct.fulfillmentType, 'pickup');
-  assert.equal(disabledProduct.fulfillmentLabel, '到店自取');
+  assert.equal(disabledProduct.fulfillmentLabel, '');
 
   const listedProducts = listProducts();
   assert.equal(listedProducts.length, 7);
@@ -396,17 +533,18 @@ test('keeps published activity payments at one cent while retaining listed price
   assert.equal(secondActivity?.startDate, '2026-08-09');
 });
 
-test('keeps released client activity ids in the server payment catalog', () => {
+test('keeps released activity ids and original-price display while using one-cent acceptance pricing', () => {
   const activity = getActivityById('act-20260822-clay');
   assert.equal(activity?.title, '周末黏土手作体验');
   assert.equal(activity?.startDate, '2026-08-22');
-  assert.equal(activity?.price, 148);
+  assert.equal(activity?.price, 0.01);
+  assert.equal(activity?.originalPrice, 148);
   assert.equal(activity?.enabled, true);
 });
 
 test('settles free onsite shop orders without preparing WeChat payment', async () => {
   const timestamp = new Date().toISOString();
-  const pendingOrder = await createOrder({
+  const pendingOrder = await createFixtureOrder({
     id: 'WHFREE0123456789ABCDEF0123456789',
     clientRequestId: 'shop-free-onsite-test',
     productId: 'prod-free-onsite',
@@ -440,15 +578,17 @@ test('settles free onsite shop orders without preparing WeChat payment', async (
 });
 
 test('atomically allows only one concurrent activity reservation for the last seat', async () => {
-  const activityId = 'act-capacity-race';
+  const activity = createTestActivity({ maxParticipants: 1 });
+  const activityId = activity.id;
+  const capacity = activityCapacity(activity);
   const results = await Promise.allSettled([
     createActivityOrderWithCapacity(
       buildCapacityActivityOrder('WA_CAPACITY_RACE_FIRST', activityId, 'openid-capacity-first'),
-      { currentParticipants: 0, maxParticipants: 1 },
+      capacity,
     ),
     createActivityOrderWithCapacity(
       buildCapacityActivityOrder('WA_CAPACITY_RACE_SECOND', activityId, 'openid-capacity-second'),
-      { currentParticipants: 0, maxParticipants: 1 },
+      capacity,
     ),
   ]);
 
@@ -459,16 +599,126 @@ test('atomically allows only one concurrent activity reservation for the last se
   assert.equal((await getOrdersByProductId(activityId, 'activity')).length, 1);
 });
 
+test('atomically reserves finite shop stock and releases it after close', async () => {
+  const productId = 'product-stock-race';
+  const firstInput = buildStockShopOrder('WH_STOCK_RACE_FIRST', productId, 2);
+  const secondInput = buildStockShopOrder('WH_STOCK_RACE_SECOND', productId, 1);
+  const results = await Promise.allSettled([
+    createShopOrderWithStock(firstInput, { stock: 2 }),
+    createShopOrderWithStock(secondInput, { stock: 2 }),
+  ]);
+
+  assert.equal(results.filter((item) => item.status === 'fulfilled').length, 1);
+  const rejected = results.find((item) => item.status === 'rejected');
+  assert.ok(rejected && rejected.status === 'rejected');
+  assert.ok(rejected.reason instanceof ShopStockExceededError);
+  const activeOrders = await getActiveShopOrdersByProductIds([productId]);
+  assert.equal(activeOrders.length, 1);
+  const publicProduct = normalizeShopProduct({
+    id: productId,
+    name: '有限库存测试商品',
+    price: 1,
+    originalPrice: 1,
+    shippingFee: 0,
+    minQuantity: 1,
+    maxQuantity: 2,
+    stock: 2,
+    fulfillmentType: 'delivery',
+    fulfillmentLabel: '快递配送',
+    unitLabel: '件',
+    enabled: true,
+  });
+  assert.equal(withAvailableShopStock(publicProduct, activeOrders).stock, 0);
+
+  const fulfilled = results.find((item) => item.status === 'fulfilled');
+  assert.ok(fulfilled && fulfilled.status === 'fulfilled');
+  await updateOrderStatus(fulfilled.value.id, 'closed', { failureReason: '用户取消' });
+  assert.equal(
+    withAvailableShopStock(
+      publicProduct,
+      await getActiveShopOrdersByProductIds([productId]),
+    ).stock,
+    2,
+  );
+  const replacement = await createShopOrderWithStock(
+    buildStockShopOrder('WH_STOCK_AFTER_CLOSED', productId, 2),
+    { stock: 2 },
+  );
+  assert.equal(replacement.id, 'WH_STOCK_AFTER_CLOSED');
+  await assert.rejects(
+    updateOrderStatus(fulfilled.value.id, 'paid', {
+      transactionId: 'late-payment-after-stock-release',
+      shopStock: 2,
+    }),
+    ShopStockExceededError,
+  );
+  assert.equal((await getOrderById(fulfilled.value.id))?.status, 'closed');
+  await assert.rejects(
+    updateOrderStatus(fulfilled.value.id, 'pending'),
+    (error: unknown) => (error as { code?: string }).code === 'ORDER_STATUS_TRANSITION_INVALID',
+  );
+});
+
+test('keeps finite-stock shop retries idempotent and null stock unlimited', async () => {
+  const finiteInput = buildStockShopOrder('WH_STOCK_IDEMPOTENT', 'product-stock-idempotent', 1);
+  const [first, duplicate] = await Promise.all([
+    createShopOrderWithStock(finiteInput, { stock: 1 }),
+    createShopOrderWithStock(finiteInput, { stock: 1 }),
+  ]);
+  assert.equal(duplicate.id, first.id);
+  assert.equal((await getOrdersByProductId(finiteInput.productId, 'shop')).length, 1);
+
+  const unlimited = await Promise.all([
+    createShopOrderWithStock(
+      buildStockShopOrder('WH_STOCK_UNLIMITED_FIRST', 'product-stock-unlimited', 99),
+      { stock: null },
+    ),
+    createShopOrderWithStock(
+      buildStockShopOrder('WH_STOCK_UNLIMITED_SECOND', 'product-stock-unlimited', 99),
+      { stock: null },
+    ),
+  ]);
+  assert.equal(unlimited.length, 2);
+});
+
+test('keeps anonymized paid shop orders in the finite-stock reservation total', async () => {
+  const productId = 'product-stock-account-deletion';
+  const paidInput = {
+    ...buildStockShopOrder('WH_STOCK_ACCOUNT_DELETE_PAID', productId, 1),
+    mock: true,
+    status: 'paid' as const,
+    transactionId: 'mock-stock-account-delete',
+  };
+  const paid = await createShopOrderWithStock(paidInput, { stock: 1 });
+  assert.deepEqual(
+    await deleteOrAnonymizeOrdersByOpenid(paid.openid),
+    { anonymized: 1, deleted: 0 },
+  );
+  const retained = await getOrderById(paid.id);
+  assert.ok(retained);
+  assert.notEqual(retained.openid, paid.openid);
+  assert.equal(retained.status, 'paid');
+  await assert.rejects(
+    createShopOrderWithStock(
+      buildStockShopOrder('WH_STOCK_ACCOUNT_DELETE_RETRY', productId, 1),
+      { stock: 1 },
+    ),
+    ShopStockExceededError,
+  );
+});
+
 test('keeps concurrent activity reservation retries idempotent', async () => {
-  const activityId = 'act-capacity-idempotent';
+  const activity = createTestActivity({ maxParticipants: 1 });
+  const activityId = activity.id;
+  const capacity = activityCapacity(activity);
   const input = buildCapacityActivityOrder(
     'WA_CAPACITY_IDEMPOTENT',
     activityId,
     'openid-capacity-idempotent',
   );
   const [first, duplicate] = await Promise.all([
-    createActivityOrderWithCapacity(input, { currentParticipants: 0, maxParticipants: 1 }),
-    createActivityOrderWithCapacity(input, { currentParticipants: 0, maxParticipants: 1 }),
+    createActivityOrderWithCapacity(input, capacity),
+    createActivityOrderWithCapacity(input, capacity),
   ]);
 
   assert.equal(duplicate.id, first.id);
@@ -476,16 +726,18 @@ test('keeps concurrent activity reservation retries idempotent', async () => {
 });
 
 test('deduplicates concurrent reservations for the same openid and activity', async () => {
-  const activityId = 'act-capacity-openid';
+  const activity = createTestActivity({ maxParticipants: 2 });
+  const activityId = activity.id;
+  const capacity = activityCapacity(activity);
   const openid = 'openid-capacity-shared';
   const [first, duplicate] = await Promise.all([
     createActivityOrderWithCapacity(
       buildCapacityActivityOrder('WA_CAPACITY_OPENID_FIRST', activityId, openid),
-      { currentParticipants: 0, maxParticipants: 2 },
+      capacity,
     ),
     createActivityOrderWithCapacity(
       buildCapacityActivityOrder('WA_CAPACITY_OPENID_SECOND', activityId, openid),
-      { currentParticipants: 0, maxParticipants: 2 },
+      capacity,
     ),
   ]);
 
@@ -494,11 +746,12 @@ test('deduplicates concurrent reservations for the same openid and activity', as
 });
 
 test('rejects activity reservations when base participants already fill capacity', async () => {
-  const activityId = 'act-capacity-full';
+  const activity = createTestActivity({ currentParticipants: 2, maxParticipants: 2 });
+  const activityId = activity.id;
   await assert.rejects(
     createActivityOrderWithCapacity(
       buildCapacityActivityOrder('WA_CAPACITY_FULL', activityId, 'openid-capacity-full'),
-      { currentParticipants: 2, maxParticipants: 2 },
+      activityCapacity(activity),
     ),
     ActivityCapacityExceededError,
   );
@@ -506,7 +759,9 @@ test('rejects activity reservations when base participants already fill capacity
 });
 
 test('keeps expired pending activity orders reserved until they are explicitly closed', async () => {
-  const activityId = 'act-capacity-expired-pending';
+  const activity = createTestActivity({ maxParticipants: 1 });
+  const activityId = activity.id;
+  const capacity = activityCapacity(activity);
   const expiredInput = {
     ...buildCapacityActivityOrder(
       'WA_CAPACITY_EXPIRED_PENDING',
@@ -515,7 +770,7 @@ test('keeps expired pending activity orders reserved until they are explicitly c
     ),
     expiresAt: new Date(Date.now() - 60_000).toISOString(),
   };
-  await createActivityOrderWithCapacity(expiredInput, { currentParticipants: 0, maxParticipants: 1 });
+  await createActivityOrderWithCapacity(expiredInput, capacity);
 
   await assert.rejects(
     createActivityOrderWithCapacity(
@@ -524,7 +779,7 @@ test('keeps expired pending activity orders reserved until they are explicitly c
         activityId,
         'openid-capacity-after-expired',
       ),
-      { currentParticipants: 0, maxParticipants: 1 },
+      capacity,
     ),
     ActivityCapacityExceededError,
   );
@@ -536,22 +791,25 @@ test('keeps expired pending activity orders reserved until they are explicitly c
       activityId,
       'openid-capacity-after-closed',
     ),
-    { currentParticipants: 0, maxParticipants: 1 },
+    capacity,
   );
   assert.equal(replacement.id, 'WA_CAPACITY_AFTER_CLOSED');
 });
 
 test('protects paid orders while allowing late payment confirmation', async () => {
-  const activityId = 'act-late-payment';
+  const activity = createTestActivity({ maxParticipants: 1 });
+  const activityId = activity.id;
+  const capacity = activityCapacity(activity);
   const input = buildCapacityActivityOrder(
     'WA_LATE_PAYMENT_CONFIRMATION',
     activityId,
     'openid-late-payment',
   );
-  const pending = await createActivityOrderWithCapacity(input, { currentParticipants: 0, maxParticipants: 1 });
+  const pending = await createActivityOrderWithCapacity(input, capacity);
   await updateOrderStatus(pending.id, 'closed', { failureReason: '支付超时' });
 
   const paid = await updateOrderStatus(pending.id, 'paid', {
+    activityCapacity: capacity,
     transactionId: 'wx-transaction-late',
     notifyId: 'notify-late',
   });
@@ -568,32 +826,71 @@ test('protects paid orders while allowing late payment confirmation', async () =
   );
 });
 
+test('rejects a late activity payment when a replacement already consumed the released seat', async () => {
+  const activity = createTestActivity({ maxParticipants: 1 });
+  const capacity = activityCapacity(activity);
+  const original = await createActivityOrderWithCapacity(
+    buildCapacityActivityOrder('WA_LATE_REACQUIRE_ORIGINAL', activity.id, 'openid-late-original'),
+    capacity,
+  );
+  await updateOrderStatus(original.id, 'closed', { failureReason: '支付超时' });
+  await createActivityOrderWithCapacity(
+    buildCapacityActivityOrder('WA_LATE_REACQUIRE_REPLACEMENT', activity.id, 'openid-late-replacement'),
+    capacity,
+  );
+
+  await assert.rejects(
+    updateOrderStatus(original.id, 'paid', {
+      activityCapacity: capacity,
+      transactionId: 'wx-late-after-seat-reused',
+    }),
+    ActivityCapacityExceededError,
+  );
+  assert.equal((await getOrderById(original.id))?.status, 'closed');
+});
+
+test('re-reads the file activity catalog atomically and rejects a stale price/config snapshot', async () => {
+  const activity = createTestActivity({ maxParticipants: 2 });
+  const staleCapacity = activityCapacity(activity);
+  const staleOrder = buildCapacityActivityOrder(
+    'WA_STALE_FILE_ACTIVITY_CONFIG',
+    activity.id,
+    'openid-stale-file-activity',
+  );
+  const updated = upsertActivity(activity.id, { price: 100, originalPrice: 100 });
+  assert.ok(updated);
+
+  await assert.rejects(
+    createActivityOrderWithCapacity(staleOrder, staleCapacity),
+    (error: unknown) => (error as { code?: string }).code === 'ACTIVITY_CAPACITY_CONFIGURATION_CHANGED',
+  );
+  assert.equal(await getOrderById(staleOrder.id), null);
+});
+
 test('releases activity capacity after failure and allows the same user to register again', async () => {
-  const activityId = 'act-capacity-reopen';
+  const activity = createTestActivity({ maxParticipants: 1 });
+  const activityId = activity.id;
+  const capacity = activityCapacity(activity);
   const openid = 'openid-capacity-reopen';
   const first = await createActivityOrderWithCapacity(
     buildCapacityActivityOrder('WA_CAPACITY_REOPEN_FIRST', activityId, openid),
-    { currentParticipants: 0, maxParticipants: 1 },
+    capacity,
   );
   await updateOrderStatus(first.id, 'failed', { failureReason: '统一下单失败' });
 
   const replacement = await createActivityOrderWithCapacity(
     buildCapacityActivityOrder('WA_CAPACITY_REOPEN_SECOND', activityId, openid),
-    { currentParticipants: 0, maxParticipants: 1 },
+    capacity,
   );
   assert.equal(replacement.id, 'WA_CAPACITY_REOPEN_SECOND');
 
-  const unlimited = await Promise.all([
+  await assert.rejects(
     createActivityOrderWithCapacity(
-      buildCapacityActivityOrder('WA_CAPACITY_UNLIMITED_FIRST', 'act-capacity-unlimited', 'openid-u1'),
-      { currentParticipants: 99, maxParticipants: 0 },
+      buildCapacityActivityOrder('WA_CAPACITY_INVALID_ZERO', activityId, 'openid-invalid-zero'),
+      { ...capacity, maxParticipants: 0 },
     ),
-    createActivityOrderWithCapacity(
-      buildCapacityActivityOrder('WA_CAPACITY_UNLIMITED_SECOND', 'act-capacity-unlimited', 'openid-u2'),
-      { currentParticipants: 99, maxParticipants: 0 },
-    ),
-  ]);
-  assert.equal(unlimited.length, 2);
+    (error: unknown) => (error as { code?: string }).code === 'ACTIVITY_CAPACITY_CONFIGURATION_CHANGED',
+  );
 });
 
 test('clears a payment preparation lease when an order leaves pending state', async () => {
@@ -615,7 +912,7 @@ test('clears a payment preparation lease when an order leaves pending state', as
 
 test('deletes disposable orders and irreversibly de-identifies retained payment evidence', async () => {
   const openid = 'openid-account-delete-complete';
-  const paidOrder = await createOrder({
+  const paidOrder = await createFixtureOrder({
     id: 'WH_ACCOUNT_DELETE_PAID_FULFILLED',
     clientRequestId: 'sensitive-client-request-id',
     productId: 'cocktail-account-delete',
@@ -654,7 +951,7 @@ test('deletes disposable orders and irreversibly de-identifies retained payment 
   assert.equal(fulfillmentClaim.claimed, true);
   await finishOrderFulfillmentReport(paidOrder.id, 'account-delete-report-token', { success: true });
 
-  const closedPrepayOrder = await createOrder({
+  const closedPrepayOrder = await createFixtureOrder({
     id: 'WH_ACCOUNT_DELETE_CLOSED_PREPAY',
     clientRequestId: 'closed-prepay-sensitive-request',
     productId: 'cocktail-closed-prepay',
@@ -673,7 +970,7 @@ test('deletes disposable orders and irreversibly de-identifies retained payment 
     prepayId: 'wx-prepay-that-must-be-removed',
     expiresAt: new Date(Date.now() - 60_000).toISOString(),
   });
-  const failedOrder = await createOrder({
+  const failedOrder = await createFixtureOrder({
     id: 'WH_ACCOUNT_DELETE_FAILED',
     clientRequestId: 'failed-order-request',
     productId: 'cocktail-failed',
@@ -691,7 +988,7 @@ test('deletes disposable orders and irreversibly de-identifies retained payment 
     mock: false,
     expiresAt: new Date(Date.now() - 60_000).toISOString(),
   });
-  const mockOrder = await createOrder({
+  const mockOrder = await createFixtureOrder({
     id: 'WH_ACCOUNT_DELETE_MOCK',
     clientRequestId: 'mock-order-request',
     productId: 'cocktail-mock',
@@ -713,10 +1010,14 @@ test('deletes disposable orders and irreversibly de-identifies retained payment 
   });
 
   const result = await deleteOrAnonymizeOrdersByOpenid(openid);
-  assert.deepEqual(result, { anonymized: 2, deleted: 2 });
+  assert.deepEqual(result, { anonymized: 3, deleted: 1 });
   assert.equal((await getOrdersByOpenid(openid)).length, 0);
   assert.equal(await getOrderById(failedOrder.id), null);
-  assert.equal(await getOrderById(mockOrder.id), null);
+  const retainedMock = await getOrderById(mockOrder.id);
+  assert.ok(retainedMock);
+  assert.match(retainedMock.openid, /^deleted_[a-f0-9]{32}$/);
+  assert.equal(retainedMock.status, 'paid');
+  assert.equal(retainedMock.quantity, mockOrder.quantity);
 
   const retainedPaid = await getOrderById(paidOrder.id);
   assert.ok(retainedPaid);
@@ -743,7 +1044,7 @@ test('deletes disposable orders and irreversibly de-identifies retained payment 
 test('blocks account deletion while a real order may still charge or remains unfulfilled', async () => {
   const pendingOpenid = 'openid-account-delete-pending';
   const pendingOrder = await createPendingOrder(1, 'WH_ACCOUNT_DELETE_PENDING_PAYMENT');
-  const pendingForTarget = await createOrder({
+  const pendingForTarget = await createFixtureOrder({
     ...pendingOrder,
     id: 'WH_ACCOUNT_DELETE_PENDING_TARGET',
     clientRequestId: 'account-delete-pending-target',
@@ -763,7 +1064,7 @@ test('blocks account deletion while a real order may still charge or remains unf
   );
 
   const paidOpenid = 'openid-account-delete-unfulfilled';
-  const paidOrder = await createOrder({
+  const paidOrder = await createFixtureOrder({
     id: 'WH_ACCOUNT_DELETE_UNFULFILLED',
     clientRequestId: 'account-delete-unfulfilled',
     productId: 'cocktail-unfulfilled',

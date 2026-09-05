@@ -10,7 +10,10 @@ on:
       - "worker_house/package.json"
       - "worker_house/package-lock.json"
       - "worker_house/project.config.json"
+      - "worker_house/scripts/**"
+      - "worker_house/tests/**"
       - "worker_house/tsconfig.json"
+      - "worker_house/types/**"
       - ".github/workflows/miniprogram-check.yml"
   workflow_dispatch:
 
@@ -30,7 +33,11 @@ jobs:
       run:
         working-directory: worker_house
     env:
-      TARO_APP_API_MODE: mock
+      # PR builds must exercise the same request path as the uploaded mini program.
+      # Mock remains available for explicit local development only.
+      TARO_APP_API_MODE: cloudrun
+      TARO_APP_CLOUD_ENV_ID: prod-d9g991lo4dba5a4da
+      TARO_APP_CLOUDRUN_SERVICE: worker-house-bff
 
     steps:
       - name: Check out repository
@@ -46,8 +53,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run unit and contract tests
+        run: npm test
+
       - name: Typecheck
         run: npm run typecheck
 
       - name: Build WeChat Mini Program
         run: npm run build:weapp
+
+      - name: Verify production bundle excludes local business seeds
+        run: npm run verify:production-bundle

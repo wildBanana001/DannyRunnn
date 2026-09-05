@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Taro, { useDidShow } from '@tarojs/taro';
-import { fetchCommunitySiteConfig, defaultSiteConfigRecord, type SiteConfigRecord } from '@/services/siteConfig';
+import { emptySiteConfigRecord, fetchCommunitySiteConfig, type SiteConfigRecord } from '@/services/siteConfig';
 import { fetchCardPackages } from '@/services/member';
 import type { CardPackage } from '@/types';
 
@@ -8,6 +8,7 @@ let siteConfigCache: SiteConfigRecord | null = null;
 let siteConfigCacheTime = 0;
 let siteConfigGeneration = 0;
 let siteConfigRequest: Promise<SiteConfigRecord> | null = null;
+let siteConfigSettled = false;
 const siteConfigListeners = new Set<(config: SiteConfigRecord) => void>();
 const SITE_CONFIG_TTL = 60 * 1000;
 const CARD_PACKAGES_TTL = 15 * 60 * 1000;
@@ -26,12 +27,13 @@ export function clearSiteConfigCache() {
   siteConfigCache = null;
   siteConfigCacheTime = 0;
   siteConfigRequest = null;
+  siteConfigSettled = false;
   Taro.removeStorageSync('worker-house-site-config');
-  siteConfigListeners.forEach((listener) => listener(defaultSiteConfigRecord));
+  siteConfigListeners.forEach((listener) => listener(emptySiteConfigRecord));
 }
 
 export function useSiteConfig() {
-  const [config, setConfig] = useState<SiteConfigRecord>(siteConfigCache || defaultSiteConfigRecord);
+  const [config, setConfig] = useState<SiteConfigRecord>(() => siteConfigCache || emptySiteConfigRecord);
 
   useEffect(() => {
     siteConfigListeners.add(setConfig);
@@ -40,7 +42,7 @@ export function useSiteConfig() {
     };
   }, []);
 
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     if (siteConfigCache && Date.now() - siteConfigCacheTime < SITE_CONFIG_TTL) {
       setConfig(siteConfigCache);
       return;
@@ -51,17 +53,20 @@ export function useSiteConfig() {
       if (generation !== siteConfigGeneration) return;
       siteConfigCache = data;
       siteConfigCacheTime = Date.now();
+      siteConfigSettled = true;
       setConfig(data);
-      Taro.setStorageSync('worker-house-site-config', data);
+      siteConfigListeners.forEach((listener) => listener(data));
     } catch (err) {
       console.warn('[hooks] fetch site config failed', err);
       if (generation !== siteConfigGeneration) return;
-      const cached = Taro.getStorageSync('worker-house-site-config') as SiteConfigRecord | undefined;
-      if (cached) {
-        setConfig(cached);
-      }
+      siteConfigCache = null;
+      siteConfigCacheTime = 0;
+      siteConfigSettled = true;
+      setConfig(emptySiteConfigRecord);
+      siteConfigListeners.forEach((listener) => listener(emptySiteConfigRecord));
+      Taro.removeStorageSync('worker-house-site-config');
     }
-  };
+  }, []);
 
   useDidShow(() => {
     void loadConfig();
@@ -74,7 +79,7 @@ export function useCommunityWallFeature() {
   const config = useSiteConfig();
   return {
     enabled: config.communityWallEnabled,
-    loading: siteConfigCache === null,
+    loading: !siteConfigSettled,
   };
 }
 

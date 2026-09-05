@@ -2,11 +2,23 @@ import { Router } from 'express';
 import { callCloudFunction } from '../cloudClient.js';
 import { config } from '../config.js';
 import { isOpenidAdmin } from '../config/adminWhitelist.js';
-import { listActivities, deleteActivity, getActivityById, upsertActivity } from '../data/activities.js';
+import {
+  deletePersistedActivity,
+  getPersistedActivityById,
+  isActivityCatalogValidationError,
+  listPersistedActivities,
+  upsertPersistedActivity,
+} from '../data/activities.js';
 import { archiveCardPackage, createCardPackage, getCardPackageById, listCardPackages, updateCardPackage } from '../data/cardPackages.js';
 import { getCardOrderByIdUnsafe, listAllCardOrders, updateCardOrder } from '../data/cardOrders.js';
 import { getRegistrationByIdUnsafe, listAllRegistrations, updateRegistrationStatus } from '../data/registrations.js';
 import { getOrderById, getOrdersByKind, type OrderRecord } from '../data/orders.js';
+import {
+  buildPosterPayload,
+  isPosterPayloadValidationError,
+  normalizeAdminMiniPoster,
+  type AdminMiniPosterRecord,
+} from '../data/poster-contract.js';
 import { getSiteConfig, updateSiteConfig } from '../data/siteConfig.js';
 import { openidAdminAuth, resolveAdminOpenid } from '../middleware/openidAdminAuth.js';
 import {
@@ -38,20 +50,6 @@ import { wxPaymentAuth } from '../middlewares/wx-cloudrun-auth.js';
 const adminCloudFunctionToken = config.cloudAdminServiceToken;
 const registrationStatuses = new Set<RegistrationStatus>(['pending', 'confirmed', 'cancelled', 'completed', 'refunded']);
 const cardOrderStatuses = new Set<CardOrderStatus>(['active', 'exhausted', 'expired', 'refunded']);
-
-interface AdminMiniPosterRecord {
-  id: string;
-  title: string;
-  coverImage: string;
-  detailImages: string[];
-  enabled: boolean;
-  linkUrl: string;
-  relatedActivityId: string;
-  status: 'online' | 'offline';
-  sort: number;
-  createdAt: string;
-  updatedAt: string;
-}
 
 function sanitizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -121,55 +119,6 @@ function normalizeAdminMiniPost(record: Record<string, unknown>) {
   };
 }
 
-function normalizeAdminMiniPoster(record: Record<string, unknown>): AdminMiniPosterRecord {
-  const coverImage = sanitizeString(record.coverImage)
-    || (Array.isArray(record.detailImages) ? sanitizeString(record.detailImages[0]) : '');
-  const status = sanitizeString(record.status) === 'offline' || record.enabled === false ? 'offline' : 'online';
-  const detailImages = Array.isArray(record.detailImages)
-    ? record.detailImages.map((item) => String(item)).filter(Boolean)
-    : coverImage
-      ? [coverImage]
-      : [];
-  const createdAt = String(record.createdAt ?? new Date().toISOString());
-
-  return {
-    id: String(record.id ?? record._id ?? ''),
-    title: String(record.title ?? ''),
-    coverImage,
-    detailImages: detailImages.length ? detailImages : coverImage ? [coverImage] : [],
-    enabled: status === 'online',
-    linkUrl: sanitizeString(record.linkUrl),
-    relatedActivityId: sanitizeString(record.relatedActivityId),
-    status,
-    sort: Number(record.sort ?? 0),
-    createdAt,
-    updatedAt: String(record.updatedAt ?? createdAt),
-  };
-}
-
-function buildPosterPayload(input: Record<string, unknown>, current?: AdminMiniPosterRecord) {
-  const status = sanitizeString(input.status) === 'offline' || input.enabled === false
-    ? 'offline'
-    : sanitizeString(input.status) === 'online' || input.enabled === true
-      ? 'online'
-      : current?.status ?? 'online';
-  const coverImage = sanitizeString(input.coverImage) || current?.coverImage || '';
-  const detailImages = Array.isArray(input.detailImages)
-    ? input.detailImages.map((item) => String(item)).filter(Boolean)
-    : current?.detailImages ?? [];
-
-  return {
-    title: sanitizeString(input.title) || current?.title || '',
-    coverImage,
-    detailImages: detailImages.length ? detailImages : coverImage ? [coverImage] : [],
-    enabled: status === 'online',
-    linkUrl: sanitizeString(input.linkUrl) || current?.linkUrl || '',
-    relatedActivityId: sanitizeString(input.relatedActivityId) || current?.relatedActivityId || '',
-    status,
-    sort: Number(input.sort ?? current?.sort ?? 0),
-  };
-}
-
 function matchKeyword(values: Array<string | undefined>, keyword: string) {
   if (!keyword) {
     return true;
@@ -177,8 +126,8 @@ function matchKeyword(values: Array<string | undefined>, keyword: string) {
   return values.some((value) => sanitizeString(value).toLowerCase().includes(keyword));
 }
 
-function buildRegistrationDetail(record: Registration) {
-  const activitySnapshot = getActivityById(record.activityId);
+async function buildRegistrationDetail(record: Registration) {
+  const activitySnapshot = await getPersistedActivityById(record.activityId);
   const cardOrder = record.cardOrderId ? getCardOrderByIdUnsafe(record.cardOrderId) : null;
   const cardUsageLog = cardOrder?.usageLogs.find((item) => item.id === record.cardUsageLogId) ?? null;
   return {
@@ -244,6 +193,7 @@ function toAdminShopOrder(order: OrderRecord) {
     productName: order.productName,
     productImageUrl: order.productImageUrl,
     unitPrice: order.unitPrice,
+    shippingFee: order.shippingFee,
     quantity: order.quantity,
     amount: order.amount,
     fulfillmentType: order.fulfillmentType,
@@ -367,51 +317,79 @@ adminMiniRouter.put('/site-config', (request, response) => {
   }
 });
 
-adminMiniRouter.get('/activities', (request, response) => {
-  const page = parsePage(request.query.page, 1);
-  const pageSize = Math.min(parsePage(request.query.pageSize, 30), 200);
-  const status = typeof request.query.status === 'string' ? request.query.status.trim() : '';
-  const keyword = typeof request.query.keyword === 'string' ? request.query.keyword.trim().toLowerCase() : '';
+adminMiniRouter.get('/activities', async (request, response) => {
+  try {
+    const page = parsePage(request.query.page, 1);
+    const pageSize = Math.min(parsePage(request.query.pageSize, 30), 200);
+    const status = typeof request.query.status === 'string' ? request.query.status.trim() : '';
+    const keyword = typeof request.query.keyword === 'string' ? request.query.keyword.trim().toLowerCase() : '';
 
-  let records = listActivities();
-  if (status) {
-    records = records.filter((item) => item.status === status);
-  }
-  if (keyword) {
-    records = records.filter((item) => item.title.toLowerCase().includes(keyword));
-  }
+    let records = await listPersistedActivities();
+    if (status) records = records.filter((item) => item.status === status);
+    if (keyword) records = records.filter((item) => item.title.toLowerCase().includes(keyword));
 
-  response.json({
-    ...paginate(records, page, pageSize),
-    page,
-    pageSize,
-  });
+    response.json({
+      ...paginate(records, page, pageSize),
+      page,
+      pageSize,
+    });
+  } catch (error) {
+    response.status(503).json({ message: error instanceof Error ? error.message : '读取活动目录失败' });
+  }
 });
 
-adminMiniRouter.post('/activities', (request, response) => {
-  const record = upsertActivity(undefined, request.body as Partial<ActivityRecord>);
-  response.json(record);
+adminMiniRouter.get('/activities/:id', async (request, response) => {
+  try {
+    const record = await getPersistedActivityById(String(request.params.id));
+    if (!record) {
+      response.status(404).json({ message: '活动不存在' });
+      return;
+    }
+    response.json(record);
+  } catch (error) {
+    response.status(503).json({ message: error instanceof Error ? error.message : '读取活动详情失败' });
+  }
 });
 
-adminMiniRouter.put('/activities/:id', (request, response) => {
-  const existing = listActivities().find((item) => item.id === String(request.params.id));
-  if (!existing) {
-    response.status(404).json({ message: '活动不存在' });
-    return;
+adminMiniRouter.post('/activities', async (request, response) => {
+  try {
+    response.json(await upsertPersistedActivity(undefined, request.body as Partial<ActivityRecord>));
+  } catch (error) {
+    response.status(isActivityCatalogValidationError(error) ? 422 : 503).json({
+      message: error instanceof Error ? error.message : '创建活动失败',
+    });
   }
-
-  const record = upsertActivity(existing.id, request.body as Partial<ActivityRecord>);
-  response.json(record);
 });
 
-adminMiniRouter.delete('/activities/:id', (request, response) => {
-  const deleted = deleteActivity(String(request.params.id));
-  if (!deleted) {
-    response.status(404).json({ message: '活动不存在' });
-    return;
+adminMiniRouter.put('/activities/:id', async (request, response) => {
+  try {
+    const record = await upsertPersistedActivity(
+      String(request.params.id),
+      request.body as Partial<ActivityRecord>,
+    );
+    if (!record) {
+      response.status(404).json({ message: '活动不存在' });
+      return;
+    }
+    response.json(record);
+  } catch (error) {
+    response.status(isActivityCatalogValidationError(error) ? 422 : 503).json({
+      message: error instanceof Error ? error.message : '更新活动失败',
+    });
   }
+});
 
-  response.json({ success: true });
+adminMiniRouter.delete('/activities/:id', async (request, response) => {
+  try {
+    const deleted = await deletePersistedActivity(String(request.params.id));
+    if (!deleted) {
+      response.status(404).json({ message: '活动不存在' });
+      return;
+    }
+    response.json({ success: true });
+  } catch (error) {
+    response.status(500).json({ message: error instanceof Error ? error.message : '删除活动失败' });
+  }
 });
 
 adminMiniRouter.get('/shop-orders', async (request, response) => {
@@ -527,11 +505,21 @@ adminMiniRouter.get('/registrations', async (request, response) => {
       ], keyword));
     }
 
-    const detailList = records.map((item) => ({
+    const paged = paginate(records, page, pageSize);
+    const activityMap = new Map(
+      (await listPersistedActivities()).map((activity) => [activity.id, activity]),
+    );
+    const detailList = paged.list.map((item) => ({
       ...item,
-      activitySnapshot: getActivityById(item.activityId),
+      activitySnapshot: activityMap.get(item.activityId) ?? null,
     }));
-    response.json(buildPagedResult(detailList, page, pageSize));
+    response.json({
+      data: detailList,
+      list: detailList,
+      page,
+      pageSize,
+      total: paged.total,
+    });
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '读取报名记录失败' });
   }
@@ -548,7 +536,7 @@ adminMiniRouter.get('/registrations/:id', async (request, response) => {
       return;
     }
 
-    response.json({ data: buildRegistrationDetail(record) });
+    response.json({ data: await buildRegistrationDetail(record) });
   } catch (error) {
     response.status(500).json({ message: error instanceof Error ? error.message : '读取报名详情失败' });
   }
@@ -577,13 +565,13 @@ adminMiniRouter.patch('/registrations/:id/status', async (request, response) => 
         response.status(404).json({ message: '报名记录不存在' });
         return;
       }
-      response.json({ data: buildRegistrationDetail(registration) });
+      response.json({ data: await buildRegistrationDetail(registration) });
     } catch (error) {
       if (error instanceof OrderFulfillmentError) {
         const registration = error.order ? buildPaymentRegistration(error.order) : null;
         response.status(error.status).json({
           message: error.message,
-          ...(registration ? { data: buildRegistrationDetail(registration) } : {}),
+          ...(registration ? { data: await buildRegistrationDetail(registration) } : {}),
         });
         return;
       }
@@ -598,7 +586,7 @@ adminMiniRouter.patch('/registrations/:id/status', async (request, response) => 
     return;
   }
 
-  response.json({ data: buildRegistrationDetail(record) });
+  response.json({ data: await buildRegistrationDetail(record) });
 });
 
 adminMiniRouter.get('/card-orders', (request, response) => {
@@ -720,7 +708,7 @@ adminMiniRouter.get('/stats', async (_request, response) => {
   try {
     const posts = await listCommunityPosts();
 
-    const activities = listActivities();
+    const activities = await listPersistedActivities();
     const endedCount = activities.filter((item) => item.status === 'ended').length;
     const ongoingCount = activities.filter((item) => item.status === 'ongoing').length;
 
@@ -845,7 +833,9 @@ adminMiniRouter.post('/posters', async (request, response) => {
 
     response.json(detail.data);
   } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '创建海报失败' });
+    response.status(isPosterPayloadValidationError(error) ? 422 : 500).json({
+      message: error instanceof Error ? error.message : '创建海报失败',
+    });
   }
 });
 
@@ -878,7 +868,9 @@ adminMiniRouter.put('/posters/:id', async (request, response) => {
 
     response.json(detail.data);
   } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '更新海报失败' });
+    response.status(isPosterPayloadValidationError(error) ? 422 : 500).json({
+      message: error instanceof Error ? error.message : '更新海报失败',
+    });
   }
 });
 
@@ -910,10 +902,7 @@ adminMiniRouter.put('/posters/:id/status', async (request, response) => {
     }
 
     const payload = buildPosterPayload(
-      {
-        ...current.data,
-        status: request.body?.status,
-      },
+      { status: request.body?.status },
       current.data,
     );
     const result = await callCloudFunction<{ id: string }>('poster', {
@@ -936,7 +925,9 @@ adminMiniRouter.put('/posters/:id/status', async (request, response) => {
 
     response.json(detail.data);
   } catch (error) {
-    response.status(500).json({ message: error instanceof Error ? error.message : '更新海报状态失败' });
+    response.status(isPosterPayloadValidationError(error) ? 422 : 500).json({
+      message: error instanceof Error ? error.message : '更新海报状态失败',
+    });
   }
 });
 

@@ -1,5 +1,5 @@
 import { posts } from '@/data/posts';
-import { currentUser } from '@/data/users';
+import { getMockCurrentUser } from '@/data/mock-member';
 import type { Post } from '@/types/post';
 import { resolvePostListImageUrls } from './postImages';
 import { getApiMode, request } from './request';
@@ -16,6 +16,7 @@ const sortByCreatedDesc = (list: Post[]) => {
 
 export async function fetchMyPosts(): Promise<Post[]> {
   if (getApiMode() === 'mock') {
+    const currentUser = getMockCurrentUser();
     return resolvePostListImageUrls(sortByCreatedDesc(posts.filter((item) => item.authorId === currentUser.id)));
   }
 

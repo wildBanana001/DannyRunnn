@@ -1,7 +1,7 @@
 import Taro from '@tarojs/taro';
 import { fetchActivity } from '@/cloud/services';
+import { MEMBER_CARD_ENABLED } from '@/constants/capabilities';
 import {
-  buyMockCard,
   deleteMockProfile,
   getMockCardUsageLogs,
   getMockCurrentCard,
@@ -218,6 +218,9 @@ export async function fetchRegistrationActivity(activityId: string): Promise<Act
 
 export async function submitRegistrationOrder(payload: SubmitRegistrationPayload): Promise<ActivityPaymentSession> {
   assertRealPaymentRuntime();
+  if (payload.useCard) {
+    throw new Error('次卡抵扣暂未开放');
+  }
 
   const session = await registrationRequest<ActivityPaymentSession>({
     data: {
@@ -252,7 +255,7 @@ export function createActivityPaymentClientRequestId() {
 }
 
 export function isDirectActivityPaymentEnabled() {
-  return true;
+  return !MEMBER_CARD_ENABLED;
 }
 
 export function isActivityPaymentCancelled(error: unknown) {
@@ -299,6 +302,8 @@ export async function confirmActivityPayment(registrationId: string): Promise<Re
 }
 
 export async function fetchCurrentCardOrder(): Promise<CardOrder | null> {
+  if (!MEMBER_CARD_ENABLED) return null;
+
   return withMode(
     () => getMockCurrentCard(),
     async () => {
@@ -309,6 +314,8 @@ export async function fetchCurrentCardOrder(): Promise<CardOrder | null> {
 }
 
 export async function fetchCardUsageLogs(): Promise<CardUsageLog[]> {
+  if (!MEMBER_CARD_ENABLED) return [];
+
   return withMode(
     () => getMockCardUsageLogs(),
     async () => {
@@ -325,49 +332,27 @@ export async function fetchCardUsageLogs(): Promise<CardUsageLog[]> {
 }
 
 export async function fetchCardPackages(): Promise<CardPackage[]> {
-  return withMode(
-    () => [
-      {
-        id: 'mock-card-package-3x',
-        name: '社畜次卡 3 次装',
-        totalCount: 3,
-        price: 399,
-        perUseMaxOffset: 148,
-        validDays: 180,
-        status: 'active',
-        sortOrder: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    async () => {
-      const response = await request<ListResponse<CardPackage>>({ path: '/api/card-packages' });
-      return response.data ?? response.list ?? [];
-    }
-  );
+  if (!MEMBER_CARD_ENABLED) return [];
+  const response = await request<ListResponse<CardPackage>>({ path: '/api/card-packages' });
+  return response.data ?? response.list ?? [];
 }
 
 export async function purchaseCardOrder(packageId?: string): Promise<CardOrder> {
-  return withMode(
-    () => buyMockCard(),
-    async () => request<CardOrder>({
-      data: packageId ? { packageId } : undefined,
-      method: 'POST',
-      path: '/api/card-orders',
-    })
-  );
+  void packageId;
+  throw new Error('次卡购买暂未开放');
 }
 
 export async function fetchMemberOverview(): Promise<MemberOverview> {
-  const [registrations, currentCard, profiles] = await Promise.all([
+  const [registrationsResult, profilesResult] = await Promise.allSettled([
     fetchRegistrations(),
-    fetchCurrentCardOrder(),
     fetchProfiles(),
   ]);
+  const registrations = registrationsResult.status === 'fulfilled' ? registrationsResult.value : [];
+  const profiles = profilesResult.status === 'fulfilled' ? profilesResult.value : [];
 
   return {
     registrationsCount: registrations.length,
-    remainingCardTimes: currentCard?.remainingCount || 0,
+    remainingCardTimes: 0,
     defaultProfileName: profiles.find((item) => item.isDefault)?.nickname,
     likesReceived: 0,
   };

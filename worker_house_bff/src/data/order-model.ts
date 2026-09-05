@@ -43,6 +43,7 @@ export interface OrderRecord {
   productName: string;
   productImageUrl: string;
   unitPrice: number;
+  shippingFee: number;
   quantity: number;
   amount: number;
   address: OrderAddressSnapshot | null;
@@ -83,6 +84,7 @@ export interface CreateOrderInput {
   productName: string;
   productImageUrl: string;
   unitPrice: number;
+  shippingFee?: number;
   quantity: number;
   amount: number;
   address: OrderAddressSnapshot | null;
@@ -103,7 +105,11 @@ export interface CreateOrderInput {
 export interface ActivityOrderCapacity {
   currentParticipants: number;
   maxParticipants: number;
-  configurationVersion?: string;
+  configurationVersion: string;
+}
+
+export interface ShopOrderStockCapacity {
+  stock: number | null;
 }
 
 export interface PaymentPreparationClaim {
@@ -131,6 +137,33 @@ export class ActivityCapacityExceededError extends Error {
   }
 }
 
+export class ActivityCapacityConfigurationChangedError extends Error {
+  readonly code = 'ACTIVITY_CAPACITY_CONFIGURATION_CHANGED';
+
+  constructor() {
+    super('活动名额配置已更新，请刷新后重试');
+    this.name = 'ActivityCapacityConfigurationChangedError';
+  }
+}
+
+export class ShopStockExceededError extends Error {
+  readonly code = 'SHOP_STOCK_EXCEEDED';
+
+  constructor() {
+    super('商品库存不足');
+    this.name = 'ShopStockExceededError';
+  }
+}
+
+export class ShopStockConfigurationChangedError extends Error {
+  readonly code = 'SHOP_STOCK_CONFIGURATION_CHANGED';
+
+  constructor() {
+    super('商品价格、库存或履约配置已更新，请刷新后重试');
+    this.name = 'ShopStockConfigurationChangedError';
+  }
+}
+
 export class AccountOrderDeletionBlockedError extends Error {
   readonly code = 'ACCOUNT_DELETION_BLOCKED';
   readonly orders: OrderRecord[];
@@ -149,6 +182,31 @@ export function isActivityCapacityExceededError(error: unknown): boolean {
   return input.code === 'ACTIVITY_CAPACITY_EXCEEDED'
     || input.name === 'ActivityCapacityExceededError'
     || (typeof input.message === 'string' && input.message.includes('活动名额已满'));
+}
+
+export function isActivityCapacityConfigurationChangedError(error: unknown): boolean {
+  if (error instanceof ActivityCapacityConfigurationChangedError) return true;
+  if (!error || typeof error !== 'object') return false;
+  const input = error as { code?: unknown; name?: unknown };
+  return input.code === 'ACTIVITY_CAPACITY_CONFIGURATION_CHANGED'
+    || input.name === 'ActivityCapacityConfigurationChangedError';
+}
+
+export function isShopStockExceededError(error: unknown): boolean {
+  if (error instanceof ShopStockExceededError) return true;
+  if (!error || typeof error !== 'object') return false;
+  const input = error as { code?: unknown; name?: unknown; message?: unknown };
+  return input.code === 'SHOP_STOCK_EXCEEDED'
+    || input.name === 'ShopStockExceededError'
+    || (typeof input.message === 'string' && input.message.includes('商品库存不足'));
+}
+
+export function isShopStockConfigurationChangedError(error: unknown): boolean {
+  if (error instanceof ShopStockConfigurationChangedError) return true;
+  if (!error || typeof error !== 'object') return false;
+  const input = error as { code?: unknown; name?: unknown };
+  return input.code === 'SHOP_STOCK_CONFIGURATION_CHANGED'
+    || input.name === 'ShopStockConfigurationChangedError';
 }
 
 export function isAccountOrderDeletionBlockedError(
@@ -282,6 +340,7 @@ export function normalizeOrder(item: Partial<OrderRecord>): OrderRecord {
     productName: sanitizeOrderString(item.productName),
     productImageUrl: sanitizeOrderString(item.productImageUrl),
     unitPrice: Math.max(0, Math.round(unitPrice)),
+    shippingFee: Math.max(0, Math.round(sanitizeOrderNumber(item.shippingFee))),
     quantity: Math.max(1, Math.floor(sanitizeOrderNumber(item.quantity, 1))),
     amount,
     address,
@@ -348,8 +407,12 @@ export function isAccountDeletionBlockingOrder(order: OrderRecord) {
  * identifiers are removed before the record is retained.
  */
 export function shouldRetainOrderAfterAccountDeletion(order: OrderRecord) {
+  // Paid orders are also the durable sold-capacity record. Deleting a free or
+  // mock paid order would make finite shop stock (and activity capacity) grow
+  // back after account deletion. Keep the anonymized accounting fact instead.
+  if (order.status === 'paid') return true;
   if (order.mock || order.amount <= 0) return false;
-  return order.status === 'paid' || Boolean(order.prepayId);
+  return Boolean(order.prepayId);
 }
 
 export function createAnonymizedOrderOpenid() {
@@ -404,6 +467,10 @@ export function anonymizeOrderForAccountDeletion(
 
 export function isActiveActivityOrder(order: OrderRecord) {
   return order.kind === 'activity' && (order.status === 'pending' || order.status === 'paid');
+}
+
+export function isActiveShopOrder(order: OrderRecord) {
+  return order.kind === 'shop' && (order.status === 'pending' || order.status === 'paid');
 }
 
 export function hasActivePaymentPreparation(order: OrderRecord) {

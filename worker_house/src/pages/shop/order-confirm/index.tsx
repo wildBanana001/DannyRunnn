@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Input, Text, View } from '@tarojs/components';
 import Taro, { useDidShow, useRouter } from '@tarojs/taro';
 import { Add, ArrowRight, Minus, Plus } from '@nutui/icons-react-taro';
@@ -8,9 +8,13 @@ import { usePaymentErrorDialog } from '@/hooks/usePaymentErrorDialog';
 import { useViewportLayout } from '@/hooks/useViewportLayout';
 import { fetchAddresses, type Address } from '@/services/address';
 import {
+  calculateShopOrderPricing,
+  clampShopQuantity,
   createShopClientRequestId,
   confirmShopPayment,
   fetchShopProduct,
+  getShopProductQuantityIssue,
+  getShopQuantityBounds,
   isPaymentCancelled,
   launchShopPayment,
   startShopPayment,
@@ -20,6 +24,7 @@ import { useUserStore } from '@/store/userStore';
 import styles from './index.module.scss';
 
 const ADDRESS_EVENT = 'shop:address-selected';
+const EMPTY_PRICING = { amount: 0, shippingFee: 0, subtotal: 0, unitPrice: 0 };
 
 const OrderConfirmPage: React.FC = () => {
   const router = useRouter();
@@ -51,7 +56,7 @@ const OrderConfirmPage: React.FC = () => {
         ? await fetchAddresses()
         : [];
       setProduct(nextProduct);
-      setQuantity((current) => Math.max(1, Math.min(99, current)));
+      setQuantity((current) => clampShopQuantity(nextProduct, current));
       setAddress((current) => (
         nextProduct.fulfillmentType === 'delivery' && isLoggedIn
           ? (
@@ -92,12 +97,19 @@ const OrderConfirmPage: React.FC = () => {
     wasLoggedInRef.current = isLoggedIn;
   }, [isLoggedIn, loadData]);
 
-  const totalAmount = useMemo(() => {
-    if (!product) return 0;
-    return Math.round(product.price * 100) * quantity;
-  }, [product, quantity]);
+  const pricing = product ? calculateShopOrderPricing(product, quantity) : EMPTY_PRICING;
+  const quantityBounds = product
+    ? getShopQuantityBounds(product)
+    : { canPurchase: false, maxQuantity: 0, minQuantity: 1 };
+  const quantityIssue = product ? getShopProductQuantityIssue(product, quantity) : '商品信息不存在';
+  const totalAmount = pricing.amount;
   const requiresAddress = product?.fulfillmentType === 'delivery';
   const isFree = totalAmount === 0;
+
+  const changeQuantity = (delta: number) => {
+    if (paying || !product || !quantityBounds.canPurchase) return;
+    setQuantity((current) => clampShopQuantity(product, current + delta));
+  };
 
   const chooseAddress = () => {
     if (!requiresAddress) return;
@@ -110,6 +122,11 @@ const OrderConfirmPage: React.FC = () => {
 
   const handlePay = async () => {
     if (paying || !product) return;
+    const currentQuantityIssue = getShopProductQuantityIssue(product, quantity);
+    if (currentQuantityIssue) {
+      Taro.showToast({ title: currentQuantityIssue, icon: 'none' });
+      return;
+    }
     if (!isLoggedIn) {
       setShowLogin(true);
       return;
@@ -118,11 +135,6 @@ const OrderConfirmPage: React.FC = () => {
       Taro.showToast({ title: '请先添加收货地址', icon: 'none' });
       return;
     }
-    if (!product.enabled) {
-      Taro.showToast({ title: '商品已下架', icon: 'none' });
-      return;
-    }
-
     let outTradeNo = '';
     setPaying(true);
     try {
@@ -137,7 +149,13 @@ const OrderConfirmPage: React.FC = () => {
       outTradeNo = session.outTradeNo;
       Taro.hideLoading();
 
-      if (session.amount !== totalAmount) {
+      if (
+        session.productId !== product.id
+        || session.amount !== pricing.amount
+        || session.unitPrice !== pricing.unitPrice
+        || session.shippingFee !== pricing.shippingFee
+        || session.quantity !== quantity
+      ) {
         await loadData();
         throw new Error('商品价格已更新，请核对后重新支付');
       }
@@ -227,11 +245,33 @@ const OrderConfirmPage: React.FC = () => {
           <View className={styles.productInfo}>
             <Text className={styles.productName}>{product.name}</Text>
             <Text className={styles.productMeta}>¥{product.price.toFixed(2)} × {quantity} {product.unitLabel}</Text>
+            <Text className={styles.quantityHint}>
+              每单 {product.minQuantity}-{product.maxQuantity} {product.unitLabel}
+              {product.stock === null ? '' : ` · 剩余 ${product.stock}`}
+            </Text>
           </View>
           <View className={styles.quantityControl}>
-            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.max(1, value - 1))}><Minus size="14" /></View>
+            <View
+              className={`${styles.quantityButton} ${paying || !quantityBounds.canPurchase || quantity <= quantityBounds.minQuantity ? styles.quantityButtonDisabled : ''}`}
+              onClick={() => changeQuantity(-1)}
+            ><Minus size="14" /></View>
             <Text className={styles.quantityValue}>{quantity}</Text>
-            <View className={styles.quantityButton} onClick={() => setQuantity((value) => Math.min(99, value + 1))}><Plus size="14" /></View>
+            <View
+              className={`${styles.quantityButton} ${paying || !quantityBounds.canPurchase || quantity >= quantityBounds.maxQuantity ? styles.quantityButtonDisabled : ''}`}
+              onClick={() => changeQuantity(1)}
+            ><Plus size="14" /></View>
+          </View>
+        </View>
+        <View className={styles.pricingSummary}>
+          <View className={styles.pricingRow}>
+            <Text className={styles.pricingLabel}>商品小计</Text>
+            <Text className={styles.pricingValue}>¥{(pricing.subtotal / 100).toFixed(2)}</Text>
+          </View>
+          <View className={styles.pricingRow}>
+            <Text className={styles.pricingLabel}>配送费</Text>
+            <Text className={styles.pricingValue}>
+              {pricing.shippingFee > 0 ? `¥${(pricing.shippingFee / 100).toFixed(2)}` : '¥0.00'}
+            </Text>
           </View>
         </View>
         <View className={styles.remarkRow}>
@@ -260,8 +300,10 @@ const OrderConfirmPage: React.FC = () => {
           <Text className={styles.totalLabel}>合计</Text>
           <Text className={styles.totalValue}>{isFree ? '免费' : `¥${(totalAmount / 100).toFixed(2)}`}</Text>
         </View>
-        <View className={`${styles.payBtn} ${paying ? styles.payBtnDisabled : ''}`} onClick={handlePay}>
-          <Text className={styles.payBtnText}>{paying ? (isFree ? '领取中…' : '处理中…') : (isFree ? '免费领取' : '微信支付')}</Text>
+        <View className={`${styles.payBtn} ${paying || quantityIssue ? styles.payBtnDisabled : ''}`} onClick={handlePay}>
+          <Text className={styles.payBtnText}>
+            {quantityIssue ? '暂不可购买' : paying ? (isFree ? '领取中…' : '处理中…') : (isFree ? '免费领取' : '微信支付')}
+          </Text>
         </View>
       </View>
 

@@ -15,6 +15,7 @@ function buildOrder(overrides: Partial<OrderRecord> = {}): OrderRecord {
     productName: '线下活动',
     productImageUrl: '',
     unitPrice: 1,
+    shippingFee: 0,
     quantity: 1,
     amount: 1,
     address: null,
