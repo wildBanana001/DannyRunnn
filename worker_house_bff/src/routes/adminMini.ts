@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { callCloudFunction } from '../cloudClient.js';
 import { config } from '../config.js';
+import { ActivityImportError, importActivityArticle } from '../services/activity-import.js';
 import { isOpenidAdmin } from '../config/adminWhitelist.js';
 import {
   deletePersistedActivity,
@@ -335,6 +336,16 @@ adminMiniRouter.get('/activities', async (request, response) => {
     });
   } catch (error) {
     response.status(503).json({ message: error instanceof Error ? error.message : '读取活动目录失败' });
+  }
+});
+
+adminMiniRouter.post('/activities/import', async (request, response) => {
+  try {
+    response.json(await importActivityArticle(request.body));
+  } catch (error) {
+    response.status(error instanceof ActivityImportError ? error.status : 500).json({
+      message: error instanceof ActivityImportError ? error.message : '推文导入失败，请稍后重试',
+    });
   }
 });
 

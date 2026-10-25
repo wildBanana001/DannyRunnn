@@ -42,3 +42,14 @@ test('allows MySQL-backed activity reads and authenticated CRUD paths only', () 
     shopOrderStorage: 'file',
   }), false);
 });
+
+
+test('admin identity and import remain available without legacy login or community storage', () => {
+  const context = { ...productionContext, hasWechatCloudConfig: false, enableShop: false };
+  assert.equal(evaluateRuntimeRequest('/admin-mini/check', 'POST', context), true);
+  assert.equal(evaluateRuntimeRequest('/admin-mini/check', 'GET', context), false);
+  assert.equal(evaluateRuntimeRequest('/admin-mini/activities/import', 'POST', context), true);
+  assert.equal(evaluateRuntimeRequest('/admin-mini/activities/import', 'DELETE', context), false);
+  assert.equal(evaluateRuntimeRequest('/admin-mini/site-config', 'PUT', context), false);
+  assert.equal(evaluateRuntimeRequest('/auth/wx-profile', 'POST', context), false);
+});

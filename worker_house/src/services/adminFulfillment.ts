@@ -4,7 +4,7 @@ import {
   getMockAdminIdentity,
 } from '@/data/mock-member';
 import type { AdminFulfillmentTask, AdminIdentity } from '@/types/adminFulfillment';
-import { getPaymentApiMode, requestWithMode } from './request';
+import { getApiMode, requestWithMode } from './request';
 
 export type {
   AdminFulfillmentTask,
@@ -14,7 +14,7 @@ export type {
 } from '@/types/adminFulfillment';
 
 export async function fetchAdminIdentity(): Promise<AdminIdentity> {
-  const apiMode = getPaymentApiMode();
+  const apiMode = getApiMode();
   if (apiMode === 'mock') {
     return getMockAdminIdentity();
   }
@@ -26,7 +26,7 @@ export async function fetchAdminIdentity(): Promise<AdminIdentity> {
 }
 
 export async function fetchAdminFulfillmentTasks(): Promise<AdminFulfillmentTask[]> {
-  const apiMode = getPaymentApiMode();
+  const apiMode = getApiMode();
   if (apiMode === 'mock') {
     return getMockAdminFulfillmentTasks();
   }
@@ -38,7 +38,7 @@ export async function fetchAdminFulfillmentTasks(): Promise<AdminFulfillmentTask
 }
 
 export async function completeAdminFulfillmentTask(task: AdminFulfillmentTask): Promise<AdminFulfillmentTask> {
-  const apiMode = getPaymentApiMode();
+  const apiMode = getApiMode();
   if (apiMode === 'mock') {
     return completeMockAdminFulfillmentTask(task);
   }

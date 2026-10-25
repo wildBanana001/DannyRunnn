@@ -1,0 +1,32 @@
+@use '../../../styles/variables.scss' as *;
+
+.page { height: 100vh; box-sizing: border-box; background: $color-oat; }
+.header, .createCard, .fulfillment, .sectionHeading, .search, .activity { margin: 24rpx; }
+.header { padding: 18rpx 0 8rpx; }
+.eyebrow, .heading, .subtitle, .muted, .linkTitle, .activityTitle, .footer, .loading, .error { display: block; }
+.eyebrow { font-size: 20rpx; letter-spacing: 3rpx; color: $color-text-secondary; }
+.heading { margin: 12rpx 0; font-size: 48rpx; font-weight: 800; }
+.subtitle, .muted { color: $color-text-secondary; font-size: 24rpx; line-height: 1.7; }
+.createCard { @include paper-card($color-white); padding: 28rpx; border-top: 8rpx solid #bf4932; }
+.cardTitle { font-size: 30rpx; font-weight: 700; }
+.createCard .muted { margin: 14rpx 0 24rpx; }
+.fulfillment { @include paper-card(#f4e9c9); display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx; }
+.linkTitle { font-weight: 700; font-size: 28rpx; }
+.arrow { font-size: 40rpx; }
+.sectionHeading { display: flex; justify-content: space-between; align-items: baseline; padding-top: 12rpx; }
+.search { display: flex; align-items: center; gap: 16rpx; }
+.searchInput { min-width: 0; flex: 1; padding: 18rpx; border: 2rpx solid $color-divider; background: white; font-size: 26rpx; }
+.compactButton { width: auto; flex: 0 0 auto; }
+.activity { @include paper-card($color-white); padding: 24rpx; }
+.activityTop { display: flex; gap: 22rpx; }
+.cover { width: 150rpx; height: 190rpx; flex-shrink: 0; border-radius: 6rpx; }
+.activityInfo { flex: 1; min-width: 0; }
+.activityTitle { margin: 12rpx 0; font-size: 28rpx; font-weight: 700; line-height: 1.5; word-break: break-all; }
+.liveBadge, .draftBadge { display: inline-block; padding: 3rpx 12rpx; font-size: 20rpx; border-radius: 4rpx; }
+.liveBadge { background: #e7efdf; color: #466234; }
+.draftBadge { background: #eee9df; color: #746d60; }
+.actions { display: flex; gap: 16rpx; justify-content: flex-end; padding-top: 22rpx; margin-top: 20rpx; border-top: 1rpx solid $color-divider; }
+.footer { margin: 36rpx 24rpx calc(env(safe-area-inset-bottom) + 40rpx); text-align: center; font-size: 22rpx; color: $color-text-secondary; }
+.state { min-height: 100vh; padding: 48rpx 24rpx; box-sizing: border-box; background: $color-oat; }
+.loading, .error { padding: 24rpx; font-size: 26rpx; }
+.error { color: #a33c29; }

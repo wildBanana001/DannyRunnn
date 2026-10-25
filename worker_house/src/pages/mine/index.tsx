@@ -27,10 +27,10 @@ const menuItems = [
 const adminMenuItem = {
   key: 'admin-fulfillments',
   icon: Order,
-  title: '待核销订单',
-  description: '管理员专用 · 到店核销并自动同步微信',
-  url: '/pages/content/admin-fulfillments/index',
-  requiresLogin: true,
+  title: '管理后台',
+  description: '活动发布、推文导入与订单核销',
+  url: '/pages/content/admin-activities/index',
+  requiresLogin: false,
   wallOnly: false,
 } as const;
 
@@ -55,15 +55,11 @@ const MinePage: React.FC = () => {
 
   const loadMineData = useCallback(async () => {
     const loggedIn = useUserStore.getState().isLoggedIn;
-    if (!loggedIn) {
-      setOverview(defaultOverview);
-      setIsAdmin(false);
-      return;
-    }
-
-    void refreshWxMe();
+    if (!loggedIn) setOverview(defaultOverview);
+    // CloudRun already provides a trusted identity before optional profile login.
+    if (loggedIn) void refreshWxMe();
     const [overviewResult, adminResult] = await Promise.allSettled([
-      fetchMemberOverview(),
+      loggedIn ? fetchMemberOverview() : Promise.resolve(defaultOverview),
       fetchAdminIdentity(),
     ]);
 
@@ -86,12 +82,6 @@ const MinePage: React.FC = () => {
   });
 
   const revealCurrentOpenid = useCallback(async () => {
-    if (!useUserStore.getState().isLoggedIn) {
-      Taro.showToast({ title: '请先登录后获取管理员 ID', icon: 'none' });
-      setLoginModalVisible(true);
-      return;
-    }
-
     let openid = '';
     try {
       const identity = await fetchAdminIdentity();

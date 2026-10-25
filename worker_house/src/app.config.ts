@@ -26,6 +26,8 @@ export default defineAppConfig({
         'origin-detail/index',
         'activity-detail/index',
         'admin-fulfillments/index',
+        'admin-activities/index',
+        'admin-activity-edit/index',
         'my-registrations/index',
         'my-posts/index',
         'registration-detail/index'

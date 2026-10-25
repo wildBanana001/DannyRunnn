@@ -16,6 +16,7 @@ function isCatalogActivityRequest(path: string, method: string) {
 }
 
 function isAdminMiniActivityRequest(path: string, method: string) {
+  if (path === '/admin-mini/activities/import') return method === 'POST';
   if (path === '/admin-mini/activities') return method === 'GET' || method === 'POST';
   if (!/^\/admin-mini\/activities\/[^/]+$/.test(path)) return false;
   return method === 'GET' || method === 'PUT' || method === 'DELETE';
@@ -63,7 +64,12 @@ export function evaluateRuntimeRequest(
     );
   const bundledSiteConfigRead = normalizedMethod === 'GET' && path === '/site-config';
 
-  return accountDeletionReady
+  // Admin identity relies on trusted CloudRun headers, not legacy profile files
+  // or the optional community database. Keep every write behind route auth.
+  const adminIdentityReady = normalizedMethod === 'POST' && path === '/admin-mini/check';
+
+  return adminIdentityReady
+    || accountDeletionReady
     || communityReady
     || posterReadReady
     || paymentStorageReady

@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit --pretty false",
-    "test": "npm run test:activity-status && npm run test:api-mode && npm run test:activity-fallbacks && npm run test:member-card-safety && npm run test:remote-safe-bundle && npm run test:production-mock-site-safety && npm run test:shop-contract",
+    "test": "npm run test:activity-status && npm run test:api-mode && npm run test:activity-fallbacks && npm run test:member-card-safety && npm run test:remote-safe-bundle && npm run test:production-mock-site-safety && npm run test:shop-contract && npm run test:admin-activity",
     "test:activity-status": "node --require ts-node/register --test tests/activity-status.test.cjs",
     "test:api-mode": "node --require ts-node/register --test tests/api-mode.test.cjs",
     "test:activity-fallbacks": "node --test tests/activity-fallbacks.test.cjs",
@@ -42,7 +42,8 @@
     "dev:rn": "npm run build:rn -- --watch",
     "dev:qq": "npm run build:qq -- --watch",
     "dev:jd": "npm run build:jd -- --watch",
-    "dev:quickapp": "npm run build:quickapp -- --watch"
+    "dev:quickapp": "npm run build:quickapp -- --watch",
+    "test:admin-activity": "node --require ts-node/register --test tests/admin-activity.test.cjs"
   },
   "browserslist": [
     "last 3 versions",

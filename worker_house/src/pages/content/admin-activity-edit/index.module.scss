@@ -1,0 +1,41 @@
+@use '../../../styles/variables.scss' as *;
+
+.page { height: 100vh; background: $color-oat; }
+.scroll { height: 100%; }
+.header { padding: 32rpx 24rpx 8rpx; }
+.eyebrow, .heading, .muted, .sectionTitle, .label, .hint, .previewTitle, .previewPrice, .previewBody, .warningLine { display: block; }
+.eyebrow { font-size: 20rpx; letter-spacing: 3rpx; color: $color-text-secondary; }
+.heading { font-size: 44rpx; font-weight: 800; margin: 12rpx 0; }
+.muted, .hint { font-size: 24rpx; line-height: 1.7; color: $color-text-secondary; }
+.hint { font-size: 22rpx; margin-top: 18rpx; overflow-wrap: anywhere; }
+.card { @include paper-card($color-white); margin: 24rpx; padding: 26rpx; }
+.sectionTitle { font-size: 30rpx; font-weight: 700; }
+.sectionRow { display: flex; justify-content: space-between; align-items: center; gap: 12rpx; }
+.compactButton { width: auto; flex: 0 0 auto; }
+.importArea, .textarea, .input, .picker { box-sizing: border-box; width: 100%; border: 2rpx solid $color-divider; border-radius: 6rpx; background: #fcfbf7; padding: 18rpx; font-size: 26rpx; line-height: 1.6; color: $color-text-primary; }
+.importArea { min-height: 240rpx; height: 240rpx; margin-top: 24rpx; }
+.textarea { min-height: 210rpx; height: 210rpx; }
+.importArea, .textarea {
+  :global(textarea) { box-sizing: border-box; width: 100%; height: 100%; min-height: 0; resize: none; background: transparent; }
+}
+.input { height: 80rpx; }
+.picker { min-height: 80rpx; display: flex; justify-content: space-between; gap: 10rpx; align-items: center; }
+.placeholder { color: #8f877a; }
+.importActions { display: flex; justify-content: space-between; gap: 12rpx; margin-top: 20rpx; }
+.field { margin-top: 26rpx; min-width: 0; }
+.label { font-size: 24rpx; font-weight: 600; margin-bottom: 12rpx; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 20rpx; }
+.cover, .previewCover { display: block; width: 100%; height: 300rpx; border-radius: 6rpx; margin-bottom: 18rpx; }
+.coverPlaceholder { display: flex; align-items: center; justify-content: center; height: 180rpx; margin-bottom: 18rpx; font-size: 24rpx; color: $color-text-secondary; background: $color-oat; border: 2rpx dashed $color-divider; }
+.notice, .warning, .error { display: block; margin: 24rpx; padding: 22rpx; font-size: 24rpx; line-height: 1.7; border-radius: 6rpx; }
+.notice { background: #e7efdf; color: #425d31; }
+.warning { background: #f9edcd; border-left: 6rpx solid #b18939; }
+.warningLine { margin-top: 6rpx; }
+.error { background: #fff0e8; color: #963d2b; border: 2rpx solid #d3a18d; }
+.saveArea { margin: 24rpx; padding-bottom: calc(env(safe-area-inset-bottom) + 32rpx); display: flex; flex-direction: column; gap: 20rpx; }
+.preview { padding-top: 24rpx; }
+.previewTitle { font-size: 36rpx; font-weight: 800; line-height: 1.5; margin: 20rpx 0; }
+.previewPrice { color: #af442d; margin: 18rpx 0; font-size: 28rpx; font-weight: 700; }
+.previewBody { margin-top: 28rpx; white-space: pre-wrap; word-break: break-word; line-height: 1.9; font-size: 26rpx; }
+.galleryImage { width: 100%; margin-top: 20rpx; }
+.state { min-height: 100vh; box-sizing: border-box; background: $color-oat; padding: 48rpx 24rpx; }

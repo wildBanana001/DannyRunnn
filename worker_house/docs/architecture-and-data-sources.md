@@ -56,7 +56,7 @@ worker_house_bff/
 
 - Tab：首页、活动、商城、我的。
 - 主包还包含留言墙、登录/报名入口、个人资料、地址、设置等轻量页面。
-- `pages/content` 分包承载活动详情、报名记录、内容详情和管理员履约页。
+- `pages/content` 分包承载活动详情、报名记录、内容详情、管理员活动工作台、活动编辑器和管理员履约页。
 - `pages/shop` 分包承载商品详情、订单确认、我的订单、订单详情和支付结果。
 
 ## 业务数据矩阵
@@ -93,3 +93,11 @@ worker_house_bff/
 - 活动/商品目录、订单并发、一分钱调价共三个真实 MySQL 集成测试需要独立测试库和 `MYSQL_TEST_URL`；本地 `npm test` 未配置时会跳过，BFF CI 的专用 `npm run test:mysql` 门禁会使用 MySQL 8 测试服务实际执行，禁止跳过。
 
 首次迁移、验收、回滚和后续优先级见 [发布下一步清单](release-next-steps.md)。
+
+## 管理员活动工作台
+
+- 入口：`pages/mine` → `pages/content/admin-activities` → `pages/content/admin-activity-edit`。管理入口根据 `/api/admin-mini/check` 的白名单结果展示，不受旧资料登录开关影响。
+- 复用 `/api/admin-mini/activities` 的 MySQL CRUD；新增 `POST /api/admin-mini/activities/import`，经微信身份与管理员白名单校验后解析复制粘贴的推文正文。导入不写目录，发布仍通过完整活动字段校验。
+- 仅支持纯文本导入，上限 20000 字，无远端文章抓取，不执行推文 HTML 或脚本。封面与详情图片由管理员在编辑器中补充。
+- 正文映射到现有活动字段。未识别字段留空，不从种子借用价格、日期或名额。
+- 未完成新草稿只在本机暂存；保存到服务端的未发布活动使用 `enabled=false`，公开列表和详情继续过滤。未引入新的表或存储后门。
